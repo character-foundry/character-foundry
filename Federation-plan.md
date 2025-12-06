@@ -74,14 +74,19 @@ CREATE TABLE federation_sync_state (
 );
 ```
 
-### Phase 3: API Routes (The Surface)
-Mount standard ActivityPub endpoints.
+### Phase 3: Zero-Negotiation Route Standard
+**CRITICAL:** To ensure interoperability between CardsHub, Card Doctor, and external Archives, ALL applications MUST adhere to this exact route structure. No deviations.
 
-*   **`GET /.well-known/webfinger`**: Resource discovery (aliases `user@domain` to Actor URI).
-*   **`GET /api/federation/actor`**: Returns the Service Actor JSON.
-*   **`POST /api/federation/inbox`**: Receives activities (`Create`, `Update`, `Delete`).
-    *   *Action:* Validate signature -> Push to Cloudflare Queue -> Return 202 Accepted.
-*   **`GET /api/federation/outbox`**: Lists public activities (New uploads, updates).
+| Purpose | Method | Path | Description |
+| :--- | :--- | :--- | :--- |
+| **Discovery** | `GET` | `/.well-known/webfinger` | Standard WebFinger discovery. |
+| **Discovery** | `GET` | `/.well-known/nodeinfo` | Server capabilities metadata. |
+| **Identity** | `GET` | `/api/federation/actor` | The Service Actor profile (JSON-LD). |
+| **Incoming** | `POST` | `/api/federation/inbox` | Receives activities (`Create`, `Update`, `Delete`). |
+| **Outgoing** | `GET` | `/api/federation/outbox` | Public activity stream (New uploads). |
+| **Assets** | `GET` | `/api/federation/assets/{id}`| Direct asset access (verified). |
+
+*Rationale:* Hardcoding these paths in the `@character-foundry/federation` client removes configuration drift and ensures "it just works" when connecting any two ecosystem apps.
 
 ### Phase 4: Background Processing
 Since Workers are ephemeral, we cannot keep a `SyncEngine` running.
