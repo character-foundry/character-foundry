@@ -153,7 +153,7 @@ function parseCharx(data: BinaryData, options: Required<ParseOptions>): ParseRes
       ext: asset.descriptor.ext,
       data: asset.buffer!,
       path: asset.path,
-      isMain: asset.path.includes('/main.') || asset.path.endsWith('/1.'),
+      isMain: asset.descriptor.type === 'icon', // Main icon is type='icon' in descriptor
     }));
 
   // Determine source format
