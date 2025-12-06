@@ -70,16 +70,28 @@ export interface VoxtaCharacter {
   $type: 'character';
   Id: string;
   Name: string;
+  Label?: string;           // Optional nickname/display name
   Version?: string;
   PackageId?: string;
 
   // Core Info
-  Description?: string;  // Physical description
+  Description?: string;     // Physical/visual appearance
   Personality?: string;
-  Profile?: string;      // Profile/Backstory
+  Profile?: string;         // Profile/Backstory
   Scenario?: string;
   FirstMessage?: string;
+  AlternateGreetings?: string[]; // Alternate greetings (Voxta next version)
   MessageExamples?: string;
+
+  // System prompts
+  SystemPrompt?: string;           // System prompt (additive)
+  PostHistoryInstructions?: string; // UJB - added at end of messages
+  Context?: string;                // Context field
+  Instructions?: string;           // User instructions (not read by LLM)
+
+  // Persona overrides
+  UserNameOverride?: string;
+  UserDescriptionOverride?: string;
 
   // Metadata
   Creator?: string;
@@ -87,6 +99,7 @@ export interface VoxtaCharacter {
   Tags?: string[];
   ExplicitContent?: boolean;
   Culture?: string;
+  ImportedFrom?: string;    // Source tracking
 
   // References
   MemoryBooks?: string[];
@@ -114,8 +127,8 @@ export interface VoxtaCharacter {
     ContentType?: string;
   };
 
-  DateCreated?: string;
-  DateModified?: string;
+  DateCreated?: string;   // ISO timestamp
+  DateModified?: string;  // ISO timestamp
 }
 
 /**
@@ -281,8 +294,15 @@ export interface VoxtaExtensionData {
   id: string;
   version?: string;
   packageId?: string;
+  label?: string;
   textToSpeech?: VoxtaTtsConfig[];
   appearance?: string;
+  context?: string;
+  instructions?: string;
+  userNameOverride?: string;
+  userDescriptionOverride?: string;
+  culture?: string;
+  importedFrom?: string;
   chatSettings?: {
     chatStyle?: number;
     enableThinkingSpeech?: boolean;
@@ -291,8 +311,10 @@ export interface VoxtaExtensionData {
     useMemory?: boolean;
     maxTokens?: number;
     maxSentences?: number;
+    systemPromptOverrideType?: number;
   };
   scripts?: VoxtaScript[];
+  augmentations?: unknown[];
   scenario?: {
     actions?: VoxtaAction[];
     sharedScripts?: VoxtaScript[];

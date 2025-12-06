@@ -35,7 +35,14 @@ export function voxtaToCCv3(character: VoxtaCharacter, books?: VoxtaBook[]): CCv
   const voxtaExt: VoxtaExtensionData = {
     id: character.Id,
     packageId: character.PackageId,
+    label: character.Label,
     appearance: character.Description,
+    context: character.Context,
+    instructions: character.Instructions,
+    userNameOverride: character.UserNameOverride,
+    userDescriptionOverride: character.UserDescriptionOverride,
+    culture: character.Culture,
+    importedFrom: character.ImportedFrom,
     textToSpeech: character.TextToSpeech,
     chatSettings: {
       chatStyle: character.ChatStyle,
@@ -45,8 +52,10 @@ export function voxtaToCCv3(character: VoxtaCharacter, books?: VoxtaBook[]): CCv
       useMemory: character.UseMemory,
       maxTokens: character.MaxTokens,
       maxSentences: character.MaxSentences,
+      systemPromptOverrideType: character.SystemPromptOverrideType,
     },
     scripts: character.Scripts,
+    augmentations: character.Augmentations,
     original: {
       DateCreated: character.DateCreated,
       DateModified: character.DateModified,
@@ -89,25 +98,36 @@ export function voxtaToCCv3(character: VoxtaCharacter, books?: VoxtaBook[]): CCv
     }
   }
 
+  // Convert timestamps (ISO string -> Unix seconds)
+  const creationDate = character.DateCreated
+    ? Math.floor(new Date(character.DateCreated).getTime() / 1000)
+    : undefined;
+  const modificationDate = character.DateModified
+    ? Math.floor(new Date(character.DateModified).getTime() / 1000)
+    : undefined;
+
   // Build CCv3 card
   const card: CCv3Data = {
     spec: 'chara_card_v3',
     spec_version: '3.0',
     data: {
       name: character.Name || 'Unknown',
+      nickname: character.Label,
       description: voxtaToStandard(character.Profile || ''),
       personality: voxtaToStandard(character.Personality || ''),
       scenario: voxtaToStandard(character.Scenario || ''),
       first_mes: voxtaToStandard(character.FirstMessage || ''),
       mes_example: voxtaToStandard(character.MessageExamples || ''),
       creator_notes: character.CreatorNotes || '',
-      system_prompt: '',
-      post_history_instructions: '',
-      alternate_greetings: [],
+      system_prompt: voxtaToStandard(character.SystemPrompt || ''),
+      post_history_instructions: voxtaToStandard(character.PostHistoryInstructions || ''),
+      alternate_greetings: (character.AlternateGreetings || []).map(voxtaToStandard),
       group_only_greetings: [],
       tags: character.Tags || [],
       creator: character.Creator || '',
       character_version: character.Version || '1.0',
+      creation_date: creationDate,
+      modification_date: modificationDate,
       character_book: characterBook,
       extensions: {
         voxta: voxtaExt,
@@ -130,24 +150,49 @@ export function ccv3ToVoxta(card: CCv3Data): VoxtaCharacter {
 
   const appearance = voxtaExt?.appearance || (extensions?.visual_description as string) || '';
 
+  // Convert timestamps (Unix seconds -> ISO string)
+  const dateCreated = cardData.creation_date
+    ? new Date(cardData.creation_date * 1000).toISOString()
+    : voxtaExt?.original?.DateCreated || dateNow;
+  const dateModified = cardData.modification_date
+    ? new Date(cardData.modification_date * 1000).toISOString()
+    : dateNow;
+
   const character: VoxtaCharacter = {
     $type: 'character',
     Id: voxtaExt?.id || generateUUID(),
     PackageId: voxtaExt?.packageId || generateUUID(),
     Name: cardData.name,
+    Label: cardData.nickname || voxtaExt?.label,
     Version: cardData.character_version,
 
+    // Core content
     Description: appearance,
     Personality: standardToVoxta(cardData.personality),
     Profile: standardToVoxta(cardData.description),
     Scenario: standardToVoxta(cardData.scenario),
     FirstMessage: standardToVoxta(cardData.first_mes),
+    AlternateGreetings: (cardData.alternate_greetings || []).map(standardToVoxta),
     MessageExamples: standardToVoxta(cardData.mes_example || ''),
 
+    // System prompts
+    SystemPrompt: standardToVoxta(cardData.system_prompt || ''),
+    PostHistoryInstructions: standardToVoxta(cardData.post_history_instructions || ''),
+    Context: voxtaExt?.context,
+    Instructions: voxtaExt?.instructions,
+
+    // Persona overrides
+    UserNameOverride: voxtaExt?.userNameOverride,
+    UserDescriptionOverride: voxtaExt?.userDescriptionOverride,
+
+    // Metadata
     Creator: cardData.creator,
     CreatorNotes: cardData.creator_notes,
     Tags: cardData.tags,
+    Culture: voxtaExt?.culture,
+    ImportedFrom: voxtaExt?.importedFrom,
 
+    // TTS & AI settings
     TextToSpeech: voxtaExt?.textToSpeech,
     ChatStyle: voxtaExt?.chatSettings?.chatStyle,
     EnableThinkingSpeech: voxtaExt?.chatSettings?.enableThinkingSpeech,
@@ -156,10 +201,14 @@ export function ccv3ToVoxta(card: CCv3Data): VoxtaCharacter {
     UseMemory: voxtaExt?.chatSettings?.useMemory,
     MaxTokens: voxtaExt?.chatSettings?.maxTokens,
     MaxSentences: voxtaExt?.chatSettings?.maxSentences,
-    Scripts: voxtaExt?.scripts,
+    SystemPromptOverrideType: voxtaExt?.chatSettings?.systemPromptOverrideType,
 
-    DateCreated: voxtaExt?.original?.DateCreated || dateNow,
-    DateModified: dateNow,
+    // Advanced
+    Scripts: voxtaExt?.scripts,
+    Augmentations: voxtaExt?.augmentations,
+
+    DateCreated: dateCreated,
+    DateModified: dateModified,
   };
 
   return character;

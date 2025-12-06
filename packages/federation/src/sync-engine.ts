@@ -217,33 +217,32 @@ export class SyncEngine {
       const newHash = hashCard(card);
       const now = new Date().toISOString();
 
-      if (!syncState) {
-        syncState = {
-          localId: sourceId,
-          federatedId,
-          platformIds: {},
-          lastSync: {},
-          versionHash: newHash,
-          status: 'synced',
-        };
-      }
+      // Create new state or use existing
+      const updatedState: CardSyncState = syncState ?? {
+        localId: sourceId,
+        federatedId,
+        platformIds: {},
+        lastSync: {},
+        versionHash: newHash,
+        status: 'synced',
+      };
 
-      syncState.platformIds[sourcePlatform] = sourceId;
-      syncState.platformIds[targetPlatform] = targetId;
-      syncState.lastSync[sourcePlatform] = now;
-      syncState.lastSync[targetPlatform] = now;
-      syncState.versionHash = newHash;
-      syncState.status = 'synced';
-      syncState.conflict = undefined;
+      updatedState.platformIds[sourcePlatform] = sourceId;
+      updatedState.platformIds[targetPlatform] = targetId;
+      updatedState.lastSync[sourcePlatform] = now;
+      updatedState.lastSync[targetPlatform] = now;
+      updatedState.versionHash = newHash;
+      updatedState.status = 'synced';
+      updatedState.conflict = undefined;
 
-      await this.stateStore.set(syncState);
+      await this.stateStore.set(updatedState);
 
-      this.emit('card:synced', { syncState, sourcePlatform, targetPlatform });
+      this.emit('card:synced', { syncState: updatedState, sourcePlatform, targetPlatform });
 
       return {
         success: true,
         operation,
-        newState: syncState,
+        newState: updatedState,
       };
     } catch (err) {
       this.emit('sync:failed', { operation, error: err });

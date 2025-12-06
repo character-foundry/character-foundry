@@ -12,9 +12,6 @@ import type { VoxtaLossReport } from './types.js';
  * Fields that cannot be represented in Voxta format
  */
 const ALWAYS_LOST_FIELDS = [
-  'system_prompt',           // Voxta has no direct equivalent
-  'post_history_instructions', // Voxta has no direct equivalent
-  'alternate_greetings',     // Voxta only has FirstMessage
   'group_only_greetings',    // Voxta doesn't support groups
 ];
 
@@ -36,15 +33,7 @@ export function checkVoxtaLoss(card: NormalizedCard): VoxtaLossReport {
   const warnings: string[] = [];
 
   // Check always-lost fields that have content
-  if (card.systemPrompt) {
-    lostFields.push('system_prompt');
-  }
-  if (card.postHistoryInstructions) {
-    lostFields.push('post_history_instructions');
-  }
-  if (card.alternateGreetings.length > 0) {
-    lostFields.push(`alternate_greetings (${card.alternateGreetings.length} entries)`);
-  }
+  // Note: system_prompt, post_history_instructions, and alternate_greetings ARE supported by Voxta
   if (card.groupOnlyGreetings.length > 0) {
     lostFields.push(`group_only_greetings (${card.groupOnlyGreetings.length} entries)`);
   }

@@ -57,11 +57,16 @@ export interface FederatedActor {
 }
 
 /**
+ * ActivityPub context type - can be a string, or an array of strings and objects
+ */
+export type ActivityPubContext = string | (string | Record<string, unknown>)[];
+
+/**
  * ActivityPub Object representing a character card
  */
 export interface FederatedCard {
   /** ActivityPub context */
-  '@context': string | string[];
+  '@context': ActivityPubContext;
   /** Unique ID (URI) */
   id: string;
   /** Object type */
@@ -121,7 +126,7 @@ export type ActivityType =
  * ActivityPub Activity
  */
 export interface FederatedActivity {
-  '@context': string | string[];
+  '@context': ActivityPubContext;
   id: string;
   type: ActivityType;
   actor: string;
@@ -139,10 +144,10 @@ export interface CardSyncState {
   localId: string;
   /** Federated card ID (ActivityPub URI) */
   federatedId: string;
-  /** Platform-specific IDs */
-  platformIds: Record<PlatformId, string>;
-  /** Last sync timestamp per platform */
-  lastSync: Record<PlatformId, string>;
+  /** Platform-specific IDs (only set for synced platforms) */
+  platformIds: Partial<Record<PlatformId, string>>;
+  /** Last sync timestamp per platform (only set for synced platforms) */
+  lastSync: Partial<Record<PlatformId, string>>;
   /** Current version hash */
   versionHash: string;
   /** Sync status */

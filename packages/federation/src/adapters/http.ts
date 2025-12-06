@@ -84,7 +84,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
   /**
    * Build headers for requests
    */
-  private buildHeaders(contentType?: string): HeadersInit {
+  private buildHeaders(contentType?: string): Record<string, string> {
     const headers: Record<string, string> = {};
 
     if (contentType) {
@@ -272,7 +272,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
         return [];
       }
 
-      return await response.json();
+      return (await response.json()) as AdapterAsset[];
     } catch {
       return [];
     }

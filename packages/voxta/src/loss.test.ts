@@ -27,7 +27,7 @@ describe('checkVoxtaLoss', () => {
     expect(report.warnings.length).toBe(0);
   });
 
-  it('should report loss of system_prompt', () => {
+  it('should NOT report loss of system_prompt (Voxta supports it)', () => {
     const card: NormalizedCard = {
       ...minimalCard,
       systemPrompt: 'You are a helpful assistant.',
@@ -35,10 +35,11 @@ describe('checkVoxtaLoss', () => {
 
     const report = checkVoxtaLoss(card);
 
-    expect(report.lostFields).toContain('system_prompt');
+    expect(report.lostFields).not.toContain('system_prompt');
+    expect(report.lostFields.length).toBe(0);
   });
 
-  it('should report loss of post_history_instructions', () => {
+  it('should NOT report loss of post_history_instructions (Voxta supports it)', () => {
     const card: NormalizedCard = {
       ...minimalCard,
       postHistoryInstructions: 'Remember to be helpful.',
@@ -46,10 +47,11 @@ describe('checkVoxtaLoss', () => {
 
     const report = checkVoxtaLoss(card);
 
-    expect(report.lostFields).toContain('post_history_instructions');
+    expect(report.lostFields).not.toContain('post_history_instructions');
+    expect(report.lostFields.length).toBe(0);
   });
 
-  it('should report loss of alternate_greetings', () => {
+  it('should NOT report loss of alternate_greetings (Voxta supports it)', () => {
     const card: NormalizedCard = {
       ...minimalCard,
       alternateGreetings: ['Hi!', 'Hello!', 'Hey there!'],
@@ -57,8 +59,8 @@ describe('checkVoxtaLoss', () => {
 
     const report = checkVoxtaLoss(card);
 
-    expect(report.lostFields.some((f) => f.includes('alternate_greetings'))).toBe(true);
-    expect(report.lostFields.some((f) => f.includes('3 entries'))).toBe(true);
+    expect(report.lostFields.some((f) => f.includes('alternate_greetings'))).toBe(false);
+    expect(report.lostFields.length).toBe(0);
   });
 
   it('should report loss of group_only_greetings', () => {
@@ -176,14 +178,33 @@ describe('isVoxtaExportLossless', () => {
       scenario: '',
       firstMes: '',
       mesExample: '',
-      systemPrompt: 'Important system prompt',
-      alternateGreetings: [],
-      groupOnlyGreetings: [],
+      systemPrompt: 'Important system prompt', // Voxta supports this - NOT lost
+      alternateGreetings: ['Hi!', 'Hello!'],   // Voxta supports this - NOT lost
+      groupOnlyGreetings: ['Group hello!'],    // Voxta does NOT support - IS lost
       tags: [],
       extensions: {},
     };
 
     expect(isVoxtaExportLossless(card)).toBe(false);
+  });
+
+  it('should return true when only supported fields are used', () => {
+    const card: NormalizedCard = {
+      name: 'Test',
+      description: 'A character',
+      personality: 'Friendly',
+      scenario: 'In a coffee shop',
+      firstMes: 'Hello!',
+      mesExample: '',
+      systemPrompt: 'You are helpful.',
+      postHistoryInstructions: 'Remember to stay in character.',
+      alternateGreetings: [],
+      groupOnlyGreetings: [],
+      tags: ['friendly'],
+      extensions: {},
+    };
+
+    expect(isVoxtaExportLossless(card)).toBe(true);
   });
 });
 

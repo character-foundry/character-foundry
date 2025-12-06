@@ -117,7 +117,8 @@ export function ccv3ToSTCharacter(card: CCv3Data, filename?: string): STCharacte
       system_prompt: data.system_prompt,
       post_history_instructions: data.post_history_instructions,
       alternate_greetings: data.alternate_greetings,
-      character_book: data.character_book,
+      // Cast character_book - ST format is compatible but types differ slightly
+      character_book: data.character_book as STCharacter['data']['character_book'],
       tags: data.tags,
       creator: data.creator,
       character_version: data.character_version,

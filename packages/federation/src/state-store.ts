@@ -154,41 +154,56 @@ export class FileSyncStateStore implements SyncStateStore {
 }
 
 /**
- * Create a state store backed by localStorage (browser)
+ * Storage interface (compatible with Web Storage API)
  */
-export function createLocalStorageStore(key: string): SyncStateStore {
+export interface StorageInterface {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+/**
+ * Create a state store backed by a Storage interface (e.g., localStorage in browser)
+ *
+ * @param key - Prefix key for storage entries
+ * @param storage - Storage interface (pass localStorage in browser, or a polyfill in Node.js)
+ */
+export function createLocalStorageStore(
+  key: string,
+  storage: StorageInterface
+): SyncStateStore {
   return {
     async get(federatedId: string): Promise<CardSyncState | null> {
-      const data = localStorage.getItem(`${key}:${federatedId}`);
+      const data = storage.getItem(`${key}:${federatedId}`);
       return data ? JSON.parse(data) : null;
     },
 
     async set(state: CardSyncState): Promise<void> {
-      localStorage.setItem(`${key}:${state.federatedId}`, JSON.stringify(state));
+      storage.setItem(`${key}:${state.federatedId}`, JSON.stringify(state));
       // Also update index
       const indexKey = `${key}:__index__`;
-      const index = JSON.parse(localStorage.getItem(indexKey) || '[]') as string[];
+      const index = JSON.parse(storage.getItem(indexKey) || '[]') as string[];
       if (!index.includes(state.federatedId)) {
         index.push(state.federatedId);
-        localStorage.setItem(indexKey, JSON.stringify(index));
+        storage.setItem(indexKey, JSON.stringify(index));
       }
     },
 
     async delete(federatedId: string): Promise<void> {
-      localStorage.removeItem(`${key}:${federatedId}`);
+      storage.removeItem(`${key}:${federatedId}`);
       // Update index
       const indexKey = `${key}:__index__`;
-      const index = JSON.parse(localStorage.getItem(indexKey) || '[]') as string[];
+      const index = JSON.parse(storage.getItem(indexKey) || '[]') as string[];
       const newIndex = index.filter((id) => id !== federatedId);
-      localStorage.setItem(indexKey, JSON.stringify(newIndex));
+      storage.setItem(indexKey, JSON.stringify(newIndex));
     },
 
     async list(): Promise<CardSyncState[]> {
       const indexKey = `${key}:__index__`;
-      const index = JSON.parse(localStorage.getItem(indexKey) || '[]') as string[];
+      const index = JSON.parse(storage.getItem(indexKey) || '[]') as string[];
       const states: CardSyncState[] = [];
       for (const id of index) {
-        const data = localStorage.getItem(`${key}:${id}`);
+        const data = storage.getItem(`${key}:${id}`);
         if (data) {
           states.push(JSON.parse(data));
         }
