@@ -60,3 +60,10 @@ export {
   isVoxtaExportLossless,
   formatVoxtaLossReport,
 } from './loss.js';
+
+// Enricher
+export {
+  enrichVoxtaAsset,
+  type EnrichedAssetMetadata,
+} from './enricher.js';
+
