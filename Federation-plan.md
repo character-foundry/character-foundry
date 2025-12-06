@@ -75,16 +75,18 @@ CREATE TABLE federation_sync_state (
 ```
 
 ### Phase 3: Zero-Negotiation Route Standard
-**CRITICAL:** To ensure interoperability between CardsHub, Card Doctor, and external Archives, ALL applications MUST adhere to this exact route structure. No deviations.
+**CRITICAL:** To ensure interoperability between CardsHub, Card Doctor, and external Archives, ALL applications MUST adhere to this exact route structure.
 
-| Purpose | Method | Path | Description |
+**Implementation Rule:** DO NOT hardcode strings. Import `FederationRoutes` from `@character-foundry/federation`.
+
+| Purpose | Method | Constant | Path |
 | :--- | :--- | :--- | :--- |
-| **Discovery** | `GET` | `/.well-known/webfinger` | Standard WebFinger discovery. |
-| **Discovery** | `GET` | `/.well-known/nodeinfo` | Server capabilities metadata. |
-| **Identity** | `GET` | `/api/federation/actor` | The Service Actor profile (JSON-LD). |
-| **Incoming** | `POST` | `/api/federation/inbox` | Receives activities (`Create`, `Update`, `Delete`). |
-| **Outgoing** | `GET` | `/api/federation/outbox` | Public activity stream (New uploads). |
-| **Assets** | `GET` | `/api/federation/assets/{id}`| Direct asset access (verified). |
+| **Discovery** | `GET` | `FederationRoutes.DISCOVERY.WEBFINGER` | `/.well-known/webfinger` |
+| **Discovery** | `GET` | `FederationRoutes.DISCOVERY.NODEINFO` | `/.well-known/nodeinfo` |
+| **Identity** | `GET` | `FederationRoutes.API.ACTOR` | `/api/federation/actor` |
+| **Incoming** | `POST` | `FederationRoutes.API.INBOX` | `/api/federation/inbox` |
+| **Outgoing** | `GET` | `FederationRoutes.API.OUTBOX` | `/api/federation/outbox` |
+| **Assets** | `GET` | `FederationRoutes.API.ASSETS(id)` | `/api/federation/assets/{id}` |
 
 *Rationale:* Hardcoding these paths in the `@character-foundry/federation` client removes configuration drift and ensures "it just works" when connecting any two ecosystem apps.
 
