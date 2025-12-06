@@ -5,8 +5,8 @@
  */
 
 import type { BinaryData } from '@character-foundry/core';
-import { toString, ParseError, base64Decode } from '@character-foundry/core';
-import { detectSpec, getV2Data, type CCv3Data, type CCv2Data, type CCv2Wrapped, type Spec, type SourceFormat } from '@character-foundry/schemas';
+import { toString, ParseError, base64Decode, parseURI, getMimeTypeFromExt } from '@character-foundry/core';
+import { detectSpec, getV2Data, type CCv3Data, type CCv2Data, type CCv2Wrapped, type Spec, type SourceFormat, type AssetDescriptor } from '@character-foundry/schemas';
 import { extractFromPNG } from '@character-foundry/png';
 import { readCharX } from '@character-foundry/charx';
 import { readVoxta, voxtaToCCv3 } from '@character-foundry/voxta';
@@ -86,35 +86,92 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
   }];
 
   // Extract embedded assets (RisuAI style chunks)
-  if (extracted.extraChunks && options.extractAssets) {
+  if (extracted.extraChunks && options.extractAssets && card.data.assets) {
+    const usedChunks = new Set<string>();
+
+    for (const descriptor of card.data.assets) {
+      if (!descriptor.uri) continue;
+
+      // Check if it's a chunk reference
+      if (
+        descriptor.uri.startsWith('__asset:') ||
+        descriptor.uri.startsWith('asset:') ||
+        descriptor.uri.startsWith('pngchunk:') ||
+        !descriptor.uri.includes(':') // e.g. just "0"
+      ) {
+        let assetId = descriptor.uri;
+        if (assetId.startsWith('__asset:')) assetId = assetId.substring(8);
+        else if (assetId.startsWith('asset:')) assetId = assetId.substring(6);
+        else if (assetId.startsWith('pngchunk:')) assetId = assetId.substring(9);
+
+        // Try different key variations
+        const candidates = [
+          assetId,                        // "0"
+          descriptor.uri,                 // "__asset:0"
+          `asset:${assetId}`,             // "asset:0"
+          `__asset:${assetId}`,           // "__asset:0"
+          `__asset_${assetId}`,           // "__asset_0"
+          `chara-ext-asset_${assetId}`,   // "chara-ext-asset_0"
+          `chara-ext-asset_:${assetId}`,  // "chara-ext-asset_:0"
+        ];
+
+        const chunk = extracted.extraChunks.find(c => candidates.includes(c.keyword)) ||
+                      extracted.extraChunks.find(c => {
+                        // Fallback: Check for chara-ext-asset_ prefix matching
+                        if (c.keyword.startsWith('chara-ext-asset_')) {
+                          const suffix = c.keyword.replace('chara-ext-asset_', '');
+                          return suffix === assetId || suffix === `:${assetId}`;
+                        }
+                        return false;
+                      });
+
+        if (chunk) {
+          try {
+            const buffer = base64Decode(chunk.text);
+            
+            // Use descriptor metadata
+            const type = mapAssetType(descriptor.type);
+            
+            assets.push({
+              name: descriptor.name,
+              type,
+              ext: descriptor.ext,
+              data: buffer,
+              path: `pngchunk:${assetId}`,
+            });
+            
+            usedChunks.add(chunk.keyword);
+          } catch (e) {
+            // Ignore decode errors
+          }
+        }
+      }
+    }
+
+    // Add orphaned chunks (fallback)
     for (const chunk of extracted.extraChunks) {
-      let assetId: string | null = null;
+      if (!usedChunks.has(chunk.keyword)) {
+        let assetId: string | null = null;
+        
+        // Only process known asset chunk patterns to avoid junk
+        if (chunk.keyword.startsWith('chara-ext-asset_:')) {
+          assetId = chunk.keyword.substring('chara-ext-asset_:'.length);
+        } else if (chunk.keyword.startsWith('chara-ext-asset_')) {
+          assetId = chunk.keyword.substring('chara-ext-asset_'.length);
+        }
 
-      // Check for RisuAI format: chara-ext-asset_:N
-      if (chunk.keyword.startsWith('chara-ext-asset_:')) {
-        assetId = chunk.keyword.substring('chara-ext-asset_:'.length);
-      }
-      // Check for variant: chara-ext-asset_N
-      else if (chunk.keyword.startsWith('chara-ext-asset_')) {
-        assetId = chunk.keyword.substring('chara-ext-asset_'.length);
-      }
-      // Check for legacy numeric only
-      else if (/^\d+$/.test(chunk.keyword)) {
-        assetId = chunk.keyword;
-      }
-
-      if (assetId !== null) {
-        try {
-          const buffer = base64Decode(chunk.text);
-          assets.push({
-            name: `asset_${assetId}`,
-            type: 'data',
-            ext: 'bin', // Unknown type, consumer must sniff
-            data: buffer,
-            path: `pngchunk:${assetId}`, // Normalized URI format for PNG chunks
-          });
-        } catch {
-          // Ignore failed decodes
+        if (assetId) {
+          try {
+            assets.push({
+              name: `asset_${assetId}`,
+              type: 'data',
+              ext: 'bin', // Unknown type
+              data: base64Decode(chunk.text),
+              path: `pngchunk:${assetId}`,
+            });
+          } catch {
+            // Ignore
+          }
         }
       }
     }
