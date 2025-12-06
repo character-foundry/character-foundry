@@ -5,7 +5,7 @@
  */
 
 import type { BinaryData } from '@character-foundry/core';
-import { toString, ParseError } from '@character-foundry/core';
+import { toString, ParseError, base64Decode } from '@character-foundry/core';
 import { detectSpec, getV2Data, type CCv3Data, type CCv2Data, type CCv2Wrapped, type Spec, type SourceFormat } from '@character-foundry/schemas';
 import { extractFromPNG } from '@character-foundry/png';
 import { readCharX } from '@character-foundry/charx';
@@ -84,6 +84,41 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
     data: data,
     isMain: true,
   }];
+
+  // Extract embedded assets (RisuAI style chunks)
+  if (extracted.extraChunks && options.extractAssets) {
+    for (const chunk of extracted.extraChunks) {
+      let assetId: string | null = null;
+
+      // Check for RisuAI format: chara-ext-asset_:N
+      if (chunk.keyword.startsWith('chara-ext-asset_:')) {
+        assetId = chunk.keyword.substring('chara-ext-asset_:'.length);
+      }
+      // Check for variant: chara-ext-asset_N
+      else if (chunk.keyword.startsWith('chara-ext-asset_')) {
+        assetId = chunk.keyword.substring('chara-ext-asset_'.length);
+      }
+      // Check for legacy numeric only
+      else if (/^\d+$/.test(chunk.keyword)) {
+        assetId = chunk.keyword;
+      }
+
+      if (assetId !== null) {
+        try {
+          const buffer = base64Decode(chunk.text);
+          assets.push({
+            name: `asset_${assetId}`,
+            type: 'data',
+            ext: 'bin', // Unknown type, consumer must sniff
+            data: buffer,
+            path: `pngchunk:${assetId}`, // Normalized URI format for PNG chunks
+          });
+        } catch {
+          // Ignore failed decodes
+        }
+      }
+    }
+  }
 
   return {
     card,
