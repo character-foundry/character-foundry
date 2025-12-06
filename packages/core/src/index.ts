@@ -83,3 +83,9 @@ export {
   isFoundryError,
   wrapError,
 } from './errors.js';
+
+// Image utilities
+export {
+  isAnimatedImage,
+} from './image.js';
+
