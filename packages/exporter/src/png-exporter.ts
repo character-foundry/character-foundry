@@ -5,7 +5,12 @@
  */
 
 import type { CCv3Data, CCv2Data } from '@character-foundry/schemas';
-import { embedIntoPNG } from '@character-foundry/png';
+import { 
+  embedIntoPNG, 
+  injectTextChunk, 
+  removeAllTextChunks 
+} from '@character-foundry/png';
+import { base64Encode, fromString } from '@character-foundry/core';
 import type { ExportAsset, PngExportOptions, ExportResult } from './types.js';
 import { checkExportLoss } from './loss-checker.js';
 
@@ -88,12 +93,27 @@ export function exportToPng(
     cardData = card;
   }
 
-  // Embed into PNG using the png package's embedIntoPNG
-  const buffer = embedIntoPNG(mainIcon.data, cardData, {
-    key: chunkKey,
-    base64: true,
-    minify: true,
-  });
+  // 1. Clean the PNG (remove existing chunks)
+  let currentPng = removeAllTextChunks(mainIcon.data);
+
+  // 2. Embed the main card data
+  const json = JSON.stringify(cardData); // Minified by default
+  const text = base64Encode(fromString(json));
+  currentPng = injectTextChunk(currentPng, chunkKey, text);
+
+  // 3. Embed RisuAI extra assets
+  for (const asset of assets) {
+    if (asset.path && asset.path.startsWith('pngchunk:')) {
+      // Extract ID from "pngchunk:N"
+      const id = asset.path.substring('pngchunk:'.length);
+      
+      // Encode asset data
+      const assetBase64 = base64Encode(asset.data);
+      
+      // Inject chunk "chara-ext-asset_:N"
+      currentPng = injectTextChunk(currentPng, `chara-ext-asset_:${id}`, assetBase64);
+    }
+  }
 
   // Generate loss report if requested
   const lossReport = checkLoss ? checkExportLoss(card, assets, 'png') : undefined;
@@ -101,12 +121,12 @@ export function exportToPng(
   const filename = `${sanitizeFilename(card.data.name)}.png`;
 
   return {
-    buffer,
+    buffer: currentPng,
     format: 'png',
     filename,
     mimeType: 'image/png',
     assetCount: 1,
-    totalSize: buffer.length,
+    totalSize: currentPng.length,
     lossReport,
   };
 }
