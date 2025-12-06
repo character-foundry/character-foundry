@@ -1,0 +1,45 @@
+{
+  "name": "@character-foundry/federation",
+  "version": "0.1.0",
+  "description": "Federation layer for syncing character cards across platforms via ActivityPub",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@character-foundry/core": "workspace:*",
+    "@character-foundry/schemas": "workspace:*",
+    "@character-foundry/loader": "workspace:*",
+    "@character-foundry/exporter": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "keywords": [
+    "character-card",
+    "federation",
+    "activitypub",
+    "sync",
+    "tavern",
+    "sillytavern",
+    "risu"
+  ],
+  "license": "MIT"
+}

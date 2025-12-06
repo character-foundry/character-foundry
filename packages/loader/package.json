@@ -1,0 +1,47 @@
+{
+  "name": "@character-foundry/loader",
+  "version": "0.1.0",
+  "description": "Universal character card loader - detects format and parses any card type",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@character-foundry/core": "workspace:*",
+    "@character-foundry/schemas": "workspace:*",
+    "@character-foundry/png": "workspace:*",
+    "@character-foundry/charx": "workspace:*",
+    "@character-foundry/voxta": "workspace:*"
+  },
+  "devDependencies": {
+    "fflate": "^0.8.1",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "keywords": [
+    "character-card",
+    "tavern",
+    "chara",
+    "png",
+    "charx",
+    "voxta",
+    "loader"
+  ],
+  "license": "MIT"
+}

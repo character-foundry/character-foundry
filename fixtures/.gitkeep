@@ -1,0 +1,6 @@
+# Test fixtures directory
+# Structure:
+#   png/    - PNG test cards
+#   charx/  - CharX test cards
+#   voxta/  - Voxta test cards
+#   json/   - Raw JSON test cards
