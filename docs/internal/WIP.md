@@ -1,37 +1,28 @@
-# Work In Progress (WIP) Tracking
+# Work In Progress (WIP)
 
-## 🔴 Critical Blocking Tasks
+## Current Status: CI/CD Pipeline
 
-### 1. CardsHub Federation Implementation
-- [ ] **Infrastructure:** Setup Cloudflare Queues for Inbox/Outbox.
-- [ ] **Database:** Create `federation_sync_state` table in D1.
-- [ ] **Adapter:** Implement `CardsHubAdapter` (D1 + R2) inside `cards-hub` codebase.
-- [ ] **API Routes:** Implement the **Zero-Negotiation** route set:
-    - `GET /.well-known/webfinger`
-    - `GET /.well-known/nodeinfo`
-    - `GET /api/federation/actor`
-    - `POST /api/federation/inbox` (Queue Producer)
-    - `GET /api/federation/outbox`
-    - `GET /api/federation/assets/{id}`
+We are establishing a CI/CD pipeline to make `@character-foundry` packages available for downstream applications like `cardshub` in Cloudflare CI.
 
-### 2. Card Doctor Refactor
-- [ ] **Dependency Migration:**
-    - Remove local `@card-architect/*` packages.
-    - Install `@character-foundry/*` packages.
-    - Refactor imports in `apps/web` and `apps/api`.
-- [ ] **Sync Integration:**
-    - Implement `SyncEngine` in Card Doctor's API.
-    - Connect it to the local SQLite database via a new `DoctorAdapter`.
-    - Test sync against a mock CardsHub endpoint.
+### ✅ Completed
+- **Tokenizers:** Created `@character-foundry/tokenizers` (GPT-4/LLaMA support).
+- **Voxta:** Fixed Lorebook export (multi-asset package) and metadata preservation.
+- **Loader:** Fixed asset extension detection (magic numbers).
+- **Federation:** Implemented discovery routes (WebFinger, NodeInfo, Actor).
+- **Documentation:** Cleaned up root, moved docs to `docs/internal/`, added `API_FEDERATION.md`.
+- **CI Setup:** Added `.github/workflows/publish.yml` to publish packages to GitHub Packages registry.
+- **Package Config:** Updated all `package.json` files to publish to `https://npm.pkg.github.com`.
 
-## 🟡 Maintenance & Improvements
+### 🚧 Next Steps
+1.  **Trigger Release:** Manually trigger the `Publish Packages` workflow in GitHub Actions to publish the first versions (0.0.1/0.1.0).
+2.  **Configure Cardshub:**
+    - Update `cardshub` (and `card_doctor`) to use an `.npmrc` file with `@character-foundry:registry=https://npm.pkg.github.com`.
+    - Ensure Cloudflare pages/workers environment variables include `NPM_TOKEN` or `GITHUB_TOKEN` with package read permissions.
+    - Update `package.json` dependencies in `cardshub` from `file:...` to version numbers (e.g., `^0.1.0`).
+3.  **Refactor Apps:**
+    - Migrate `card_doctor` to use `@character-foundry/loader` and `tokenizers`.
+    - Migrate `cardshub` to use `@character-foundry/tokenizers`.
 
-### 3. Package Polish
-- [ ] **Release:** Configure changeset/semantic-release for NPM publishing.
-- [ ] **Federation:** Ensure `crypto` usage is fully compatible with Cloudflare Workers (Web Crypto API).
-- [ ] **Tests:** Add unit tests for `loader` fix (RisuAI asset extraction).
-
-## 🟢 Completed
-- [x] **Loader:** Fix RisuAI PNG asset extraction (`chara-ext-asset_:N`).
-- [x] **Federation:** Define strict route constants (`FederationRoutes`).
-- [x] **Compliance:** Add `COMPLIANCE.md` and `CODEOWNERS` to enforce standards.
+## 📝 Notes
+- **Repo Visibility:** Ensure `character-foundry` is Public if we want free GitHub Packages access without auth complexity, otherwise `cardshub` needs a token.
+- **Versioning:** We are currently on `0.0.1` / `0.1.0`. We should adopt `changesets` or semantic-release for automated version bumping in the future.
