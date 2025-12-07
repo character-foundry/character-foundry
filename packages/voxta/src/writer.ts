@@ -16,6 +16,7 @@ import type {
   CompressionLevel,
 } from './types.js';
 import { standardToVoxta } from './macros.js';
+import { ccv3LorebookToVoxtaBook } from './mapper.js';
 
 /**
  * Generate a UUID v4
@@ -57,7 +58,7 @@ export function writeVoxta(
   assets: VoxtaWriteAsset[],
   options: VoxtaWriteOptions = {}
 ): VoxtaBuildResult {
-  const { compressionLevel = 6, includePackageJson = false } = options;
+  let { compressionLevel = 6, includePackageJson = false } = options;
   const cardData = card.data;
 
   // Get Voxta extension data if present
@@ -75,7 +76,30 @@ export function writeVoxta(
   // Create ZIP entries
   const zipEntries: Zippable = {};
 
-  // 1. Package.json (optional)
+  // Handle Lorebook (MemoryBook)
+  const book = ccv3LorebookToVoxtaBook(card);
+  const memoryBooks: string[] = voxtaExt?.original?.MemoryBooks || [];
+
+  if (book) {
+    // Ensure we have a unique ID for the book
+    if (!book.Id) book.Id = generateUUID();
+    
+    // Add to memory books list if not already present
+    if (!memoryBooks.includes(book.Id)) {
+      memoryBooks.push(book.Id);
+    }
+
+    // Write book to ZIP
+    zipEntries[`Books/${book.Id}/book.json`] = [
+      fromString(JSON.stringify(book, null, 2)),
+      { level: compressionLevel as CompressionLevel },
+    ];
+
+    // Force package.json for multi-asset bundles
+    includePackageJson = true;
+  }
+
+  // 1. Package.json (optional, but required if lorebook exists)
   if (includePackageJson) {
     const packageMeta = {
       $type: 'package',
@@ -117,6 +141,9 @@ export function writeVoxta(
     CreatorNotes: cardData.creator_notes,
     Tags: cardData.tags,
 
+    // References
+    MemoryBooks: memoryBooks.length > 0 ? memoryBooks : undefined,
+
     // Voxta-specific from extension
     TextToSpeech: voxtaExt?.textToSpeech,
     ChatStyle: voxtaExt?.chatSettings?.chatStyle,
@@ -126,6 +153,12 @@ export function writeVoxta(
     UseMemory: voxtaExt?.chatSettings?.useMemory,
     MaxTokens: voxtaExt?.chatSettings?.maxTokens,
     MaxSentences: voxtaExt?.chatSettings?.maxSentences,
+    SystemPromptOverrideType: voxtaExt?.chatSettings?.systemPromptOverrideType,
+    
+    // Simulation Settings
+    ClimaxSensitivity: voxtaExt?.simulationSettings?.climaxSensitivity,
+    PleasureDecay: voxtaExt?.simulationSettings?.pleasureDecay,
+
     Scripts: voxtaExt?.scripts,
 
     DateCreated: voxtaExt?.original?.DateCreated || dateNow,

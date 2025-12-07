@@ -118,6 +118,10 @@ export interface VoxtaCharacter {
   MaxSentences?: number;
   SystemPromptOverrideType?: number;
 
+  // Simulation Settings
+  ClimaxSensitivity?: number;
+  PleasureDecay?: number;
+
   // Advanced
   Scripts?: VoxtaScript[];
   Augmentations?: unknown[];
@@ -312,6 +316,10 @@ export interface VoxtaExtensionData {
     maxTokens?: number;
     maxSentences?: number;
     systemPromptOverrideType?: number;
+  };
+  simulationSettings?: {
+    climaxSensitivity?: number;
+    pleasureDecay?: number;
   };
   scripts?: VoxtaScript[];
   augmentations?: unknown[];

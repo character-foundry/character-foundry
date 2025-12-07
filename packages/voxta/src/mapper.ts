@@ -54,6 +54,10 @@ export function voxtaToCCv3(character: VoxtaCharacter, books?: VoxtaBook[]): CCv
       maxSentences: character.MaxSentences,
       systemPromptOverrideType: character.SystemPromptOverrideType,
     },
+    simulationSettings: {
+      climaxSensitivity: character.ClimaxSensitivity,
+      pleasureDecay: character.PleasureDecay,
+    },
     scripts: character.Scripts,
     augmentations: character.Augmentations,
     original: {
@@ -67,25 +71,29 @@ export function voxtaToCCv3(character: VoxtaCharacter, books?: VoxtaBook[]): CCv
 
   if (books && books.length > 0) {
     const entries: CCv3LorebookEntry[] = [];
+    const linkedBookIds = new Set(character.MemoryBooks || []);
 
     for (const book of books) {
-      if (book.Items) {
-        for (let i = 0; i < book.Items.length; i++) {
-          const item = book.Items[i]!;
-          entries.push({
-            keys: item.Keywords || [],
-            content: voxtaToStandard(item.Text || ''),
-            enabled: item.Deleted !== true,
-            insertion_order: i,
-            name: item.Id || '',
-            priority: item.Weight || 10,
-            id: i,
-            comment: '',
-            selective: false,
-            secondary_keys: [],
-            constant: false,
-            position: 'before_char',
-          });
+      // Only include if linked or if no links defined (legacy/implicit)
+      if (linkedBookIds.size === 0 || linkedBookIds.has(book.Id)) {
+        if (book.Items) {
+          for (let i = 0; i < book.Items.length; i++) {
+            const item = book.Items[i]!;
+            entries.push({
+              keys: item.Keywords || [],
+              content: voxtaToStandard(item.Text || ''),
+              enabled: item.Deleted !== true,
+              insertion_order: i,
+              name: item.Id || '',
+              priority: item.Weight || 10,
+              id: i,
+              comment: '',
+              selective: false,
+              secondary_keys: [],
+              constant: false,
+              position: 'before_char',
+            });
+          }
         }
       }
     }
@@ -202,6 +210,10 @@ export function ccv3ToVoxta(card: CCv3Data): VoxtaCharacter {
     MaxTokens: voxtaExt?.chatSettings?.maxTokens,
     MaxSentences: voxtaExt?.chatSettings?.maxSentences,
     SystemPromptOverrideType: voxtaExt?.chatSettings?.systemPromptOverrideType,
+
+    // Simulation settings
+    ClimaxSensitivity: voxtaExt?.simulationSettings?.climaxSensitivity,
+    PleasureDecay: voxtaExt?.simulationSettings?.pleasureDecay,
 
     // Advanced
     Scripts: voxtaExt?.scripts,
