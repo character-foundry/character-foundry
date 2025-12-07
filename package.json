@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "description": "Shared primitives for AI character card handling",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/character-foundry/character-foundry.git"
+  },
   "workspaces": [
     "packages/*"
   ],
