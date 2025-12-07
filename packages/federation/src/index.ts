@@ -72,3 +72,15 @@ export {
   type SillyTavernBridge,
   type STCharacter,
 } from './adapters/index.js';
+
+// Routes
+export {
+  handleWebFinger,
+  type WebFingerResponse,
+  type WebFingerLink,
+  handleNodeInfoDiscovery,
+  handleNodeInfo,
+  type NodeInfoDiscoveryResponse,
+  type NodeInfoResponse,
+  handleActor,
+} from './routes/index.js';

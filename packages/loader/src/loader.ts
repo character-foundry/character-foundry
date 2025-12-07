@@ -56,6 +56,57 @@ function v2ToV3(v2: CCv2Data | CCv2Wrapped): CCv3Data {
 }
 
 /**
+ * Detect file extension from magic numbers
+ */
+function detectExtension(buffer: Uint8Array): string | null {
+  if (buffer.length < 4) return null;
+
+  // PNG: 89 50 4E 47
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    return 'png';
+  }
+
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    return 'jpg';
+  }
+
+  // GIF: 47 49 46 38
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+    return 'gif';
+  }
+
+  // WEBP: 52 49 46 46 ... 57 45 42 50 (RIFF ... WEBP)
+  if (buffer.length >= 12 && 
+      buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+    return 'webp';
+  }
+
+  // OGG: 4F 67 67 53
+  if (buffer[0] === 0x4F && buffer[1] === 0x67 && buffer[2] === 0x67 && buffer[3] === 0x53) {
+    return 'ogg';
+  }
+
+  // MP3: ID3 (49 44 33) or Sync Frame (FF FB)
+  if (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33) {
+    return 'mp3';
+  }
+  if (buffer.length > 1 && buffer[0] === 0xFF && (buffer[1]! & 0xE0) === 0xE0) { // simplified check
+    return 'mp3';
+  }
+
+  // WAV: 52 49 46 46 ... 57 41 56 45 (RIFF ... WAVE)
+  if (buffer.length >= 12 &&
+      buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x41 && buffer[10] === 0x56 && buffer[11] === 0x45) {
+    return 'wav';
+  }
+
+  return null;
+}
+
+/**
  * Parse a PNG character card
  */
 function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResult {
@@ -120,7 +171,7 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
                         // Fallback: Check for chara-ext-asset_ prefix matching
                         if (c.keyword.startsWith('chara-ext-asset_')) {
                           const suffix = c.keyword.replace('chara-ext-asset_', '');
-                          return suffix === assetId || suffix === `:${assetId}`;
+                          return suffix === assetId || suffix === `:${assetId}` || suffix === descriptor.uri;
                         }
                         return false;
                       });
@@ -132,10 +183,32 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
             // Use descriptor metadata
             const type = mapAssetType(descriptor.type);
             
+            // Try to determine extension
+            let ext: string | undefined | null = descriptor.ext;
+            if (!ext && descriptor.name) {
+              const match = descriptor.name.match(/\.([^.]+)$/);
+              if (match) ext = match[1];
+            }
+            if (!ext && descriptor.uri) {
+               if (descriptor.uri.startsWith('data:')) {
+                  const mime = descriptor.uri.match(/^data:([^;]+);/)?.[1];
+                  if (mime) ext = mime.split('/')[1];
+               } else {
+                  const match = descriptor.uri.match(/\.([^.]+)$/);
+                  if (match) ext = match[1];
+               }
+            }
+            
+            // Fallback to byte inspection
+            if (!ext) {
+              const detected = detectExtension(buffer);
+              if (detected) ext = detected;
+            }
+
             assets.push({
               name: descriptor.name,
               type,
-              ext: descriptor.ext,
+              ext: ext || 'bin',
               data: buffer,
               path: `pngchunk:${assetId}`,
             });
@@ -162,11 +235,22 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
 
         if (assetId) {
           try {
+            const buffer = base64Decode(chunk.text);
+            
+            // Infer extension from assetId if possible
+            let extMatch = assetId.match(/\.([^.]+)$/);
+            let ext = extMatch ? extMatch[1] : null;
+            
+            if (!ext) {
+               const detected = detectExtension(buffer);
+               if (detected) ext = detected;
+            }
+
             assets.push({
               name: `asset_${assetId}`,
               type: 'data',
-              ext: 'bin', // Unknown type
-              data: base64Decode(chunk.text),
+              ext: ext || 'bin',
+              data: buffer,
               path: `pngchunk:${assetId}`,
             });
           } catch {

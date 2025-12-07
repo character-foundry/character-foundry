@@ -26,6 +26,8 @@ export interface ExportAsset {
   data: BinaryData;
   /** Whether this is the main/primary asset (used for PNG embedding) */
   isMain?: boolean;
+  /** Original path or source identifier (e.g., pngchunk:0) */
+  path?: string;
   /** Additional tags for categorization */
   tags?: string[];
 }

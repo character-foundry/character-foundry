@@ -28,6 +28,8 @@ export type PlatformId =
  * ActivityPub Actor representing a creator/user
  */
 export interface FederatedActor {
+  /** ActivityPub context */
+  '@context'?: ActivityPubContext;
   /** ActivityPub ID (URI) */
   id: string;
   /** Actor type */
