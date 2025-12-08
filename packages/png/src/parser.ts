@@ -15,6 +15,7 @@ import {
   indexOf,
   base64Decode,
   ParseError,
+  SizeLimitError,
 } from '@character-foundry/core';
 import {
   type CCv2Data,
@@ -27,6 +28,11 @@ import {
  * PNG signature bytes
  */
 export const PNG_SIGNATURE = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/**
+ * Maximum size for a single PNG chunk (50MB per Risu CharX spec)
+ */
+export const MAX_CHUNK_SIZE = 50 * 1024 * 1024;
 
 /**
  * Text chunk keys used for character cards by various frontends
@@ -99,6 +105,11 @@ export function parseTextChunks(data: BinaryData): TextChunk[] {
     const typeBytes = slice(data, offset, offset + 4);
     const type = toLatin1(typeBytes);
     offset += 4;
+
+    // Check chunk size limit before reading
+    if (length > MAX_CHUNK_SIZE) {
+      throw new SizeLimitError(length, MAX_CHUNK_SIZE, `PNG chunk '${type}'`);
+    }
 
     // Read chunk data
     if (offset + length > data.length) break;

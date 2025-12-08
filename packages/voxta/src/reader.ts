@@ -102,7 +102,12 @@ export function readVoxta(
     // Skip directories
     if (fileName.endsWith('/') || fileData.length === 0) continue;
 
-    // Size check
+    // Per-file size check
+    if (fileData.length > opts.maxAssetSize) {
+      throw new SizeLimitError(fileData.length, opts.maxAssetSize, `File '${fileName}'`);
+    }
+
+    // Total size check
     totalSize += fileData.length;
     if (totalSize > opts.maxTotalSize) {
       throw new SizeLimitError(totalSize, opts.maxTotalSize, 'Total Voxta package size');

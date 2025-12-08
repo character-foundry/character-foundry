@@ -82,8 +82,6 @@ export interface ParseOptions {
   maxTotalSize?: number;
   /** Whether to extract assets (default: true) */
   extractAssets?: boolean;
-  /** Whether to normalize to CCv3 (default: true) */
-  normalize?: boolean;
 }
 
 /**

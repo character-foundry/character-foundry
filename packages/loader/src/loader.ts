@@ -23,7 +23,6 @@ const DEFAULT_OPTIONS: Required<ParseOptions> = {
   maxAssetSize: 50 * 1024 * 1024,  // 50MB per Risu CharX spec
   maxTotalSize: 500 * 1024 * 1024,
   extractAssets: true,
-  normalize: true,
 };
 
 /**
