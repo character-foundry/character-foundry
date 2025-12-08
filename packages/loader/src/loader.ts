@@ -7,7 +7,7 @@
 import type { BinaryData } from '@character-foundry/core';
 import { toString, ParseError, base64Decode, parseURI, getMimeTypeFromExt } from '@character-foundry/core';
 import { detectSpec, getV2Data, type CCv3Data, type CCv2Data, type CCv2Wrapped, type Spec, type SourceFormat, type AssetDescriptor } from '@character-foundry/schemas';
-import { extractFromPNG } from '@character-foundry/png';
+import { extractFromPNG, removeAllTextChunks } from '@character-foundry/png';
 import { readCharX } from '@character-foundry/charx';
 import { readVoxta, voxtaToCCv3 } from '@character-foundry/voxta';
 import { detectFormat } from './detector.js';
@@ -128,11 +128,14 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
   }
 
   // The PNG image itself is the main icon
+  // Strip metadata (tEXt/zTXt chunks) for clean thumbnail/cross-format exports
+  const strippedPng = removeAllTextChunks(data);
+
   const assets: ExtractedAsset[] = [{
     name: 'main',
     type: 'icon',
     ext: 'png',
-    data: data,
+    data: strippedPng,
     isMain: true,
   }];
 
