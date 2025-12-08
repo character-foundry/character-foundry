@@ -54,6 +54,26 @@ export {
   standardToVoxta,
 } from './macros.js';
 
+// Merge utilities
+export {
+  mergeCharacterEdits,
+  mergeBookEdits,
+  applyVoxtaDeltas,
+  applyVoxtaDeltasAsync,
+  getPackageManifest,
+  extractCharacterPackage,
+  addCharacterToPackage,
+  type CCv3Edits,
+  type VoxtaDeltas,
+  type ApplyDeltaOptions,
+  type ManifestCharacter,
+  type ManifestBook,
+  type ManifestScenario,
+  type PackageManifest,
+  type ExtractCharacterOptions,
+  type AddCharacterOptions,
+} from './merge.js';
+
 // Loss reporting
 export {
   checkVoxtaLoss,

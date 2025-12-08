@@ -37,17 +37,24 @@ const DEFAULT_OPTIONS: Required<Omit<CharxReadOptions, 'assetFetcher'>> = {
 
 /**
  * Check if data is a CharX file (ZIP with card.json)
+ *
+ * Scans the END of the file (ZIP central directory) since JPEG+ZIP hybrids
+ * can have large JPEG data at the front. The central directory listing
+ * all filenames is always at the tail of the ZIP.
  */
 export function isCharX(data: BinaryData): boolean {
   const zipOffset = getZipOffset(data);
   if (zipOffset < 0) return false;
 
-  // Quick check: try to find "card.json" in the ZIP
-  // This is a heuristic - full validation requires unzipping
   const zipData = data.subarray(zipOffset);
   const cardJsonMarker = new TextEncoder().encode('card.json');
 
-  for (let i = 0; i < Math.min(zipData.length - cardJsonMarker.length, 1000); i++) {
+  // Scan the last 64KB where the central directory lives
+  // (covers ZIP with up to ~1000 files in the directory)
+  const scanSize = Math.min(zipData.length, 65536);
+  const startOffset = zipData.length - scanSize;
+
+  for (let i = startOffset; i < zipData.length - cardJsonMarker.length; i++) {
     let found = true;
     for (let j = 0; j < cardJsonMarker.length; j++) {
       if (zipData[i + j] !== cardJsonMarker[j]) {
