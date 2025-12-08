@@ -10,6 +10,7 @@ A universal TypeScript library for reading, writing, and converting AI character
 | CharX (Risu) | ✅ | ✅ | ZIP-based, JPEG+ZIP hybrids |
 | Voxta (.voxpkg) | ✅ | ✅ | Multi-character packages |
 | Raw JSON | ✅ | ✅ | CCv2/CCv3 direct |
+| Standalone Lorebooks | ✅ | ✅ | SillyTavern, Agnai, Risu, Wyvern |
 
 ## Quick Start
 
@@ -27,18 +28,19 @@ const pngBuffer = exportCard(card, assets, { format: 'png' });
 
 ## Packages
 
-| Package | Version | Description |
-|---------|---------|-------------|
-| `@character-foundry/core` | 0.0.1 | Binary utilities, base64, ZIP, URI parsing |
-| `@character-foundry/schemas` | 0.0.1 | CCv2, CCv3, Voxta types + detection |
-| `@character-foundry/png` | 0.0.2 | PNG chunk handling, metadata stripping |
-| `@character-foundry/charx` | 0.0.2 | CharX reader/writer, JPEG+ZIP support |
-| `@character-foundry/voxta` | 0.1.0 | Voxta packages, merge utilities |
-| `@character-foundry/loader` | 0.1.2 | Universal `parseCard()` with format detection |
-| `@character-foundry/exporter` | 0.1.0 | Universal `exportCard()` with loss reporting |
-| `@character-foundry/normalizer` | 0.1.0 | v2 → v3 conversion |
-| `@character-foundry/tokenizers` | 0.0.1 | GPT-4/LLaMA token counting |
-| `@character-foundry/federation` | 0.1.1 | ActivityPub federation (experimental) |
+| Package | Version | Description | Docs |
+|---------|---------|-------------|------|
+| `@character-foundry/core` | 0.0.1 | Binary utilities, base64, ZIP, URI parsing | [docs/core.md](docs/core.md) |
+| `@character-foundry/schemas` | 0.0.1 | CCv2, CCv3, Voxta types + detection | [docs/schemas.md](docs/schemas.md) |
+| `@character-foundry/png` | 0.0.2 | PNG chunk handling, metadata stripping | [docs/png.md](docs/png.md) |
+| `@character-foundry/charx` | 0.0.2 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
+| `@character-foundry/voxta` | 0.1.0 | Voxta packages, merge utilities | [docs/voxta.md](docs/voxta.md) |
+| `@character-foundry/lorebook` | 0.0.1 | Lorebook parsing, extraction, insertion | [docs/lorebook.md](docs/lorebook.md) |
+| `@character-foundry/loader` | 0.1.2 | Universal `parseCard()` with format detection | [docs/loader.md](docs/loader.md) |
+| `@character-foundry/exporter` | 0.1.0 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
+| `@character-foundry/normalizer` | 0.1.0 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
+| `@character-foundry/tokenizers` | 0.0.1 | GPT-4/LLaMA token counting | [docs/tokenizers.md](docs/tokenizers.md) |
+| `@character-foundry/federation` | 0.1.1 | ActivityPub federation (experimental) | [docs/federation.md](docs/federation.md) |
 
 ## Installation
 
@@ -71,6 +73,38 @@ const result = parseCard(buffer);
 // result.originalShape: 'v2' | 'v3' (original format)
 ```
 
+### Lorebook Management
+
+```typescript
+import {
+  parseLorebook,
+  getLorebookCollection,
+  extractLorebookRefs,
+  createLinkedLorebook,
+  addLinkedLorebookToCard,
+  serializeLorebook,
+} from '@character-foundry/lorebook';
+
+// Parse standalone lorebook (auto-detects format)
+const { book, originalFormat } = parseLorebook(jsonBuffer);
+
+// Extract lorebook collection from card (keeps them separate!)
+const collection = getLorebookCollection(card);
+// collection.embedded: CCv3CharacterBook[] (multiple allowed)
+// collection.linked: LinkedLorebook[] (with source tracking)
+
+// Find linked lorebook references in card extensions
+const refs = extractLorebookRefs(card);
+// refs: [{ url, platform, id, name }, ...]
+
+// After fetching a linked lorebook, stamp and add it
+const linked = createLinkedLorebook(fetchedBook, sourceUrl, 'chub');
+const updatedCard = addLinkedLorebookToCard(card, linked);
+
+// Convert back to original format for export
+const json = serializeLorebook(book, 'sillytavern');
+```
+
 ### Voxta Multi-Character Support
 
 ```typescript
@@ -92,11 +126,14 @@ const newBuffer = applyVoxtaDeltas(buffer, {
 ### Token Counting
 
 ```typescript
-import { createTokenizer, countCardTokens } from '@character-foundry/tokenizers';
+import { countTokens, registry } from '@character-foundry/tokenizers';
 
-const tokenizer = createTokenizer('gpt4');
-const counts = countCardTokens(card, tokenizer);
-// counts.description, counts.personality, counts.total, etc.
+// Quick count
+const tokens = countTokens('Hello, world!', 'gpt-4');
+
+// Use tokenizer directly
+const tokenizer = registry.get('gpt-4');
+const count = tokenizer.count(card.data.description);
 ```
 
 ### Format Conversion with Loss Detection
@@ -112,6 +149,35 @@ if (loss.lostFields.length > 0) {
 const buffer = exportCard(card, assets, { format: 'png' });
 ```
 
+### Version Conversion
+
+```typescript
+import { ccv2ToCCv3, ccv3ToCCv2Wrapped, checkV3ToV2Loss } from '@character-foundry/normalizer';
+
+// V2 → V3 (lossless)
+const v3Card = ccv2ToCCv3(v2Card);
+
+// V3 → V2 (check for loss first)
+const lostFields = checkV3ToV2Loss(v3Card);
+const v2Card = ccv3ToCCv2Wrapped(v3Card);
+```
+
+## Documentation
+
+Detailed documentation for each package:
+
+- **[Core](docs/core.md)** - Binary utilities, base64, ZIP, URI, errors
+- **[Schemas](docs/schemas.md)** - CCv2, CCv3, Risu types and detection
+- **[PNG](docs/png.md)** - PNG chunk parsing and building
+- **[CharX](docs/charx.md)** - CharX format, JPEG+ZIP hybrids
+- **[Voxta](docs/voxta.md)** - Multi-character packages, merge utilities
+- **[Lorebook](docs/lorebook.md)** - Lorebook parsing, extraction, insertion
+- **[Loader](docs/loader.md)** - Universal loading with format detection
+- **[Exporter](docs/exporter.md)** - Universal export with loss detection
+- **[Normalizer](docs/normalizer.md)** - V2 ↔ V3 ↔ NormalizedCard conversion
+- **[Tokenizers](docs/tokenizers.md)** - GPT-4/LLaMA token counting
+- **[Federation](docs/federation.md)** - ActivityPub federation (experimental)
+
 ## Development
 
 ```bash
@@ -121,7 +187,7 @@ pnpm install
 # Build all packages
 pnpm build
 
-# Run tests (237 tests)
+# Run tests (287 tests)
 pnpm test
 
 # Typecheck
@@ -133,6 +199,7 @@ pnpm typecheck
 - **50MB per-asset limit** enforced across all parsers
 - **Federation gated** - must call `enableFederation()` explicitly
 - **Size checks** before base64 decode to prevent memory exhaustion
+- **Path traversal protection** in ZIP extraction
 
 ## License
 
