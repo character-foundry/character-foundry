@@ -1,4 +1,5 @@
 import type { FederationConfig, FederatedActor } from '../types.js';
+import { assertFederationEnabled } from '../index.js';
 
 /**
  * Handle Actor profile request
@@ -7,6 +8,7 @@ import type { FederationConfig, FederatedActor } from '../types.js';
  * @returns The Actor JSON-LD object
  */
 export function handleActor(config: FederationConfig): FederatedActor {
+  assertFederationEnabled('handleActor');
   // Ensure @context is present (it should be in the actor object, but good to verify)
   return {
     ...config.actor,

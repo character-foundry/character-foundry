@@ -294,15 +294,18 @@ export function parseActivity(data: unknown): FederatedActivity {
 }
 
 /**
- * Validate that an activity is properly signed (placeholder)
- * Real implementation would verify HTTP signatures
+ * Validate that an activity is properly signed
+ *
+ * ⚠️  NOT IMPLEMENTED - Always throws until HTTP signature verification is complete.
  */
 export function validateActivitySignature(
-  activity: FederatedActivity,
-  signature: string,
-  publicKey: string
+  _activity: FederatedActivity,
+  _signature: string,
+  _publicKey: string
 ): boolean {
-  // TODO: Implement HTTP signature verification
-  // This is a placeholder that always returns true
-  return true;
+  throw new Error(
+    'validateActivitySignature is not implemented. ' +
+    'HTTP signature verification is required for secure federation. ' +
+    'Do NOT bypass this check in production.'
+  );
 }

@@ -2,7 +2,7 @@
  * Federation Tests
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import type { CCv3Data } from '@character-foundry/schemas';
 import {
   cardToActivityPub,
@@ -12,12 +12,19 @@ import {
   createDeleteActivity,
   createActor,
   generateCardId,
+  validateActivitySignature,
 } from './activitypub.js';
 import {
+  enableFederation,
   SyncEngine,
   MemorySyncStateStore,
   MemoryPlatformAdapter,
 } from './index.js';
+
+// Enable federation for tests
+beforeAll(() => {
+  enableFederation();
+});
 
 // Test card data
 const testCard: CCv3Data = {
@@ -167,6 +174,17 @@ describe('ActivityPub', () => {
       expect(actor.inbox).toBe(`${actorId}/inbox`);
       expect(actor.publicKey).toBeDefined();
       expect(actor.publicKey!.publicKeyPem).toBe('PUBLIC KEY HERE');
+    });
+  });
+
+  describe('Signature validation', () => {
+    it('should throw because signature verification is not implemented', () => {
+      const fedCard = cardToActivityPub(testCard, { id: 'test:123', actorId });
+      const activity = createCreateActivity(fedCard, actorId, baseUrl);
+
+      expect(() => validateActivitySignature(activity, 'sig', 'key')).toThrow(
+        'validateActivitySignature is not implemented'
+      );
     });
   });
 });

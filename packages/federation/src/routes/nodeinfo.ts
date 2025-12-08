@@ -1,4 +1,5 @@
 import type { FederationConfig } from '../types.js';
+import { assertFederationEnabled } from '../index.js';
 
 export interface NodeInfoLink {
   rel: string;
@@ -42,6 +43,7 @@ export interface NodeInfoResponse {
  * @returns The NodeInfo discovery response
  */
 export function handleNodeInfoDiscovery(baseUrl: string): NodeInfoDiscoveryResponse {
+  assertFederationEnabled('handleNodeInfoDiscovery');
   // Ensure no trailing slash
   const origin = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   
@@ -70,6 +72,7 @@ export function handleNodeInfo(
   config: FederationConfig,
   version: '2.0' | '2.1' = '2.1'
 ): NodeInfoResponse {
+  assertFederationEnabled('handleNodeInfo');
   return {
     version,
     software: {

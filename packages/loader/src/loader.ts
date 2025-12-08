@@ -5,7 +5,7 @@
  */
 
 import type { BinaryData } from '@character-foundry/core';
-import { toString, ParseError, base64Decode, parseURI, getMimeTypeFromExt } from '@character-foundry/core';
+import { toString, ParseError, SizeLimitError, base64Decode, parseURI, getMimeTypeFromExt } from '@character-foundry/core';
 import { detectSpec, getV2Data, type CCv3Data, type CCv2Data, type CCv2Wrapped, type Spec, type SourceFormat, type AssetDescriptor } from '@character-foundry/schemas';
 import { extractFromPNG, removeAllTextChunks } from '@character-foundry/png';
 import { readCharX } from '@character-foundry/charx';
@@ -20,11 +20,19 @@ import type {
 
 const DEFAULT_OPTIONS: Required<ParseOptions> = {
   maxFileSize: 50 * 1024 * 1024,
-  maxAssetSize: 50 * 1024 * 1024,
+  maxAssetSize: 50 * 1024 * 1024,  // 50MB per Risu CharX spec
   maxTotalSize: 500 * 1024 * 1024,
   extractAssets: true,
   normalize: true,
 };
+
+/**
+ * Estimate decoded size from base64 string length
+ * Base64 encodes 3 bytes as 4 characters, so decoded is ~75% of encoded length
+ */
+function estimateBase64DecodedSize(base64Length: number): number {
+  return Math.ceil(base64Length * 0.75);
+}
 
 /**
  * Convert v2 data to v3 format
@@ -110,6 +118,11 @@ function detectExtension(buffer: Uint8Array): string | null {
  * Parse a PNG character card
  */
 function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResult {
+  // Check file size limit
+  if (data.length > options.maxFileSize) {
+    throw new SizeLimitError(data.length, options.maxFileSize, 'PNG file');
+  }
+
   const extracted = extractFromPNG(data);
 
   // Convert to v3 if needed
@@ -181,8 +194,14 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
 
         if (chunk) {
           try {
+            // Check estimated size before decoding
+            const estimatedSize = estimateBase64DecodedSize(chunk.text.length);
+            if (estimatedSize > options.maxAssetSize) {
+              throw new SizeLimitError(estimatedSize, options.maxAssetSize, `Asset chunk ${chunk.keyword}`);
+            }
+
             const buffer = base64Decode(chunk.text);
-            
+
             // Use descriptor metadata
             const type = mapAssetType(descriptor.type);
             
@@ -238,8 +257,14 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
 
         if (assetId) {
           try {
+            // Check estimated size before decoding
+            const estimatedSize = estimateBase64DecodedSize(chunk.text.length);
+            if (estimatedSize > options.maxAssetSize) {
+              throw new SizeLimitError(estimatedSize, options.maxAssetSize, `Orphan chunk ${chunk.keyword}`);
+            }
+
             const buffer = base64Decode(chunk.text);
-            
+
             // Infer extension from assetId if possible
             let extMatch = assetId.match(/\.([^.]+)$/);
             let ext = extMatch ? extMatch[1] : null;

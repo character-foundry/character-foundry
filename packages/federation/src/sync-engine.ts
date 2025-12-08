@@ -17,6 +17,7 @@ import type {
   FederationEventType,
 } from './types.js';
 import { cardToActivityPub, generateCardId } from './activitypub.js';
+import { assertFederationEnabled } from './index.js';
 
 /**
  * Generate a simple hash of card content for change detection
@@ -59,6 +60,8 @@ export class SyncEngine {
   private autoSyncTimer?: ReturnType<typeof setInterval>;
 
   constructor(options: SyncEngineOptions) {
+    assertFederationEnabled('SyncEngine');
+
     this.baseUrl = options.baseUrl;
     this.actorId = options.actorId;
     this.stateStore = options.stateStore;

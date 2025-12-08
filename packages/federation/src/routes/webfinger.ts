@@ -1,4 +1,5 @@
 import type { FederationConfig } from '../types.js';
+import { assertFederationEnabled } from '../index.js';
 
 export interface WebFingerLink {
   rel: string;
@@ -25,6 +26,7 @@ export function handleWebFinger(
   resource: string,
   config: FederationConfig
 ): WebFingerResponse | null {
+  assertFederationEnabled('handleWebFinger');
   if (!resource) return null;
 
   const { actor } = config;
