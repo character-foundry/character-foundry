@@ -31,6 +31,116 @@ const DEFAULT_OPTIONS: Required<VoxtaReadOptions> = {
   maxTotalSize: 500 * 1024 * 1024,  // 500MB - Voxta packages can be large
 };
 
+// ZIP End of Central Directory signature
+const EOCD_SIGNATURE = new Uint8Array([0x50, 0x4b, 0x05, 0x06]);
+// ZIP Central Directory File Header signature
+const CDFH_SIGNATURE = new Uint8Array([0x50, 0x4b, 0x01, 0x02]);
+
+/**
+ * Scan ZIP central directory for filenames matching Voxta markers.
+ * The central directory is at the END of the ZIP file, so we must parse
+ * the EOCD record to find it.
+ */
+function scanZipCentralDirectory(zipData: BinaryData, markers: string[]): boolean {
+  // Find EOCD (End of Central Directory) - scan from end
+  // EOCD is at least 22 bytes, search within last 64KB (comment can be up to 64KB)
+  const searchSize = Math.min(zipData.length, 65536 + 22);
+  let eocdOffset = -1;
+
+  for (let i = zipData.length - 22; i >= zipData.length - searchSize; i--) {
+    if (
+      zipData[i] === EOCD_SIGNATURE[0] &&
+      zipData[i + 1] === EOCD_SIGNATURE[1] &&
+      zipData[i + 2] === EOCD_SIGNATURE[2] &&
+      zipData[i + 3] === EOCD_SIGNATURE[3]
+    ) {
+      eocdOffset = i;
+      break;
+    }
+  }
+
+  if (eocdOffset < 0) return false;
+
+  // EOCD structure (22 bytes minimum):
+  // 0-3:   signature (PK\x05\x06)
+  // 4-5:   disk number
+  // 6-7:   disk with central directory
+  // 8-9:   entries on this disk
+  // 10-11: total entries
+  // 12-15: central directory size
+  // 16-19: central directory offset
+  // 20-21: comment length
+
+  // Read central directory offset (little-endian uint32 at offset 16)
+  const cdOffset =
+    zipData[eocdOffset + 16]! |
+    (zipData[eocdOffset + 17]! << 8) |
+    (zipData[eocdOffset + 18]! << 16) |
+    (zipData[eocdOffset + 19]! << 24);
+
+  // Read number of entries (little-endian uint16 at offset 10)
+  const numEntries = zipData[eocdOffset + 10]! | (zipData[eocdOffset + 11]! << 8);
+
+  if (cdOffset < 0 || cdOffset >= zipData.length) return false;
+
+  // Iterate through central directory entries
+  let pos = cdOffset;
+  const decoder = new TextDecoder();
+
+  for (let entry = 0; entry < numEntries && pos < eocdOffset; entry++) {
+    // Verify CDFH signature
+    if (
+      zipData[pos] !== CDFH_SIGNATURE[0] ||
+      zipData[pos + 1] !== CDFH_SIGNATURE[1] ||
+      zipData[pos + 2] !== CDFH_SIGNATURE[2] ||
+      zipData[pos + 3] !== CDFH_SIGNATURE[3]
+    ) {
+      break; // Invalid entry, stop parsing
+    }
+
+    // Central Directory File Header structure:
+    // 0-3:   signature
+    // 4-5:   version made by
+    // 6-7:   version needed
+    // 8-9:   flags
+    // 10-11: compression method
+    // 12-13: last mod time
+    // 14-15: last mod date
+    // 16-19: CRC-32
+    // 20-23: compressed size
+    // 24-27: uncompressed size
+    // 28-29: filename length
+    // 30-31: extra field length
+    // 32-33: comment length
+    // 34-35: disk number start
+    // 36-37: internal attributes
+    // 38-41: external attributes
+    // 42-45: local header offset
+    // 46+:   filename, extra field, comment
+
+    const fileNameLen = zipData[pos + 28]! | (zipData[pos + 29]! << 8);
+    const extraLen = zipData[pos + 30]! | (zipData[pos + 31]! << 8);
+    const commentLen = zipData[pos + 32]! | (zipData[pos + 33]! << 8);
+
+    if (pos + 46 + fileNameLen > zipData.length) break;
+
+    // Extract filename
+    const fileName = decoder.decode(zipData.subarray(pos + 46, pos + 46 + fileNameLen));
+
+    // Check against markers
+    for (const marker of markers) {
+      if (fileName === marker || fileName.startsWith(marker)) {
+        return true;
+      }
+    }
+
+    // Move to next entry
+    pos += 46 + fileNameLen + extraLen + commentLen;
+  }
+
+  return false;
+}
+
 /**
  * Check if data is a Voxta package
  */
@@ -38,27 +148,17 @@ export function isVoxta(data: BinaryData): boolean {
   const zipOffset = getZipOffset(data);
   if (zipOffset < 0) return false;
 
-  // Quick check: look for Voxta-specific paths
   const zipData = data.subarray(zipOffset);
+
+  // Voxta markers - package.json is the primary indicator
   const markers = [
-    new TextEncoder().encode('character.json'),
-    new TextEncoder().encode('Characters/'),
+    'package.json',
+    'character.json',
+    'Characters/',
+    'MemoryBooks/',
   ];
 
-  for (const marker of markers) {
-    for (let i = 0; i < Math.min(zipData.length - marker.length, 2000); i++) {
-      let found = true;
-      for (let j = 0; j < marker.length; j++) {
-        if (zipData[i + j] !== marker[j]) {
-          found = false;
-          break;
-        }
-      }
-      if (found) return true;
-    }
-  }
-
-  return false;
+  return scanZipCentralDirectory(zipData, markers);
 }
 
 /**
