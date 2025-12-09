@@ -51,6 +51,20 @@ describe('isVoxta', () => {
     expect(isVoxta(zipData)).toBe(true);
   });
 
+  it('should detect Voxta package with Scenarios directory', () => {
+    const scenario = {
+      $type: 'scenario',
+      Id: 'scenario-123',
+      Name: 'Test Scenario',
+    };
+
+    const zipData = zipSync({
+      'Scenarios/scenario-123/scenario.json': fromString(JSON.stringify(scenario)),
+    });
+
+    expect(isVoxta(zipData)).toBe(true);
+  });
+
   it('should detect Voxta package with character.json at root', () => {
     const character = {
       $type: 'character',

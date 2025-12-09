@@ -156,6 +156,7 @@ export function isVoxta(data: BinaryData): boolean {
     'character.json',
     'Characters/',
     'MemoryBooks/',
+    'Scenarios/',
   ];
 
   return scanZipCentralDirectory(zipData, markers);
