@@ -36,13 +36,24 @@ export {
   isBase64,
   encodeUrlSafe as base64EncodeUrlSafe,
   decodeUrlSafe as base64DecodeUrlSafe,
+  encodeChunked as base64EncodeChunked,
 } from './base64.js';
+
+// Data URL utilities
+export {
+  toDataURL,
+  fromDataURL,
+  isDataURL,
+} from './data-url.js';
 
 // ZIP utilities
 export {
   ZIP_SIGNATURE,
   JPEG_SIGNATURE,
   type ZipSizeLimits,
+  type ZipCentralDirEntry,
+  type ZipPreflightResult,
+  ZipPreflightError,
   DEFAULT_ZIP_LIMITS,
   isZipBuffer,
   startsWithZipSignature,
@@ -52,6 +63,7 @@ export {
   getZipOffset,
   isValidZip,
   isPathSafe,
+  preflightZipSizes,
 } from './zip.js';
 
 // URI utilities
@@ -88,4 +100,10 @@ export {
 export {
   isAnimatedImage,
 } from './image.js';
+
+// UUID utilities
+export {
+  generateUUID,
+  isValidUUID,
+} from './uuid.js';
 

@@ -5,6 +5,7 @@
  */
 
 import type { CCv3Data } from '@character-foundry/schemas';
+import { generateUUID } from '@character-foundry/core';
 import type {
   FederatedCard,
   FederatedActivity,
@@ -33,11 +34,11 @@ export function generateCardId(baseUrl: string, localId: string): string {
 }
 
 /**
- * Generate a unique ID for an activity
+ * Generate a unique ID for an activity using crypto-grade randomness
  */
 export function generateActivityId(baseUrl: string): string {
   const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
+  const random = generateUUID().split('-')[0]; // Use first segment of UUID
   return `${baseUrl}/activities/${timestamp}-${random}`;
 }
 

@@ -5,6 +5,7 @@
  */
 
 import type { CCv3Data } from '@character-foundry/schemas';
+import { generateUUID } from '@character-foundry/core';
 import type { PlatformId, PlatformAdapter } from '../types.js';
 
 /**
@@ -74,10 +75,12 @@ export abstract class BasePlatformAdapter implements PlatformAdapter {
   abstract getLastModified(localId: string): Promise<string | null>;
 
   /**
-   * Generate a new local ID
+   * Generate a new local ID using crypto-grade randomness
    */
   protected generateId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+    const timestamp = Date.now();
+    const random = generateUUID().split('-')[0]; // Use first segment of UUID
+    return `${timestamp}-${random}`;
   }
 }
 

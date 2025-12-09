@@ -5,7 +5,7 @@
  */
 
 import { zipSync, type Zippable } from 'fflate';
-import { type BinaryData, fromString } from '@character-foundry/core';
+import { type BinaryData, fromString, generateUUID } from '@character-foundry/core';
 import type { CCv3Data } from '@character-foundry/schemas';
 import type {
   VoxtaWriteAsset,
@@ -17,17 +17,6 @@ import type {
 } from './types.js';
 import { standardToVoxta } from './macros.js';
 import { ccv3LorebookToVoxtaBook } from './mapper.js';
-
-/**
- * Generate a UUID v4
- */
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 /**
  * Sanitize a name for use in file paths

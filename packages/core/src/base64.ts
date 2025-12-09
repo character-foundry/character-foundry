@@ -84,3 +84,43 @@ export function decodeUrlSafe(base64: string): BinaryData {
 
   return decode(padded);
 }
+
+/**
+ * Chunk size for encoding large buffers (64KB)
+ * Prevents stack overflow when using String.fromCharCode with spread operator
+ */
+const ENCODE_CHUNK_SIZE = 64 * 1024;
+
+/**
+ * Encode binary data to base64 string with chunking for large buffers.
+ * Handles buffers >10MB without stack overflow.
+ *
+ * @param data - Binary data to encode
+ * @returns Base64 encoded string
+ *
+ * @example
+ * ```typescript
+ * const largeBuffer = new Uint8Array(20 * 1024 * 1024); // 20MB
+ * const base64 = encodeChunked(largeBuffer); // No stack overflow
+ * ```
+ */
+export function encodeChunked(data: BinaryData): string {
+  if (isNode) {
+    // Node.js: Buffer handles large data efficiently
+    return Buffer.from(data).toString('base64');
+  }
+
+  // Browser: process in chunks to avoid stack overflow
+  const chunks: string[] = [];
+
+  for (let i = 0; i < data.length; i += ENCODE_CHUNK_SIZE) {
+    const chunk = data.subarray(i, Math.min(i + ENCODE_CHUNK_SIZE, data.length));
+    let binary = '';
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j]!);
+    }
+    chunks.push(binary);
+  }
+
+  return btoa(chunks.join(''));
+}

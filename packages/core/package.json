@@ -20,6 +20,7 @@
     "clean": "rm -rf dist"
   },
   "devDependencies": {
+    "fflate": "^0.8.1",
     "typescript": "^5.3.0",
     "vitest": "^2.0.0"
   },

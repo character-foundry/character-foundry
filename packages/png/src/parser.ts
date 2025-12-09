@@ -5,7 +5,7 @@
  * Uses fflate for zTXt decompression, works in browser and Node.js.
  */
 
-import { inflateSync } from 'fflate';
+import { Inflate } from 'fflate';
 import {
   type BinaryData,
   readUInt32BE,
@@ -13,6 +13,7 @@ import {
   toString,
   toLatin1,
   indexOf,
+  concat,
   base64Decode,
   ParseError,
   SizeLimitError,
@@ -33,6 +34,53 @@ export const PNG_SIGNATURE = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a,
  * Maximum size for a single PNG chunk (50MB per Risu CharX spec)
  */
 export const MAX_CHUNK_SIZE = 50 * 1024 * 1024;
+
+/**
+ * Maximum inflated size for zTXt chunks (16MB - reasonable for card JSON)
+ * This prevents inflation attacks where small compressed data expands to huge sizes
+ */
+export const MAX_INFLATED_SIZE = 16 * 1024 * 1024;
+
+/**
+ * Synchronous inflate with size limit to prevent inflation attacks.
+ * Uses streaming decompression to enforce the limit without fully decompressing.
+ *
+ * @param compressed - Compressed data to inflate
+ * @param maxSize - Maximum allowed inflated size (defaults to MAX_INFLATED_SIZE)
+ * @returns Inflated data as Uint8Array
+ * @throws SizeLimitError if inflated size exceeds maxSize
+ */
+function inflateSyncWithLimit(compressed: BinaryData, maxSize: number = MAX_INFLATED_SIZE): Uint8Array {
+  const chunks: Uint8Array[] = [];
+  let totalSize = 0;
+  let error: Error | null = null;
+
+  const inflater = new Inflate((data: Uint8Array, final: boolean) => {
+    if (error) return; // Stop processing if we've hit a limit
+
+    if (data && data.length > 0) {
+      totalSize += data.length;
+      if (totalSize > maxSize) {
+        error = new SizeLimitError(totalSize, maxSize, 'inflated zTXt chunk');
+        return;
+      }
+      chunks.push(data);
+    }
+  });
+
+  // Push all data at once with final=true for sync operation
+  try {
+    inflater.push(compressed instanceof Uint8Array ? compressed : new Uint8Array(compressed), true);
+  } catch (e) {
+    throw new ParseError(`Decompression failed: ${e instanceof Error ? e.message : String(e)}`, 'png');
+  }
+
+  if (error) {
+    throw error;
+  }
+
+  return concat(...chunks);
+}
 
 /**
  * Text chunk keys used for character cards by various frontends
@@ -130,7 +178,7 @@ export function parseTextChunks(data: BinaryData): TextChunk[] {
       }
     }
 
-    // Parse zTXt chunks (compressed)
+    // Parse zTXt chunks (compressed) with size limit protection
     if (type === 'zTXt') {
       const nullIndex = indexOf(chunkData, new Uint8Array([0]));
       if (nullIndex !== -1) {
@@ -140,10 +188,15 @@ export function parseTextChunks(data: BinaryData): TextChunk[] {
         if (compressionMethod === 0) { // 0 = deflate/inflate
           try {
             const compressedData = slice(chunkData, nullIndex + 2);
-            const decompressed = inflateSync(compressedData);
+            // Use size-limited inflate to prevent inflation attacks
+            const decompressed = inflateSyncWithLimit(compressedData, MAX_INFLATED_SIZE);
             const text = toString(decompressed);
             textChunks.push({ keyword, text });
-          } catch {
+          } catch (err) {
+            // Re-throw size limit errors, skip other decompression failures
+            if (err instanceof SizeLimitError) {
+              throw err;
+            }
             // Failed to decompress zTXt chunk, skip it
           }
         }

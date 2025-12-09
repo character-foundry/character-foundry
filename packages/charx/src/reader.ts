@@ -14,6 +14,8 @@ import {
   parseURI,
   isJpegCharX,
   getZipOffset,
+  preflightZipSizes,
+  ZipPreflightError,
   ParseError,
   SizeLimitError,
 } from '@character-foundry/core';
@@ -85,7 +87,26 @@ export function readCharX(
   // Handle SFX archives (JPEG+ZIP hybrid)
   const zipData = findZipStart(data);
 
-  // Unzip synchronously
+  // SECURITY: Preflight check - validate ZIP central directory BEFORE decompression
+  // This prevents zip bomb attacks by checking uncompressed sizes in metadata
+  try {
+    preflightZipSizes(zipData, {
+      maxFileSize: opts.maxAssetSize,
+      maxTotalSize: opts.maxTotalSize,
+      maxFiles: 10000, // CharX can have many assets
+    });
+  } catch (err) {
+    if (err instanceof ZipPreflightError) {
+      throw new SizeLimitError(
+        err.totalSize || err.entrySize || 0,
+        err.maxSize || err.maxEntrySize || opts.maxTotalSize,
+        err.oversizedEntry || 'CharX archive'
+      );
+    }
+    throw err;
+  }
+
+  // Unzip synchronously (now safe - preflight passed)
   let unzipped: Unzipped;
   try {
     unzipped = unzipSync(zipData);

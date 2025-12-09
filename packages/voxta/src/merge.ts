@@ -9,7 +9,11 @@ import {
   type BinaryData,
   fromString,
   findZipStart,
+  preflightZipSizes,
+  ZipPreflightError,
   ParseError,
+  SizeLimitError,
+  generateUUID,
 } from '@character-foundry/core';
 import type { CCv3Data, CCv3CharacterBook } from '@character-foundry/schemas';
 import type {
@@ -22,17 +26,6 @@ import type {
   CompressionLevel,
 } from './types.js';
 import { standardToVoxta } from './macros.js';
-
-/**
- * Generate a UUID v4
- */
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 /**
  * Editable CCv3 fields (subset that can be changed in editors)
@@ -227,6 +220,11 @@ export interface ApplyDeltaOptions {
   compressionLevel?: CompressionLevel;
 }
 
+/** Max total size for delta operations (500MB) */
+const DELTA_MAX_TOTAL_SIZE = 500 * 1024 * 1024;
+/** Max file size for delta operations (50MB) */
+const DELTA_MAX_FILE_SIZE = 50 * 1024 * 1024;
+
 /**
  * Apply delta changes to an existing Voxta package.
  *
@@ -249,7 +247,25 @@ export function applyVoxtaDeltas(
   // Handle SFX archives
   const zipData = findZipStart(originalBuffer);
 
-  // Unzip original
+  // SECURITY: Preflight check even for delta operations
+  try {
+    preflightZipSizes(zipData, {
+      maxFileSize: DELTA_MAX_FILE_SIZE,
+      maxTotalSize: DELTA_MAX_TOTAL_SIZE,
+      maxFiles: 10000,
+    });
+  } catch (err) {
+    if (err instanceof ZipPreflightError) {
+      throw new SizeLimitError(
+        err.totalSize || err.entrySize || 0,
+        err.maxSize || err.maxEntrySize || DELTA_MAX_TOTAL_SIZE,
+        err.oversizedEntry || 'Voxta package'
+      );
+    }
+    throw err;
+  }
+
+  // Unzip original (now safe - preflight passed)
   let unzipped: Unzipped;
   try {
     unzipped = unzipSync(zipData);
@@ -445,7 +461,25 @@ export function extractCharacterPackage(
   // Handle SFX archives
   const zipData = findZipStart(originalBuffer);
 
-  // Unzip original
+  // SECURITY: Preflight check
+  try {
+    preflightZipSizes(zipData, {
+      maxFileSize: DELTA_MAX_FILE_SIZE,
+      maxTotalSize: DELTA_MAX_TOTAL_SIZE,
+      maxFiles: 10000,
+    });
+  } catch (err) {
+    if (err instanceof ZipPreflightError) {
+      throw new SizeLimitError(
+        err.totalSize || err.entrySize || 0,
+        err.maxSize || err.maxEntrySize || DELTA_MAX_TOTAL_SIZE,
+        err.oversizedEntry || 'Voxta package'
+      );
+    }
+    throw err;
+  }
+
+  // Unzip original (now safe - preflight passed)
   let unzipped: Unzipped;
   try {
     unzipped = unzipSync(zipData);
@@ -574,7 +608,25 @@ export function addCharacterToPackage(
   // Handle SFX archives
   const zipData = findZipStart(originalBuffer);
 
-  // Unzip original
+  // SECURITY: Preflight check
+  try {
+    preflightZipSizes(zipData, {
+      maxFileSize: DELTA_MAX_FILE_SIZE,
+      maxTotalSize: DELTA_MAX_TOTAL_SIZE,
+      maxFiles: 10000,
+    });
+  } catch (err) {
+    if (err instanceof ZipPreflightError) {
+      throw new SizeLimitError(
+        err.totalSize || err.entrySize || 0,
+        err.maxSize || err.maxEntrySize || DELTA_MAX_TOTAL_SIZE,
+        err.oversizedEntry || 'Voxta package'
+      );
+    }
+    throw err;
+  }
+
+  // Unzip original (now safe - preflight passed)
   let unzipped: Unzipped;
   try {
     unzipped = unzipSync(zipData);

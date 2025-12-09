@@ -9,23 +9,13 @@ import type {
   CCv3CharacterBook,
   CCv3LorebookEntry,
 } from '@character-foundry/schemas';
+import { generateUUID } from '@character-foundry/core';
 import type {
   VoxtaCharacter,
   VoxtaBook,
   VoxtaExtensionData,
 } from './types.js';
 import { voxtaToStandard, standardToVoxta } from './macros.js';
-
-/**
- * Generate a UUID v4
- */
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 /**
  * Convert a Voxta character to CCv3 format

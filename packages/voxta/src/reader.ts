@@ -10,6 +10,8 @@ import {
   toString,
   findZipStart,
   getZipOffset,
+  preflightZipSizes,
+  ZipPreflightError,
   ParseError,
   SizeLimitError,
 } from '@character-foundry/core';
@@ -174,7 +176,26 @@ export function readVoxta(
   // Handle SFX archives
   const zipData = findZipStart(data);
 
-  // Unzip
+  // SECURITY: Preflight check - validate ZIP central directory BEFORE decompression
+  // This prevents zip bomb attacks by checking uncompressed sizes in metadata
+  try {
+    preflightZipSizes(zipData, {
+      maxFileSize: opts.maxAssetSize,
+      maxTotalSize: opts.maxTotalSize,
+      maxFiles: 10000, // Voxta packages can have many files
+    });
+  } catch (err) {
+    if (err instanceof ZipPreflightError) {
+      throw new SizeLimitError(
+        err.totalSize || err.entrySize || 0,
+        err.maxSize || err.maxEntrySize || opts.maxTotalSize,
+        err.oversizedEntry || 'Voxta package'
+      );
+    }
+    throw err;
+  }
+
+  // Unzip (now safe - preflight passed)
   let unzipped: Unzipped;
   try {
     unzipped = unzipSync(zipData);

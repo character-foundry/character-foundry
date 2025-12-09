@@ -6,10 +6,11 @@
 
 import type { BinaryData } from '@character-foundry/core';
 import { toString, ParseError, SizeLimitError, base64Decode, parseURI, getMimeTypeFromExt } from '@character-foundry/core';
-import { detectSpec, getV2Data, type CCv3Data, type CCv2Data, type CCv2Wrapped, type Spec, type SourceFormat, type AssetDescriptor } from '@character-foundry/schemas';
+import { detectSpec, type CCv3Data, type CCv2Data, type CCv2Wrapped, type Spec, type SourceFormat, type AssetDescriptor } from '@character-foundry/schemas';
 import { extractFromPNG, removeAllTextChunks } from '@character-foundry/png';
 import { readCharX } from '@character-foundry/charx';
 import { readVoxta, voxtaToCCv3 } from '@character-foundry/voxta';
+import { ccv2ToCCv3 } from '@character-foundry/normalizer';
 import { detectFormat } from './detector.js';
 import type {
   ParseResult,
@@ -31,35 +32,6 @@ const DEFAULT_OPTIONS: Required<ParseOptions> = {
  */
 function estimateBase64DecodedSize(base64Length: number): number {
   return Math.ceil(base64Length * 0.75);
-}
-
-/**
- * Convert v2 data to v3 format
- */
-function v2ToV3(v2: CCv2Data | CCv2Wrapped): CCv3Data {
-  const data = getV2Data(v2);
-  return {
-    spec: 'chara_card_v3',
-    spec_version: '3.0',
-    data: {
-      name: data.name || 'Unknown',
-      description: data.description || '',
-      personality: data.personality || '',
-      scenario: data.scenario || '',
-      first_mes: data.first_mes || '',
-      mes_example: data.mes_example || '',
-      creator_notes: data.creator_notes || '',
-      system_prompt: data.system_prompt || '',
-      post_history_instructions: data.post_history_instructions || '',
-      alternate_greetings: data.alternate_greetings || [],
-      group_only_greetings: (data as unknown as Record<string, unknown>).group_only_greetings as string[] || [],
-      tags: data.tags || [],
-      creator: data.creator || '',
-      character_version: data.character_version || '',
-      character_book: data.character_book,
-      extensions: data.extensions || {},
-    },
-  };
 }
 
 /**
@@ -129,7 +101,7 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
   if (extracted.spec === 'v3') {
     card = extracted.data as CCv3Data;
   } else {
-    card = v2ToV3(extracted.data as CCv2Data);
+    card = ccv2ToCCv3(extracted.data as CCv2Data);
   }
 
   // Determine source format
@@ -475,7 +447,7 @@ function parseJson(data: BinaryData, options: Required<ParseOptions>): ParseResu
     card = parsed as CCv3Data;
     sourceFormat = 'json_v3';
   } else if (spec === 'v2') {
-    card = v2ToV3(parsed as CCv2Data);
+    card = ccv2ToCCv3(parsed as CCv2Data);
     sourceFormat = 'json_v2';
   } else {
     throw new ParseError('JSON does not appear to be a valid character card', 'json');

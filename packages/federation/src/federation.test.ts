@@ -21,8 +21,9 @@ import {
   MemoryPlatformAdapter,
 } from './index.js';
 
-// Enable federation for tests
+// Enable federation for tests (dual opt-in: env var + code)
 beforeAll(() => {
+  process.env.FEDERATION_ENABLED = 'true';
   enableFederation();
 });
 

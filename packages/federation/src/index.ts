@@ -8,25 +8,39 @@
  * Security-critical features (signature validation, inbox handling) are stubbed.
  * Do NOT use in production without explicit opt-in.
  *
- * To enable federation features, set FEDERATION_ENABLED=true in your environment
- * or call enableFederation() before using SyncEngine or route handlers.
+ * To enable federation features, you MUST:
+ * 1. Set FEDERATION_ENABLED=true in your environment
+ * 2. Call enableFederation() before using SyncEngine or route handlers
+ *
+ * Both steps are required as a dual opt-in safety mechanism.
  */
 
-let federationEnabled = false;
+let explicitlyEnabled = false;
 
 /**
  * Enable federation features. Must be called before using SyncEngine or route handlers.
  * This is a safety gate - federation is experimental and has incomplete security.
+ *
+ * Note: Both this call AND FEDERATION_ENABLED=true are required (dual opt-in).
  */
 export function enableFederation(): void {
-  federationEnabled = true;
+  explicitlyEnabled = true;
+  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+    console.warn(
+      '[character-foundry/federation] Federation enabled. ' +
+      'WARNING: HTTP signature validation is NOT implemented. ' +
+      'Do NOT use in production with untrusted inputs.'
+    );
+  }
 }
 
 /**
- * Check if federation is enabled
+ * Check if federation is enabled (requires BOTH env var AND enableFederation() call)
  */
 export function isFederationEnabled(): boolean {
-  return federationEnabled || process.env.FEDERATION_ENABLED === 'true';
+  const envEnabled = process.env.FEDERATION_ENABLED === 'true';
+  // Require BOTH explicit enableFederation() call AND env var
+  return explicitlyEnabled && envEnabled;
 }
 
 /**
@@ -34,11 +48,27 @@ export function isFederationEnabled(): boolean {
  * @internal
  */
 export function assertFederationEnabled(feature: string): void {
-  if (!isFederationEnabled()) {
+  const envEnabled = process.env.FEDERATION_ENABLED === 'true';
+
+  if (!explicitlyEnabled && !envEnabled) {
     throw new Error(
       `Federation is not enabled. ${feature} requires federation to be explicitly enabled. ` +
-      `Call enableFederation() or set FEDERATION_ENABLED=true to proceed. ` +
+      `You must BOTH call enableFederation() AND set FEDERATION_ENABLED=true. ` +
       `WARNING: Federation security features are incomplete.`
+    );
+  }
+
+  if (!explicitlyEnabled) {
+    throw new Error(
+      `Federation not explicitly enabled. ${feature} requires enableFederation() to be called. ` +
+      `Environment variable alone is not sufficient (dual opt-in required).`
+    );
+  }
+
+  if (!envEnabled) {
+    throw new Error(
+      `FEDERATION_ENABLED environment variable not set. ${feature} requires FEDERATION_ENABLED=true. ` +
+      `Code opt-in alone is not sufficient (dual opt-in required).`
     );
   }
 }

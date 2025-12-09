@@ -139,3 +139,187 @@ export function isPathSafe(path: string): boolean {
 
   return true;
 }
+
+/**
+ * ZIP Central Directory File Header structure
+ */
+export interface ZipCentralDirEntry {
+  fileName: string;
+  compressedSize: number;
+  uncompressedSize: number;
+}
+
+/**
+ * Result of preflight ZIP size check
+ */
+export interface ZipPreflightResult {
+  entries: ZipCentralDirEntry[];
+  totalUncompressedSize: number;
+  fileCount: number;
+}
+
+/**
+ * Error thrown when ZIP preflight fails due to size limits
+ */
+export class ZipPreflightError extends Error {
+  constructor(
+    message: string,
+    public readonly totalSize?: number,
+    public readonly maxSize?: number,
+    public readonly oversizedEntry?: string,
+    public readonly entrySize?: number,
+    public readonly maxEntrySize?: number
+  ) {
+    super(message);
+    this.name = 'ZipPreflightError';
+  }
+}
+
+/**
+ * Preflight check ZIP central directory to get uncompressed sizes BEFORE extraction.
+ * This prevents zip bomb attacks by rejecting archives with dangerous compression ratios
+ * or oversized entries without fully decompressing them.
+ *
+ * The ZIP format stores uncompressed sizes in the central directory at the end of the file.
+ * This function reads that metadata without decompressing any actual data.
+ *
+ * @param data - ZIP file data (can be SFX/self-extracting, will find ZIP start)
+ * @param limits - Size limits to enforce
+ * @returns Preflight result with entry info and totals
+ * @throws ZipPreflightError if limits would be exceeded
+ */
+export function preflightZipSizes(
+  data: BinaryData,
+  limits: ZipSizeLimits = DEFAULT_ZIP_LIMITS
+): ZipPreflightResult {
+  // Find ZIP start (handles SFX/hybrid archives)
+  const zipData = findZipStart(data);
+
+  // Find End of Central Directory (EOCD) signature: PK\x05\x06
+  // EOCD is at the end of the file, max comment size is 65535 bytes
+  const eocdSignature = new Uint8Array([0x50, 0x4b, 0x05, 0x06]);
+  const searchStart = Math.max(0, zipData.length - 65535 - 22);
+
+  let eocdOffset = -1;
+  for (let i = zipData.length - 22; i >= searchStart; i--) {
+    if (
+      zipData[i] === eocdSignature[0] &&
+      zipData[i + 1] === eocdSignature[1] &&
+      zipData[i + 2] === eocdSignature[2] &&
+      zipData[i + 3] === eocdSignature[3]
+    ) {
+      eocdOffset = i;
+      break;
+    }
+  }
+
+  if (eocdOffset < 0) {
+    throw new ZipPreflightError('Invalid ZIP: End of Central Directory not found');
+  }
+
+  // Parse EOCD
+  // Offset 8: Total number of central directory records
+  // Offset 12: Size of central directory
+  // Offset 16: Offset of start of central directory
+  const totalEntries = zipData[eocdOffset + 8]! | (zipData[eocdOffset + 9]! << 8);
+  const cdSize = readUInt32LEFromBytes(zipData, eocdOffset + 12);
+  const cdOffset = readUInt32LEFromBytes(zipData, eocdOffset + 16);
+
+  // Check file count limit
+  if (totalEntries > limits.maxFiles) {
+    throw new ZipPreflightError(
+      `ZIP contains ${totalEntries} files, exceeds limit of ${limits.maxFiles}`,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    );
+  }
+
+  // Parse Central Directory entries
+  const entries: ZipCentralDirEntry[] = [];
+  let totalUncompressedSize = 0;
+  let offset = cdOffset;
+
+  for (let i = 0; i < totalEntries && offset < eocdOffset; i++) {
+    // Central Directory File Header signature: PK\x01\x02
+    if (
+      zipData[offset] !== 0x50 ||
+      zipData[offset + 1] !== 0x4b ||
+      zipData[offset + 2] !== 0x01 ||
+      zipData[offset + 3] !== 0x02
+    ) {
+      throw new ZipPreflightError('Invalid ZIP: Central Directory header corrupted');
+    }
+
+    // Offset 20: Compressed size (4 bytes)
+    const compressedSize = readUInt32LEFromBytes(zipData, offset + 20);
+    // Offset 24: Uncompressed size (4 bytes)
+    const uncompressedSize = readUInt32LEFromBytes(zipData, offset + 24);
+    // Offset 28: File name length (2 bytes)
+    const fileNameLength = zipData[offset + 28]! | (zipData[offset + 29]! << 8);
+    // Offset 30: Extra field length (2 bytes)
+    const extraLength = zipData[offset + 30]! | (zipData[offset + 31]! << 8);
+    // Offset 32: File comment length (2 bytes)
+    const commentLength = zipData[offset + 32]! | (zipData[offset + 33]! << 8);
+
+    // Read file name
+    const fileName = new TextDecoder().decode(
+      zipData.subarray(offset + 46, offset + 46 + fileNameLength)
+    );
+
+    // Skip directories (names ending with /)
+    if (!fileName.endsWith('/')) {
+      // Check per-entry size limit
+      if (uncompressedSize > limits.maxFileSize) {
+        throw new ZipPreflightError(
+          `File "${fileName}" uncompressed size ${uncompressedSize} exceeds limit ${limits.maxFileSize}`,
+          undefined,
+          undefined,
+          fileName,
+          uncompressedSize,
+          limits.maxFileSize
+        );
+      }
+
+      totalUncompressedSize += uncompressedSize;
+
+      // Check total size limit early to fail fast
+      if (totalUncompressedSize > limits.maxTotalSize) {
+        throw new ZipPreflightError(
+          `Total uncompressed size ${totalUncompressedSize} exceeds limit ${limits.maxTotalSize}`,
+          totalUncompressedSize,
+          limits.maxTotalSize
+        );
+      }
+
+      entries.push({
+        fileName,
+        compressedSize,
+        uncompressedSize,
+      });
+    }
+
+    // Move to next entry
+    offset += 46 + fileNameLength + extraLength + commentLength;
+  }
+
+  return {
+    entries,
+    totalUncompressedSize,
+    fileCount: entries.length,
+  };
+}
+
+/**
+ * Read a 32-bit little-endian unsigned integer from bytes
+ */
+function readUInt32LEFromBytes(data: BinaryData, offset: number): number {
+  return (
+    data[offset]! |
+    (data[offset + 1]! << 8) |
+    (data[offset + 2]! << 16) |
+    (data[offset + 3]! << 24)
+  ) >>> 0; // Convert to unsigned
+}

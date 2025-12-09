@@ -27,7 +27,8 @@
     "@character-foundry/schemas": "workspace:*",
     "@character-foundry/png": "workspace:*",
     "@character-foundry/charx": "workspace:*",
-    "@character-foundry/voxta": "workspace:*"
+    "@character-foundry/voxta": "workspace:*",
+    "@character-foundry/normalizer": "workspace:*"
   },
   "devDependencies": {
     "fflate": "^0.8.1",
