@@ -98,7 +98,7 @@ Current security prerelease branch: `security/phase-0-1-security-and-core`
 | `@character-foundry/exporter` | 0.1.1-security.0 |
 | `@character-foundry/voxta` | 0.1.6-security.0 |
 | `@character-foundry/loader` | 0.1.6-security.0 |
-| `@character-foundry/federation` | 0.1.4-security.0 |
+| `@character-foundry/federation` | 0.1.5-security.0 |
 | `@character-foundry/media` | 0.1.0-security.0 |
 | `@character-foundry/tokenizers` | 0.1.0-security.0 |
 
