@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/tokenizers",
-  "version": "0.1.0-security.0",
+  "version": "0.1.0",
   "description": "Unified tokenizer utilities for character cards",
   "type": "module",
   "exports": {

@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/exporter",
-  "version": "0.1.1-security.0",
+  "version": "0.1.1",
   "description": "Universal character card exporter - export to PNG, CharX, or Voxta formats",
   "type": "module",
   "main": "./dist/index.js",
