@@ -95,6 +95,7 @@ Current security prerelease branch: `security/phase-0-1-security-and-core`
 | `@character-foundry/schemas` | 0.1.0-security.0 |
 | `@character-foundry/png` | 0.0.3-security.0 |
 | `@character-foundry/charx` | 0.0.3-security.0 |
+| `@character-foundry/exporter` | 0.1.1-security.0 |
 | `@character-foundry/voxta` | 0.1.6-security.0 |
 | `@character-foundry/loader` | 0.1.6-security.0 |
 | `@character-foundry/federation` | 0.1.4-security.0 |

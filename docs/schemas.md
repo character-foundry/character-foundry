@@ -461,25 +461,55 @@ import { CardNormalizer } from '@character-foundry/schemas';
 
 // Auto-detect and normalize
 const normalized = CardNormalizer.autoNormalize(malformedData);
+// Returns CCv2Wrapped | CCv3Data | null
 
 // Normalize to specific version
 const v3Card = CardNormalizer.normalize(data, 'v3');
 const v2Card = CardNormalizer.normalize(data, 'v2');
 
-// Fix lorebook entries
+// Fix lorebook/character_book
 const fixedBook = CardNormalizer.normalizeCharacterBook(book, 'v3');
 
-// Fix timestamps (CharacterTavern uses seconds instead of ISO8601)
+// Fix individual lorebook entries
+const fixedEntry = CardNormalizer.normalizeEntry(entry, 'v3');
+
+// Fix timestamps (CharacterTavern uses milliseconds instead of seconds)
 const fixedCard = CardNormalizer.fixTimestamps(card);
 ```
 
 ### What CardNormalizer Fixes
 
-- **ChubAI hybrid format**: Merges `data.data` nesting
-- **CharacterTavern timestamps**: Converts Unix seconds to ISO8601
-- **Numeric position**: Converts `0`/`1` to `'before_char'`/`'after_char'`
-- **V3 fields in V2**: Moves `assets`, `creation_date` to extensions
-- **Missing extensions**: Ensures `extensions` object exists
+- **ChubAI hybrid format**: Merges root-level data fields into proper `data` object
+- **CharacterTavern timestamps**: Converts milliseconds to seconds for `creation_date`/`modification_date`
+- **Numeric position**: Converts `0`/`1` to `'before_char'`/`'after_char'` in lorebook entries
+- **V3-only lorebook fields in V2**: Moves fields like `probability`, `depth`, `group`, `use_regex` to extensions
+- **Missing required fields**: Adds defaults for `name`, `description`, `personality`, `scenario`, `first_mes`, `mes_example`
+- **Null character_book**: Removes `character_book: null` entirely
+- **Invalid arrays**: Ensures `tags`, `alternate_greetings`, `group_only_greetings` are arrays
+- **Missing extensions**: Ensures `extensions` object exists for V2 entries
+
+### Example: Normalizing ChubAI Card
+
+ChubAI sometimes exports cards with fields at both root and in `data`:
+
+```typescript
+// Malformed ChubAI card
+const malformed = {
+  spec: 'chara_card_v3',
+  spec_version: '3.0',
+  name: 'Character Name',  // Wrong: at root level
+  data: {
+    description: 'Some description',
+    // Missing other required fields
+  },
+};
+
+// Normalize it
+const normalized = CardNormalizer.normalize(malformed, 'v3');
+// normalized.data.name = 'Character Name' (moved from root)
+// normalized.data.personality = '' (default added)
+// etc.
+```
 
 ---
 

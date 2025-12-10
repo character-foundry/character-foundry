@@ -13,6 +13,8 @@ The `@character-foundry/federation` package provides experimental ActivityPub-ba
 - [Platform Adapters](#platform-adapters)
 - [Routes](#routes)
 - [Usage Examples](#usage-examples)
+- [HTTP Signatures](#http-signatures)
+- [D1 Sync State Store](#d1-sync-state-store)
 
 ---
 
@@ -586,21 +588,168 @@ interface SignatureValidationResult {
 
 | Feature | Status |
 |---------|--------|
-| ActivityPub object creation | ✅ Implemented |
-| WebFinger handler | ✅ Implemented |
-| NodeInfo handler | ✅ Implemented |
-| Actor endpoint | ✅ Implemented |
-| HTTP Signatures | ✅ Implemented (Web Crypto) |
-| Inbox handling | ❌ Stub only |
-| Following/Followers | ❌ Not implemented |
-| Boost/Like | ✅ Activity creation only |
+| ActivityPub object creation | Implemented |
+| WebFinger handler | Implemented |
+| NodeInfo handler | Implemented |
+| Actor endpoint | Implemented |
+| HTTP Signatures | Implemented (Web Crypto) |
+| D1 State Store | Implemented (Cloudflare D1) |
+| Memory State Store | Implemented |
+| File State Store | Implemented |
+| LocalStorage State Store | Implemented |
+| Inbox handling | Stub only |
+| Following/Followers | Not implemented |
+| Boost/Like | Activity creation only |
+
+---
+
+## D1 Sync State Store
+
+For production use on Cloudflare Workers, use `D1SyncStateStore` to persist sync state in Cloudflare D1 (SQLite).
+
+### Setup
+
+```typescript
+import { D1SyncStateStore, enableFederation, SyncEngine } from '@character-foundry/federation';
+
+// In your Cloudflare Worker
+export default {
+  async fetch(request: Request, env: Env) {
+    enableFederation();
+
+    // Create D1-backed state store
+    const stateStore = new D1SyncStateStore(env.DB);
+    await stateStore.init(); // Creates table if not exists (idempotent)
+
+    const engine = new SyncEngine({
+      config: {
+        domain: 'myapp.example.com',
+        actorId: 'https://myapp.example.com/actor',
+      },
+      stateStore,
+      adapters: [],
+    });
+
+    // Use engine...
+  },
+};
+```
+
+### D1Database Interface
+
+The store accepts any object implementing the D1Database interface:
+
+```typescript
+interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+  exec(query: string): Promise<D1ExecResult>;
+  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
+}
+
+interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  first<T = unknown>(column?: string): Promise<T | null>;
+  run(): Promise<D1Result>;
+  all<T = unknown>(): Promise<D1Result<T>>;
+}
+
+interface D1Result<T = unknown> {
+  results: T[];
+  success: boolean;
+  meta: {
+    duration: number;
+    changes: number;
+    last_row_id: number;
+    served_by?: string;
+  };
+}
+```
+
+### Methods
+
+```typescript
+const store = new D1SyncStateStore(db, 'custom_table_name'); // default: 'federation_sync_state'
+
+// Initialize (creates table and indexes)
+await store.init();
+
+// Basic CRUD
+await store.set(syncState);
+const state = await store.get(federatedId);
+await store.delete(federatedId);
+
+// Listing
+const allStates = await store.list();
+const pendingStates = await store.listByStatus('pending');
+const count = await store.count();
+
+// Lookups
+const byPlatform = await store.findByPlatformId('chub', 'card-123');
+const byLocal = await store.findByLocalId('local-id-456');
+
+// Testing
+await store.clear(); // Deletes all data - use with caution!
+```
+
+### Schema
+
+The store creates the following table:
+
+```sql
+CREATE TABLE federation_sync_state (
+  federated_id TEXT PRIMARY KEY,
+  local_id TEXT NOT NULL,
+  platform_ids TEXT NOT NULL,     -- JSON object
+  last_sync TEXT NOT NULL,        -- JSON object
+  version_hash TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('synced', 'pending', 'conflict', 'error')),
+  conflict TEXT,                  -- JSON or NULL
+  created_at INTEGER DEFAULT (unixepoch()),
+  updated_at INTEGER DEFAULT (unixepoch())
+);
+
+-- Index for local ID lookups
+CREATE INDEX idx_federation_sync_state_local_id ON federation_sync_state(local_id);
+```
+
+### Usage with Wrangler
+
+1. Create a D1 database:
+
+```bash
+wrangler d1 create character-federation
+```
+
+2. Add to `wrangler.toml`:
+
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "character-federation"
+database_id = "your-database-id"
+```
+
+3. Access in your worker:
+
+```typescript
+interface Env {
+  DB: D1Database;
+}
+
+export default {
+  async fetch(request: Request, env: Env) {
+    const store = new D1SyncStateStore(env.DB);
+    await store.init();
+    // ...
+  },
+};
+```
 
 ---
 
 ## Future Work
 
-1. **D1 State Store** - Cloudflare D1 persistence (#10)
-2. **Inbox processing** - Handle incoming activities
-3. **Following** - Subscribe to remote actors
-4. **Discovery** - Find characters on other instances
-5. **Conflict resolution** - Handle concurrent edits
+1. **Inbox processing** - Handle incoming activities
+2. **Following** - Subscribe to remote actors
+3. **Discovery** - Find characters on other instances
+4. **Conflict resolution** - Handle concurrent edits

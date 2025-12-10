@@ -59,18 +59,25 @@ character.voxpkg (ZIP archive)
 {
   "Id": "550e8400-e29b-41d4-a716-446655440000",
   "Name": "Character Name",
-  "Description": "Character description",
+  "Label": "Optional nickname",
+  "Description": "Physical/visual appearance",
+  "Profile": "Character backstory/personality",
   "Personality": "Personality traits",
   "Scenario": "Current scenario",
   "FirstMessage": "Hello!",
+  "AlternativeFirstMessages": ["Hi there!", "Greetings!"],
   "MessageExamples": "Example dialogue",
   "SystemPrompt": "System instructions",
-  "PostHistoryInstructions": "Post-history",
+  "PostHistoryInstructions": "Post-history (UJB)",
+  "Context": "Context field",
+  "Instructions": "User instructions",
   "MemoryBooks": ["book-uuid-1", "book-uuid-2"],
   "Tags": ["tag1", "tag2"],
-  "Prerequisites": {},
-  "Services": {},
-  "TextToSpeech": { ... }
+  "Creator": "Creator name",
+  "CreatorNotes": "Notes for users",
+  "TextToSpeech": [{ "Voice": {...}, "Service": {...} }],
+  "DateCreated": "2024-01-15T12:00:00Z",
+  "DateModified": "2024-01-16T14:30:00Z"
 }
 ```
 
@@ -120,11 +127,38 @@ const data = readVoxta(buffer);
 // data.characters - Array of characters
 // data.books - Array of memory books
 // data.scenarios - Array of scenarios
+// data.exportType - 'package' | 'scenario' | 'character'
 
 // Async read
 const data = await readVoxtaAsync(buffer, {
   maxFileSize: 50 * 1024 * 1024,
 });
+```
+
+### Export Types
+
+Voxta packages come in three export types:
+
+| Type | Description | Structure |
+|------|-------------|-----------|
+| `package` | Full package with metadata | Has `package.json` at root |
+| `scenario` | Scenario export | Has `Scenarios/` but no `package.json` |
+| `character` | Character export | Only `Characters/` folder |
+
+```typescript
+const data = readVoxta(buffer);
+
+switch (data.exportType) {
+  case 'package':
+    console.log(`Package: ${data.package?.Name}`);
+    break;
+  case 'scenario':
+    console.log(`Scenario with ${data.scenarios.length} scenarios`);
+    break;
+  case 'character':
+    console.log(`Character export with ${data.characters.length} characters`);
+    break;
+}
 ```
 
 ---
@@ -198,16 +232,23 @@ const voxtaBook = ccv3LorebookToVoxtaBook(ccv3Card.data.character_book);
 | CCv3 | Voxta |
 |------|-------|
 | `name` | `Name` |
-| `description` | `Description` |
+| `nickname` | `Label` |
+| `description` | `Profile` |
 | `personality` | `Personality` |
 | `scenario` | `Scenario` |
 | `first_mes` | `FirstMessage` |
+| `alternate_greetings` | `AlternativeFirstMessages` |
 | `mes_example` | `MessageExamples` |
 | `system_prompt` | `SystemPrompt` |
 | `post_history_instructions` | `PostHistoryInstructions` |
+| `creator_notes` | `CreatorNotes` |
 | `tags` | `Tags` |
+| `creator` | `Creator` |
 | `character_book` | `MemoryBooks` (references) |
 | `assets` | `Assets/` folder |
+| `extensions.visual_description` | `Description` (appearance) |
+
+**Note:** The CCv3 `description` field maps to Voxta `Profile` (backstory/personality), while the Voxta `Description` field contains physical/visual appearance which is stored in `extensions.visual_description`.
 
 ---
 

@@ -100,32 +100,39 @@ interface ImageDimensions {
 Generate thumbnails for image previews.
 
 ```typescript
-import { createThumbnail } from '@character-foundry/media';
+import { createThumbnail, calculateThumbnailDimensions } from '@character-foundry/media';
 
-// Basic usage (defaults: 256x256, JPEG, quality 80)
+// Basic usage (defaults: 400x400 max, webp, quality 0.8)
 const thumbnail = await createThumbnail(imageData);
 
 // With options
 const thumbnail = await createThumbnail(imageData, {
-  maxWidth: 128,
-  maxHeight: 128,
-  format: 'png',     // 'jpeg' | 'png' | 'webp'
-  quality: 90,       // 1-100, for JPEG/WebP
+  maxSize: 200,           // Maximum dimension (width or height)
+  format: 'jpeg',         // 'webp' | 'jpeg' | 'png'
+  quality: 0.9,           // 0-1, for JPEG/WebP
+  fallbackFormat: 'png',  // Fallback if webp unsupported
+  timeout: 5000,          // Timeout in ms
 });
+
+// Calculate dimensions without generating thumbnail
+const dims = calculateThumbnailDimensions(800, 600, 200);
+// { width: 200, height: 150 }
 ```
 
 ### ThumbnailOptions Interface
 
 ```typescript
 interface ThumbnailOptions {
-  /** Maximum width (default: 256) */
-  maxWidth?: number;
-  /** Maximum height (default: 256) */
-  maxHeight?: number;
-  /** Output format (default: 'jpeg') */
-  format?: 'jpeg' | 'png' | 'webp';
-  /** Quality 1-100 for JPEG/WebP (default: 80) */
+  /** Maximum dimension (width or height). Default: 400 */
+  maxSize?: number;
+  /** Output format. Default: 'webp' */
+  format?: 'webp' | 'jpeg' | 'png';
+  /** Quality (0-1). Default: 0.8 */
   quality?: number;
+  /** Fallback format if primary unsupported. Default: 'jpeg' */
+  fallbackFormat?: 'jpeg' | 'png';
+  /** Timeout in ms. Default: 10000 */
+  timeout?: number;
 }
 ```
 

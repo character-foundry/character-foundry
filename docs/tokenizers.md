@@ -373,12 +373,43 @@ const counts = countCardTokens(card);
 //   total: 1560
 // }
 
-// With custom tokenizer
-const llamaCounts = countCardTokens(card, { tokenizerId: 'llama' });
+// With options
+const counts = countCardTokens(card, {
+  tokenizer: 'llama',           // Tokenizer ID (default: 'gpt-4')
+  onlyEnabledLorebook: true,    // Only count enabled entries (default: true)
+});
 
 // Simple text counting
 const tokens = countText('Hello, world!'); // Uses default (gpt-4)
 const llamaTokens = countText('Hello, world!', 'llama');
+```
+
+### TokenCountOptions
+
+```typescript
+interface TokenCountOptions {
+  /** Tokenizer ID to use. Default: 'gpt-4' */
+  tokenizer?: string;
+  /** Only count enabled lorebook entries. Default: true */
+  onlyEnabledLorebook?: boolean;
+}
+```
+
+### Supported Card Formats
+
+`countCardTokens()` accepts both wrapped and unwrapped card formats:
+
+```typescript
+// Wrapped (CCv2/CCv3)
+const wrapped = {
+  spec: 'chara_card_v3',
+  data: { name: 'Character', description: '...' }
+};
+countCardTokens(wrapped);
+
+// Unwrapped (just the data)
+const unwrapped = { name: 'Character', description: '...' };
+countCardTokens(unwrapped);
 ```
 
 ### CardTokenCounts Interface

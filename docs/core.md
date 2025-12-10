@@ -4,12 +4,97 @@ The `@character-foundry/core` package provides foundational utilities used acros
 
 ## Table of Contents
 
+- [Security Features](#security-features)
 - [Binary Utilities](#binary-utilities)
 - [Base64 Utilities](#base64-utilities)
+- [Data URL Utilities](#data-url-utilities)
 - [ZIP Utilities](#zip-utilities)
 - [URI Utilities](#uri-utilities)
+- [UUID Utilities](#uuid-utilities)
 - [Error Classes](#error-classes)
 - [Image Utilities](#image-utilities)
+
+---
+
+## Security Features
+
+The core package includes several security features to protect against common attacks:
+
+### ZIP Bomb Protection (Preflight)
+
+Validates ZIP archives before extraction by reading central directory metadata:
+
+```typescript
+import { preflightZipSizes, ZipPreflightError, DEFAULT_ZIP_LIMITS } from '@character-foundry/core';
+
+try {
+  const result = preflightZipSizes(zipData, {
+    maxFileSize: 50 * 1024 * 1024,   // 50MB per file
+    maxTotalSize: 200 * 1024 * 1024, // 200MB total
+    maxFiles: 1000,
+  });
+
+  console.log(`Files: ${result.fileCount}`);
+  console.log(`Total uncompressed: ${result.totalUncompressedSize} bytes`);
+
+  // Now safe to extract
+} catch (err) {
+  if (err instanceof ZipPreflightError) {
+    console.error('Zip bomb detected:', err.message);
+    // err.totalSize, err.maxSize, err.oversizedEntry available
+  }
+}
+```
+
+### Path Traversal Prevention
+
+Validates file paths before extraction:
+
+```typescript
+import { isPathSafe, PathTraversalError } from '@character-foundry/core';
+
+// Safe paths
+isPathSafe('Characters/abc/data.json');  // true
+isPathSafe('assets/image.png');           // true
+
+// Dangerous paths
+isPathSafe('../../../etc/passwd');        // false
+isPathSafe('/etc/passwd');                // false
+isPathSafe('C:\\Windows\\System32');      // false
+isPathSafe('folder\\..\\folder');         // false
+```
+
+### Secure UUID Generation
+
+Cryptographically secure UUIDs with graceful fallback:
+
+```typescript
+import { generateUUID, isValidUUID } from '@character-foundry/core';
+
+const id = generateUUID();
+// Uses crypto.randomUUID() when available (Node.js 19+, modern browsers)
+// Falls back to crypto.getRandomValues() if needed
+// Last resort: Math.random() with dev warning
+
+isValidUUID('550e8400-e29b-41d4-a716-446655440000'); // true
+isValidUUID('not-a-uuid');                           // false
+```
+
+### Data URL Validation
+
+Safe parsing of data URLs with size limits:
+
+```typescript
+import { fromDataURL, toDataURL, isDataURL } from '@character-foundry/core';
+
+// Validate before parsing
+if (isDataURL(input)) {
+  const { buffer, mimeType } = fromDataURL(input);
+}
+
+// Create data URLs safely
+const dataUrl = toDataURL(imageBuffer, 'image/png');
+```
 
 ---
 
@@ -130,9 +215,35 @@ const fromUrlSafe = base64DecodeUrlSafe(urlSafe);
 
 ---
 
+## Data URL Utilities
+
+Convert between Uint8Array buffers and data URLs with safe handling of large files.
+
+```typescript
+import { toDataURL, fromDataURL, isDataURL } from '@character-foundry/core';
+
+// Create data URL from buffer
+const dataUrl = toDataURL(pngBuffer, 'image/png');
+// 'data:image/png;base64,iVBOR...'
+
+// Parse data URL back to buffer
+const { buffer, mimeType } = fromDataURL(dataUrl);
+// buffer: Uint8Array
+// mimeType: 'image/png'
+
+// Check if string is a valid data URL
+if (isDataURL(input)) {
+  // Safe to parse
+}
+```
+
+**Note:** `toDataURL` handles large buffers (>10MB) without stack overflow by processing in chunks.
+
+---
+
 ## ZIP Utilities
 
-ZIP file detection, validation, and path safety checks.
+ZIP file detection, validation, path safety, and preflight checks.
 
 ### Constants
 
@@ -141,7 +252,13 @@ import { ZIP_SIGNATURE, JPEG_SIGNATURE, DEFAULT_ZIP_LIMITS } from '@character-fo
 
 // ZIP_SIGNATURE = [0x50, 0x4b, 0x03, 0x04] (PK..)
 // JPEG_SIGNATURE = [0xff, 0xd8, 0xff]
-// DEFAULT_ZIP_LIMITS = { maxTotalSize: 50MB, maxFileSize: 50MB, maxFiles: 1000 }
+
+// DEFAULT_ZIP_LIMITS:
+// {
+//   maxFileSize: 50 * 1024 * 1024,   // 50MB per file
+//   maxTotalSize: 200 * 1024 * 1024, // 200MB total
+//   maxFiles: 1000
+// }
 ```
 
 ### Detection Functions
@@ -204,9 +321,45 @@ interface ZipSizeLimits {
 }
 
 // DEFAULT_ZIP_LIMITS:
-// - maxTotalSize: 52,428,800 (50 MB)
 // - maxFileSize: 52,428,800 (50 MB)
+// - maxTotalSize: 209,715,200 (200 MB)
 // - maxFiles: 1000
+```
+
+### Preflight Check (ZIP Bomb Protection)
+
+Read ZIP central directory to validate sizes BEFORE extraction:
+
+```typescript
+import {
+  preflightZipSizes,
+  ZipPreflightError,
+  DEFAULT_ZIP_LIMITS,
+  type ZipPreflightResult,
+  type ZipCentralDirEntry,
+} from '@character-foundry/core';
+
+try {
+  const result = preflightZipSizes(zipData, DEFAULT_ZIP_LIMITS);
+
+  // result.entries: ZipCentralDirEntry[]
+  // result.totalUncompressedSize: number
+  // result.fileCount: number
+
+  for (const entry of result.entries) {
+    console.log(`${entry.fileName}: ${entry.uncompressedSize} bytes`);
+  }
+
+  // Now safe to decompress
+} catch (err) {
+  if (err instanceof ZipPreflightError) {
+    // Potential zip bomb or oversized file detected
+    console.error(err.message);
+    console.error('Total size:', err.totalSize);
+    console.error('Max size:', err.maxSize);
+    console.error('Oversized entry:', err.oversizedEntry);
+  }
+}
 ```
 
 ---
@@ -282,6 +435,31 @@ import { isURISafe } from '@character-foundry/core';
 // Check if URI is safe (no javascript:, file://, etc.)
 if (isURISafe(uri)) { ... }
 ```
+
+---
+
+## UUID Utilities
+
+Cryptographically secure UUID v4 generation.
+
+```typescript
+import { generateUUID, isValidUUID } from '@character-foundry/core';
+
+// Generate secure UUID
+const id = generateUUID();
+// '550e8400-e29b-41d4-a716-446655440000'
+
+// Validate UUID format
+isValidUUID('550e8400-e29b-41d4-a716-446655440000');  // true
+isValidUUID('not-a-uuid');                           // false
+isValidUUID('550e8400-e29b-41d4-0716-446655440000'); // false (wrong variant)
+```
+
+### Implementation Priority
+
+1. **`crypto.randomUUID()`** - Node.js 19+, modern browsers in secure contexts
+2. **`crypto.getRandomValues()`** - Older Node.js, browsers without randomUUID
+3. **`Math.random()`** - Fallback, emits warning in development
 
 ---
 
