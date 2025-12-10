@@ -21,6 +21,49 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@20.19.25)
 
+  packages/character-foundry:
+    dependencies:
+      '@character-foundry/charx':
+        specifier: workspace:*
+        version: link:../charx
+      '@character-foundry/core':
+        specifier: workspace:*
+        version: link:../core
+      '@character-foundry/exporter':
+        specifier: workspace:*
+        version: link:../exporter
+      '@character-foundry/federation':
+        specifier: workspace:*
+        version: link:../federation
+      '@character-foundry/loader':
+        specifier: workspace:*
+        version: link:../loader
+      '@character-foundry/lorebook':
+        specifier: workspace:*
+        version: link:../lorebook
+      '@character-foundry/media':
+        specifier: workspace:*
+        version: link:../media
+      '@character-foundry/normalizer':
+        specifier: workspace:*
+        version: link:../normalizer
+      '@character-foundry/png':
+        specifier: workspace:*
+        version: link:../png
+      '@character-foundry/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      '@character-foundry/tokenizers':
+        specifier: workspace:*
+        version: link:../tokenizers
+      '@character-foundry/voxta':
+        specifier: workspace:*
+        version: link:../voxta
+    devDependencies:
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   packages/charx:
     dependencies:
       '@character-foundry/core':

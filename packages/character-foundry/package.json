@@ -1,0 +1,88 @@
+{
+  "name": "@character-foundry/character-foundry",
+  "version": "0.1.0",
+  "description": "Universal TypeScript library for AI character card formats - meta package",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./core": {
+      "import": "@character-foundry/core",
+      "types": "@character-foundry/core"
+    },
+    "./schemas": {
+      "import": "@character-foundry/schemas",
+      "types": "@character-foundry/schemas"
+    },
+    "./png": {
+      "import": "@character-foundry/png",
+      "types": "@character-foundry/png"
+    },
+    "./charx": {
+      "import": "@character-foundry/charx",
+      "types": "@character-foundry/charx"
+    },
+    "./voxta": {
+      "import": "@character-foundry/voxta",
+      "types": "@character-foundry/voxta"
+    },
+    "./lorebook": {
+      "import": "@character-foundry/lorebook",
+      "types": "@character-foundry/lorebook"
+    },
+    "./loader": {
+      "import": "@character-foundry/loader",
+      "types": "@character-foundry/loader"
+    },
+    "./exporter": {
+      "import": "@character-foundry/exporter",
+      "types": "@character-foundry/exporter"
+    },
+    "./normalizer": {
+      "import": "@character-foundry/normalizer",
+      "types": "@character-foundry/normalizer"
+    },
+    "./tokenizers": {
+      "import": "@character-foundry/tokenizers",
+      "types": "@character-foundry/tokenizers"
+    },
+    "./media": {
+      "import": "@character-foundry/media",
+      "types": "@character-foundry/media"
+    },
+    "./federation": {
+      "import": "@character-foundry/federation",
+      "types": "@character-foundry/federation"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@character-foundry/core": "workspace:*",
+    "@character-foundry/schemas": "workspace:*",
+    "@character-foundry/png": "workspace:*",
+    "@character-foundry/charx": "workspace:*",
+    "@character-foundry/voxta": "workspace:*",
+    "@character-foundry/lorebook": "workspace:*",
+    "@character-foundry/loader": "workspace:*",
+    "@character-foundry/exporter": "workspace:*",
+    "@character-foundry/normalizer": "workspace:*",
+    "@character-foundry/tokenizers": "workspace:*",
+    "@character-foundry/media": "workspace:*",
+    "@character-foundry/federation": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  }
+}

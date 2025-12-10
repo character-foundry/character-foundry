@@ -110,6 +110,7 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 
 | Package | Version |
 |---------|---------|
+| `@character-foundry/character-foundry` | 0.1.0 |
 | `@character-foundry/core` | 0.0.2 |
 | `@character-foundry/schemas` | 0.1.0 |
 | `@character-foundry/png` | 0.0.3 |

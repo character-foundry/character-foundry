@@ -30,6 +30,7 @@ const pngBuffer = exportCard(card, assets, { format: 'png' });
 
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
+| **`@character-foundry/character-foundry`** | **0.1.0** | **Meta package - installs everything** | - |
 | `@character-foundry/core` | 0.0.2 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
 | `@character-foundry/schemas` | 0.1.0 | CCv2, CCv3, Voxta types + detection + CardNormalizer | [docs/schemas.md](docs/schemas.md) |
 | `@character-foundry/png` | 0.0.3 | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
@@ -52,7 +53,13 @@ Packages are published to **GitHub Packages**. Configure your `.npmrc`:
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-Then install:
+Then install everything:
+
+```bash
+pnpm add @character-foundry/character-foundry
+```
+
+Or install individual packages:
 
 ```bash
 pnpm add @character-foundry/loader @character-foundry/exporter
