@@ -30,17 +30,18 @@ const pngBuffer = exportCard(card, assets, { format: 'png' });
 
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
-| `@character-foundry/core` | 0.0.1 | Binary utilities, base64, ZIP, URI parsing | [docs/core.md](docs/core.md) |
-| `@character-foundry/schemas` | 0.0.1 | CCv2, CCv3, Voxta types + detection | [docs/schemas.md](docs/schemas.md) |
-| `@character-foundry/png` | 0.0.2 | PNG chunk handling, metadata stripping | [docs/png.md](docs/png.md) |
-| `@character-foundry/charx` | 0.0.2 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
-| `@character-foundry/voxta` | 0.1.0 | Voxta packages, merge utilities | [docs/voxta.md](docs/voxta.md) |
+| `@character-foundry/core` | 0.0.2 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
+| `@character-foundry/schemas` | 0.1.0 | CCv2, CCv3, Voxta types + detection + CardNormalizer | [docs/schemas.md](docs/schemas.md) |
+| `@character-foundry/png` | 0.0.3 | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
+| `@character-foundry/charx` | 0.0.3 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
+| `@character-foundry/voxta` | 0.1.6 | Voxta packages, multi-character, scenarios, merge utilities | [docs/voxta.md](docs/voxta.md) |
 | `@character-foundry/lorebook` | 0.0.1 | Lorebook parsing, extraction, insertion | [docs/lorebook.md](docs/lorebook.md) |
-| `@character-foundry/loader` | 0.1.2 | Universal `parseCard()` with format detection | [docs/loader.md](docs/loader.md) |
-| `@character-foundry/exporter` | 0.1.0 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
+| `@character-foundry/loader` | 0.1.6 | Universal `parseCard()` with format detection + metadata validation | [docs/loader.md](docs/loader.md) |
+| `@character-foundry/exporter` | 0.1.1 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
 | `@character-foundry/normalizer` | 0.1.0 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
-| `@character-foundry/tokenizers` | 0.0.1 | GPT-4/LLaMA token counting | [docs/tokenizers.md](docs/tokenizers.md) |
-| `@character-foundry/federation` | 0.1.1 | ActivityPub federation (experimental) | [docs/federation.md](docs/federation.md) |
+| `@character-foundry/tokenizers` | 0.1.0 | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
+| `@character-foundry/media` | 0.1.0 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
+| `@character-foundry/federation` | 0.1.5 | ActivityPub federation + HTTP signatures + D1 store (experimental) | [docs/federation.md](docs/federation.md) |
 
 ## Installation
 
@@ -176,6 +177,7 @@ Detailed documentation for each package:
 - **[Exporter](docs/exporter.md)** - Universal export with loss detection
 - **[Normalizer](docs/normalizer.md)** - V2 ↔ V3 ↔ NormalizedCard conversion
 - **[Tokenizers](docs/tokenizers.md)** - GPT-4/LLaMA token counting
+- **[Media](docs/media.md)** - Image format detection, dimensions, thumbnails
 - **[Federation](docs/federation.md)** - ActivityPub federation (experimental)
 
 ## Development
@@ -196,7 +198,11 @@ pnpm typecheck
 
 ## Security
 
+- **ZIP preflight** - Validates uncompressed sizes before decompression (zip bomb protection)
+- **PNG inflate cap** - Limits zTXt/iTXt decompression to 50MB
 - **50MB per-asset limit** enforced across all parsers
+- **Secure UUID** - crypto.randomUUID() with fallback for non-secure contexts
+- **Data URL validation** - Safe parsing with size limits
 - **Federation gated** - must call `enableFederation()` explicitly
 - **Size checks** before base64 decode to prevent memory exhaustion
 - **Path traversal protection** in ZIP extraction
