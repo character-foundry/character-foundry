@@ -7,7 +7,7 @@ Universal TypeScript library for reading, writing, and converting AI character c
 ```
 packages/
   core/       - Binary utilities, base64, ZIP, URI parsing, UUID, data URLs, security
-  schemas/    - CCv2, CCv3, Voxta types + format detection
+  schemas/    - CCv2, CCv3, Voxta types + format detection + CardNormalizer
   png/        - PNG chunk handling, metadata stripping, inflate protection
   charx/      - CharX reader/writer, JPEG+ZIP hybrid support
   voxta/      - Voxta packages, multi-character, scenarios, merge utilities
@@ -15,8 +15,9 @@ packages/
   loader/     - Universal parseCard() with format detection
   exporter/   - Universal exportCard() with loss reporting
   normalizer/ - V2 ↔ V3 ↔ NormalizedCard conversion
-  tokenizers/ - GPT-4/LLaMA token counting
-  federation/ - ActivityPub federation (experimental, gated)
+  tokenizers/ - GPT-4/LLaMA token counting + card field counting
+  media/      - Image format detection, dimensions, thumbnail generation
+  federation/ - ActivityPub federation + HTTP signatures (experimental, gated)
 ```
 
 ## Commands
@@ -61,7 +62,8 @@ Full round-trip editing with delta-based updates:
 
 - #3 - Validate RisuAI CharX against SillyTavern
 - #5 - CI: Add end-to-end tests
-- #7-#13 - Feature enhancements (see GitHub)
+- #10 - D1SyncStateStore for Cloudflare federation
+- #13 - Server-side metadata validation
 
 ## Publishing
 
