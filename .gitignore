@@ -33,6 +33,7 @@ coverage/
 
 # Agent Context & Session State
 AGENTS.md
-SESSION-STATE.md.test_cards/
-docs/internal/
+SESSION-STATE.md
+@CLAUDE.md
 .test_cards/
+docs/internal/

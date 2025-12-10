@@ -1,0 +1,9 @@
+# Claudeignore - files Claude Code should ignore
+# Note: CLAUDE.md is NOT ignored - it provides project context
+
+node_modules/
+dist/
+.turbo/
+coverage/
+*.log
+.test_cards/
