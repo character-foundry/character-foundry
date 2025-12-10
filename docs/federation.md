@@ -1,6 +1,18 @@
 # Federation Package Documentation
 
+**Package:** `@character-foundry/federation`
+**Version:** 0.1.5
+**Environment:** Node.js, Browser, and Cloudflare Workers
+
 The `@character-foundry/federation` package provides experimental ActivityPub-based federation for syncing character cards across platforms.
+
+## Features
+
+- **ActivityPub** - Object creation, activity types, WebFinger, NodeInfo
+- **SyncEngine** - Manages card synchronization across platforms
+- **State stores** - `MemorySyncStateStore`, `FileSyncStateStore`, `D1SyncStateStore` (Cloudflare D1)
+- **HTTP Signatures** - Full signing/verification using Web Crypto API
+- **Platform adapters** - Memory, HTTP, SillyTavern, Archive, Hub
 
 ## Table of Contents
 

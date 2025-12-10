@@ -1,6 +1,20 @@
 # Voxta Package Documentation
 
+**Package:** `@character-foundry/voxta`
+**Version:** 0.1.6
+**Environment:** Node.js and Browser
+
 The `@character-foundry/voxta` package handles reading, writing, and editing Voxta package files (`.voxpkg`) - a multi-character container format with support for memory books, scenarios, and rich assets.
+
+## Features
+
+- Full Voxta package reading and writing
+- `VoxtaCharacter` with `AlternativeFirstMessages` (maps to CCv3 `alternate_greetings`)
+- `VoxtaBook` and `VoxtaScenario` support
+- **Delta-based editing** - `mergeCharacterEdits()`, `applyVoxtaDeltas()`
+- **Package utilities** - `extractCharacterPackage()`, `addCharacterToPackage()`
+- **Macro conversion** - `voxtaToStandard()`, `standardToVoxta()`
+- Export type detection: `'package'` | `'scenario'` | `'character'`
 
 ## Table of Contents
 

@@ -1,5 +1,9 @@
 # Schemas Package Documentation
 
+**Package:** `@character-foundry/schemas`
+**Version:** 0.1.0
+**Environment:** Node.js and Browser
+
 The `@character-foundry/schemas` package provides TypeScript type definitions and detection utilities for character card formats (CCv2, CCv3, Voxta, Risu extensions).
 
 ## Table of Contents

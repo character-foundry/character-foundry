@@ -1,6 +1,18 @@
 # Loader Package Documentation
 
+**Package:** `@character-foundry/loader`
+**Version:** 0.1.6
+**Environment:** Node.js and Browser
+
 The `@character-foundry/loader` package provides universal character card loading with automatic format detection. It handles PNG, CharX, Voxta, and raw JSON formats.
+
+## Features
+
+- **Universal loading** - `parseCard()` handles any supported format
+- Automatic format detection (PNG, CharX, Voxta, JSON)
+- Normalization to CCv3 format
+- **Server-side metadata validation** - `validateClientMetadata()`, `computeContentHash()`
+- Optimistic UI support with authoritative server validation
 
 ## Table of Contents
 

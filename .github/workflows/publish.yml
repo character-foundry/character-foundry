@@ -13,7 +13,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - uses: actions/checkout@v4
       
@@ -25,6 +24,7 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
+          scope: '@character-foundry'
           
       - name: Install Dependencies
         run: pnpm install
@@ -35,4 +35,4 @@ jobs:
       - name: Publish to GitHub Packages
         run: pnpm publish -r --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_PACKAGES_RW }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

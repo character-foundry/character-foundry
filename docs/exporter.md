@@ -1,6 +1,17 @@
 # Exporter Package Documentation
 
+**Package:** `@character-foundry/exporter`
+**Version:** 0.1.1
+**Environment:** Node.js and Browser
+
 The `@character-foundry/exporter` package provides universal character card exporting with format conversion and loss detection.
+
+## Features
+
+- **Universal export** - `exportCard()` to PNG, CharX, or Voxta
+- **Loss detection** - `checkExportLoss()` before format conversion
+- Format-specific exporters for fine-grained control
+- Async and sync variants for all operations
 
 ## Table of Contents
 
