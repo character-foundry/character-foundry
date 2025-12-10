@@ -24,9 +24,34 @@ packages/
 
 ```bash
 pnpm install     # Install dependencies
-pnpm build       # Build all packages
+pnpm build       # Build all packages (tsup: ESM + CJS)
 pnpm test        # Run all tests
 pnpm typecheck   # TypeScript check
+```
+
+## Build Requirements
+
+**CRITICAL: All packages MUST support both ESM and CommonJS (browser + Node.js)**
+
+- All packages use `tsup` for dual ESM/CJS builds
+- Package exports must include both `import` and `require` conditions
+- tsup.config.ts in each package with `format: ['esm', 'cjs']`
+- DO NOT change build to tsc-only - it breaks CJS consumers
+- DO NOT remove `require` exports - it breaks Node.js CommonJS users
+
+Example package.json exports (REQUIRED pattern):
+```json
+{
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+    }
+  }
+}
 ```
 
 ## Key Concepts
@@ -95,33 +120,42 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 
 **FOLLOW THIS EVERY TIME before pushing version bumps:**
 
-1. [ ] `pnpm build` - Ensure all packages build
+1. [ ] `pnpm build` - Ensure all packages build with tsup (ESM + CJS)
 2. [ ] `pnpm test` - Ensure all tests pass
-3. [ ] Check dependency chain - if bumping core/schemas, bump ALL packages that depend on them:
+3. [ ] **REGRESSION TEST** - Verify ESM AND CJS imports work:
+   ```bash
+   # Test ESM import
+   node --input-type=module -e "import('@character-foundry/loader').then(m => console.log('ESM OK:', Object.keys(m)))"
+   # Test CJS require
+   node -e "console.log('CJS OK:', Object.keys(require('@character-foundry/loader')))"
+   ```
+4. [ ] Check dependency chain - if bumping core/schemas, bump ALL dependent packages:
    - `core` → schemas, png, charx, voxta, lorebook, loader, exporter, normalizer, federation
    - `schemas` → png, charx, voxta, lorebook, loader, exporter, normalizer, federation
-4. [ ] Update version table below
-5. [ ] Update README.md package versions table
-6. [ ] `git push origin master` - Triggers publish workflow
-7. [ ] Verify workflow succeeds in GitHub Actions
-8. [ ] If workflow fails, check `NPM_TOKEN` secret and fix WITHOUT changing to `GITHUB_TOKEN`
+5. [ ] Verify package.json has BOTH `import` AND `require` exports (see Build Requirements)
+6. [ ] Update version table below
+7. [ ] Update README.md package versions table
+8. [ ] `git push origin master` - Triggers publish workflow
+9. [ ] Verify workflow succeeds in GitHub Actions
+10. [ ] If workflow fails, check `NPM_TOKEN` secret and fix WITHOUT changing to `GITHUB_TOKEN`
 
 ### Published Versions
 
 | Package | Version |
 |---------|---------|
-| `@character-foundry/character-foundry` | 0.1.0 |
-| `@character-foundry/core` | 0.0.2 |
-| `@character-foundry/schemas` | 0.1.0 |
-| `@character-foundry/png` | 0.0.3 |
-| `@character-foundry/charx` | 0.0.3 |
-| `@character-foundry/exporter` | 0.1.1 |
-| `@character-foundry/normalizer` | 0.1.1 |
-| `@character-foundry/voxta` | 0.1.6 |
-| `@character-foundry/loader` | 0.1.6 |
-| `@character-foundry/federation` | 0.1.5 |
-| `@character-foundry/media` | 0.1.0 |
-| `@character-foundry/tokenizers` | 0.1.0 |
+| `@character-foundry/character-foundry` | 0.1.1 |
+| `@character-foundry/core` | 0.0.3 |
+| `@character-foundry/schemas` | 0.1.1 |
+| `@character-foundry/png` | 0.0.4 |
+| `@character-foundry/charx` | 0.0.4 |
+| `@character-foundry/exporter` | 0.1.2 |
+| `@character-foundry/normalizer` | 0.1.2 |
+| `@character-foundry/lorebook` | 0.0.2 |
+| `@character-foundry/voxta` | 0.1.7 |
+| `@character-foundry/loader` | 0.1.7 |
+| `@character-foundry/federation` | 0.1.6 |
+| `@character-foundry/media` | 0.1.1 |
+| `@character-foundry/tokenizers` | 0.1.1 |
 
 ## Docs
 

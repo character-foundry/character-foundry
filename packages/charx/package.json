@@ -1,19 +1,25 @@
 {
   "name": "@character-foundry/charx",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "CharX format reader and writer",
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -25,11 +31,15 @@
     "fflate": "^0.8.0"
   },
   "devDependencies": {
+    "tsup": "^8.5.1",
     "typescript": "^5.3.0",
     "vitest": "^2.0.0"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "public"
-  }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }

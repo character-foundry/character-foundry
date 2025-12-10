@@ -1,36 +1,42 @@
 {
   "name": "@character-foundry/exporter",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Universal character card exporter - export to PNG, CharX, or Voxta formats",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@character-foundry/core": "workspace:*",
-    "@character-foundry/schemas": "workspace:*",
-    "@character-foundry/png": "workspace:*",
     "@character-foundry/charx": "workspace:*",
+    "@character-foundry/core": "workspace:*",
+    "@character-foundry/png": "workspace:*",
+    "@character-foundry/schemas": "workspace:*",
     "@character-foundry/voxta": "workspace:*"
   },
   "devDependencies": {
     "fflate": "^0.8.1",
+    "tsup": "^8.5.1",
     "typescript": "^5.3.0",
     "vitest": "^1.0.0"
   },
@@ -47,5 +53,6 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "public"
-  }
+  },
+  "module": "./dist/index.js"
 }

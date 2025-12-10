@@ -1,24 +1,27 @@
 {
   "name": "@character-foundry/federation",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Federation layer for syncing character cards across platforms via ActivityPub",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -26,11 +29,12 @@
   },
   "dependencies": {
     "@character-foundry/core": "workspace:*",
-    "@character-foundry/schemas": "workspace:*",
+    "@character-foundry/exporter": "workspace:*",
     "@character-foundry/loader": "workspace:*",
-    "@character-foundry/exporter": "workspace:*"
+    "@character-foundry/schemas": "workspace:*"
   },
   "devDependencies": {
+    "tsup": "^8.5.1",
     "typescript": "^5.3.0",
     "vitest": "^1.0.0"
   },
@@ -47,5 +51,6 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "public"
-  }
+  },
+  "module": "./dist/index.js"
 }
