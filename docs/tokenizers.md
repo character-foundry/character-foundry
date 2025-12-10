@@ -350,9 +350,61 @@ function analyzeLorebookTokens(
 
 ---
 
+## Card Token Counting
+
+Built-in utilities for counting tokens across all card fields.
+
+```typescript
+import { countCardTokens, countText } from '@character-foundry/tokenizers';
+
+// Count all card fields
+const counts = countCardTokens(card);
+// {
+//   description: 150,
+//   personality: 80,
+//   scenario: 45,
+//   firstMes: 200,
+//   mesExample: 300,
+//   systemPrompt: 50,
+//   postHistoryInstructions: 30,
+//   creatorNotes: 25,
+//   alternateGreetings: 180,
+//   lorebook: 500,
+//   total: 1560
+// }
+
+// With custom tokenizer
+const llamaCounts = countCardTokens(card, { tokenizerId: 'llama' });
+
+// Simple text counting
+const tokens = countText('Hello, world!'); // Uses default (gpt-4)
+const llamaTokens = countText('Hello, world!', 'llama');
+```
+
+### CardTokenCounts Interface
+
+```typescript
+interface CardTokenCounts {
+  description: number;
+  personality: number;
+  scenario: number;
+  firstMes: number;
+  mesExample: number;
+  systemPrompt: number;
+  postHistoryInstructions: number;
+  creatorNotes: number;
+  alternateGreetings: number;
+  lorebook: number;
+  total: number;
+}
+```
+
+---
+
 ## Performance Tips
 
 1. **Use `countMany()`** for batches - more efficient than looping
 2. **Cache tokenizer instances** - avoid repeated `registry.get()`
 3. **Use simple tokenizer** for real-time UI updates
 4. **Use GPT-4 tokenizer** for final validation
+5. **Use `countCardTokens()`** for full card analysis

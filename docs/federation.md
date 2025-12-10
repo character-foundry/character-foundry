@@ -500,6 +500,88 @@ engine.on('*', listener);
 
 ---
 
+## HTTP Signatures
+
+Full HTTP signature support using Web Crypto API (works in Node.js, browsers, and Cloudflare Workers).
+
+### Sign Outgoing Requests
+
+```typescript
+import { signRequest, calculateDigest } from '@character-foundry/federation';
+
+const body = JSON.stringify(activity);
+const digest = await calculateDigest(body);
+
+const { signature, date } = await signRequest({
+  privateKeyPem: PRIVATE_KEY,
+  keyId: 'https://example.com/actor#main-key',
+  method: 'POST',
+  path: '/inbox',
+  host: 'remote.example.com',
+  digest,
+  contentType: 'application/activity+json',
+});
+
+// Add headers to request
+headers.set('Signature', signature);
+headers.set('Date', date);
+headers.set('Digest', digest);
+```
+
+### Verify Incoming Requests
+
+```typescript
+import {
+  parseSignatureHeader,
+  verifyHttpSignature,
+  validateActivitySignature,
+} from '@character-foundry/federation';
+
+// Low-level verification
+const parsed = parseSignatureHeader(request.headers.get('Signature')!);
+const valid = await verifyHttpSignature(
+  parsed,
+  actor.publicKey.publicKeyPem,
+  'POST',
+  '/inbox',
+  request.headers
+);
+
+// High-level validation (fetches actor, checks date, validates)
+const result = await validateActivitySignature(activity, request.headers, {
+  method: 'POST',
+  path: '/inbox',
+  fetchActor: async (id) => fetchActorFromRemote(id),
+  maxAge: 300, // 5 minutes
+});
+
+if (result.valid) {
+  console.log(`Verified activity from ${result.actor.id}`);
+} else {
+  console.error(`Signature invalid: ${result.error}`);
+}
+```
+
+### Signature Types
+
+```typescript
+interface ParsedSignature {
+  keyId: string;      // Actor key ID
+  algorithm: string;  // 'rsa-sha256' or 'hs2019'
+  headers: string[];  // Headers included in signature
+  signature: string;  // Base64 signature
+}
+
+interface SignatureValidationResult {
+  valid: boolean;
+  error?: string;
+  actor?: FederatedActor;
+  keyId?: string;
+}
+```
+
+---
+
 ## Implementation Status
 
 | Feature | Status |
@@ -508,7 +590,7 @@ engine.on('*', listener);
 | WebFinger handler | ✅ Implemented |
 | NodeInfo handler | ✅ Implemented |
 | Actor endpoint | ✅ Implemented |
-| HTTP Signatures | ❌ Stub only |
+| HTTP Signatures | ✅ Implemented (Web Crypto) |
 | Inbox handling | ❌ Stub only |
 | Following/Followers | ❌ Not implemented |
 | Boost/Like | ✅ Activity creation only |
@@ -517,7 +599,7 @@ engine.on('*', listener);
 
 ## Future Work
 
-1. **HTTP Signatures** - Verify incoming requests
+1. **D1 State Store** - Cloudflare D1 persistence (#10)
 2. **Inbox processing** - Handle incoming activities
 3. **Following** - Subscribe to remote actors
 4. **Discovery** - Find characters on other instances

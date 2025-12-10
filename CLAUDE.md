@@ -71,6 +71,20 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 
 Current security prerelease branch: `security/phase-0-1-security-and-core`
 
+### Published Versions (security prerelease)
+
+| Package | Version |
+|---------|---------|
+| `@character-foundry/core` | 0.0.2-security.0 |
+| `@character-foundry/schemas` | 0.1.0-security.0 |
+| `@character-foundry/png` | 0.0.3-security.0 |
+| `@character-foundry/charx` | 0.0.3-security.0 |
+| `@character-foundry/voxta` | 0.1.5-security.0 |
+| `@character-foundry/loader` | 0.1.5-security.0 |
+| `@character-foundry/federation` | 0.1.3-security.0 |
+| `@character-foundry/media` | 0.1.0-security.0 |
+| `@character-foundry/tokenizers` | 0.1.0-security.0 |
+
 ## Docs
 
 See `docs/` for detailed documentation per package.

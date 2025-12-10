@@ -409,6 +409,8 @@ const features = createEmptyFeatures();
 
 Detect card format from raw data.
 
+### Basic Detection
+
 ```typescript
 import { detectSpec, hasLorebook, looksLikeCard } from '@character-foundry/schemas';
 
@@ -426,6 +428,58 @@ if (looksLikeCard(obj)) {
   // Has name, description, first_mes, etc.
 }
 ```
+
+### Detailed Detection
+
+For more information about why a format was detected:
+
+```typescript
+import { detectSpecDetailed } from '@character-foundry/schemas';
+
+const result = detectSpecDetailed(json);
+// {
+//   spec: 'chara_card_v3',
+//   confidence: 'high',
+//   indicators: ['Has spec field', 'Has V3-only fields: assets, creation_date'],
+//   warnings: []
+// }
+
+// Confidence levels:
+// - 'high': Explicit spec field or multiple V3-only fields
+// - 'medium': Implicit detection from structure
+// - 'low': Minimal indicators, could be ambiguous
+```
+
+---
+
+## CardNormalizer
+
+Fix malformed card data from various sources (ChubAI, CharacterTavern, etc.).
+
+```typescript
+import { CardNormalizer } from '@character-foundry/schemas';
+
+// Auto-detect and normalize
+const normalized = CardNormalizer.autoNormalize(malformedData);
+
+// Normalize to specific version
+const v3Card = CardNormalizer.normalize(data, 'v3');
+const v2Card = CardNormalizer.normalize(data, 'v2');
+
+// Fix lorebook entries
+const fixedBook = CardNormalizer.normalizeCharacterBook(book, 'v3');
+
+// Fix timestamps (CharacterTavern uses seconds instead of ISO8601)
+const fixedCard = CardNormalizer.fixTimestamps(card);
+```
+
+### What CardNormalizer Fixes
+
+- **ChubAI hybrid format**: Merges `data.data` nesting
+- **CharacterTavern timestamps**: Converts Unix seconds to ISO8601
+- **Numeric position**: Converts `0`/`1` to `'before_char'`/`'after_char'`
+- **V3 fields in V2**: Moves `assets`, `creation_date` to extensions
+- **Missing extensions**: Ensures `extensions` object exists
 
 ---
 
