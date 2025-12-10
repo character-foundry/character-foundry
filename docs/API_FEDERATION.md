@@ -1,5 +1,7 @@
 # CardsHub Federation API
 
+**Related Package:** `@character-foundry/federation` (v0.1.5)
+
 This document details the ActivityPub-compatible federation routes implemented in `@character-foundry/federation`. These routes allow Character Cards to be discovered, exchanged, and synchronized across platforms (e.g., CardsHub, SillyTavern, Character Archive).
 
 ## Discovery Routes

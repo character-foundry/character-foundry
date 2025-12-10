@@ -1,5 +1,8 @@
 # Normalizer Package Documentation
 
+**Package:** `@character-foundry/normalizer`
+**Environment:** Node.js and Browser
+
 The `@character-foundry/normalizer` package handles conversion between character card formats: CCv2, CCv3, and NormalizedCard.
 
 ## Table of Contents

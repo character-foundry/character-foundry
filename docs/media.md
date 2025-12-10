@@ -1,6 +1,17 @@
 # Media Package Documentation
 
+**Package:** `@character-foundry/media`
+**Version:** 0.1.0
+**Environment:** Node.js and Browser
+
 The `@character-foundry/media` package provides image processing utilities for character cards - format detection, dimension parsing, and thumbnail generation.
+
+## Features
+
+- **Image format detection** - Detect PNG, JPEG, GIF, WebP, AVIF, BMP from magic bytes
+- **Image dimensions extraction** - Parse width/height without full decode
+- **Thumbnail generation** - Create previews for character avatars
+- Cross-platform support (Node.js uses `sharp`, browser uses Canvas API)
 
 ## Table of Contents
 

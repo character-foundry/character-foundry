@@ -1,5 +1,8 @@
 # Lorebook Package Documentation
 
+**Package:** `@character-foundry/lorebook`
+**Environment:** Node.js and Browser
+
 The `@character-foundry/lorebook` package provides primitives for parsing, extracting, and managing lorebooks (also known as world info or memory books) across different AI character card formats.
 
 ## Table of Contents
