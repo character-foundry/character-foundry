@@ -12,12 +12,12 @@ packages/
   charx/      - CharX reader/writer, JPEG+ZIP hybrid support
   voxta/      - Voxta packages, multi-character, scenarios, merge utilities
   lorebook/   - Lorebook parsing, extraction, insertion, format conversion
-  loader/     - Universal parseCard() with format detection
+  loader/     - Universal parseCard() with format detection + metadata validation
   exporter/   - Universal exportCard() with loss reporting
   normalizer/ - V2 ↔ V3 ↔ NormalizedCard conversion
   tokenizers/ - GPT-4/LLaMA token counting + card field counting
   media/      - Image format detection, dimensions, thumbnail generation
-  federation/ - ActivityPub federation + HTTP signatures (experimental, gated)
+  federation/ - ActivityPub federation + HTTP signatures + D1 store (experimental, gated)
 ```
 
 ## Commands
@@ -58,12 +58,28 @@ Full round-trip editing with delta-based updates:
 
 `.test_cards/` contains real voxpkg files for manual testing (gitignored).
 
+## Federation Storage
+
+D1SyncStateStore for Cloudflare Workers production deployment:
+- `D1SyncStateStore` - SQLite-based sync state storage for Cloudflare D1
+- `init()` - Creates table schema (idempotent)
+- `findByLocalId()` / `findByPlatformId()` - Lookup helpers
+- `listByStatus()` - Filter states by sync status
+- `count()` / `clear()` - Utilities for management
+
+## Server-side Validation
+
+Metadata validation for optimistic UI with server authority:
+- `validateClientMetadata()` - Validates client metadata against parsed card
+- `computeContentHash()` - SHA-256 content hash for deduplication
+- Token tolerance configuration (default 5%)
+- Tag validation callback support
+- Returns authoritative values + discrepancies
+
 ## Open Issues
 
 - #3 - Validate RisuAI CharX against SillyTavern
 - #5 - CI: Add end-to-end tests
-- #10 - D1SyncStateStore for Cloudflare federation
-- #13 - Server-side metadata validation
 
 ## Publishing
 

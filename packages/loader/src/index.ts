@@ -25,3 +25,18 @@ export {
   parseCardAsync,
   getContainerFormat,
 } from './loader.js';
+
+// Metadata validation
+export {
+  validateClientMetadata,
+  validateClientMetadataSync,
+  computeContentHash,
+  type ClientMetadata,
+  type TokenCounts,
+  type MetadataDiscrepancy,
+  type AuthoritativeMetadata,
+  type ValidationResult,
+  type ValidationOptions,
+  type SyncValidationOptions,
+  type TagValidator,
+} from './validate-metadata.js';

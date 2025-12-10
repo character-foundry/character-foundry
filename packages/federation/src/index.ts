@@ -123,6 +123,14 @@ export {
   createLocalStorageStore,
 } from './state-store.js';
 
+export {
+  D1SyncStateStore,
+  type D1Database,
+  type D1PreparedStatement,
+  type D1Result,
+  type D1ExecResult,
+} from './d1-store.js';
+
 // Platform adapters
 export {
   BasePlatformAdapter,
