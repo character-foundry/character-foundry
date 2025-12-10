@@ -19,6 +19,7 @@ describe('voxtaToCCv3', () => {
     Profile: 'Alice is an AI assistant',
     Scenario: 'Chat scenario with {{ char }}',
     FirstMessage: 'Hello {{ user }}, I am {{ char }}!',
+    AlternativeFirstMessages: ['Hi {{ user }}!', 'Greetings {{ user }}!'],
     MessageExamples: '{{ user }}: Hi\n{{ char }}: Hello!',
     Creator: 'Test',
     CreatorNotes: 'Test character',
@@ -42,6 +43,12 @@ describe('voxtaToCCv3', () => {
 
     expect(result.data.first_mes).toBe('Hello {{user}}, I am {{char}}!');
     expect(result.data.personality).toBe('Helpful and kind with {{user}}');
+  });
+
+  it('should convert AlternativeFirstMessages to alternate_greetings', () => {
+    const result = voxtaToCCv3(testVoxtaCharacter);
+
+    expect(result.data.alternate_greetings).toEqual(['Hi {{user}}!', 'Greetings {{user}}!']);
   });
 
   it('should preserve Voxta-specific data in extensions', () => {
@@ -101,7 +108,7 @@ describe('ccv3ToVoxta', () => {
       creator_notes: 'Notes',
       system_prompt: '',
       post_history_instructions: '',
-      alternate_greetings: [],
+      alternate_greetings: ['Hey {{user}}!', 'Welcome {{user}}!'],
       group_only_greetings: [],
       tags: ['test'],
       creator: 'Tester',
@@ -128,6 +135,12 @@ describe('ccv3ToVoxta', () => {
     expect(result.FirstMessage).toBe('Hello {{ user }}!');
     expect(result.Personality).toBe('Friendly with {{ user }}');
     expect(result.Scenario).toBe('{{ char }} meets {{ user }}');
+  });
+
+  it('should convert alternate_greetings to AlternativeFirstMessages', () => {
+    const result = ccv3ToVoxta(testCard);
+
+    expect(result.AlternativeFirstMessages).toEqual(['Hey {{ user }}!', 'Welcome {{ user }}!']);
   });
 
   it('should use visual_description for appearance', () => {

@@ -79,7 +79,7 @@ export function mergeCharacterEdits(
   }
 
   if (edits.alternate_greetings !== undefined) {
-    char.AlternateGreetings = edits.alternate_greetings.map(standardToVoxta);
+    char.AlternativeFirstMessages = edits.alternate_greetings.map(standardToVoxta);
   }
 
   if (edits.mes_example !== undefined) {

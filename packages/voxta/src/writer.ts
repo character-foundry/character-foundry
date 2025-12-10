@@ -124,7 +124,7 @@ export function writeVoxta(
     Profile: standardToVoxta(cardData.description),
     Scenario: standardToVoxta(cardData.scenario),
     FirstMessage: standardToVoxta(cardData.first_mes),
-    AlternateGreetings: (cardData.alternate_greetings || []).map(standardToVoxta),
+    AlternativeFirstMessages: (cardData.alternate_greetings || []).map(standardToVoxta),
     MessageExamples: standardToVoxta(cardData.mes_example || ''),
 
     // Metadata

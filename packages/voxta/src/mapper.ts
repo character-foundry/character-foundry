@@ -119,7 +119,7 @@ export function voxtaToCCv3(character: VoxtaCharacter, books?: VoxtaBook[]): CCv
       creator_notes: character.CreatorNotes || '',
       system_prompt: voxtaToStandard(character.SystemPrompt || ''),
       post_history_instructions: voxtaToStandard(character.PostHistoryInstructions || ''),
-      alternate_greetings: (character.AlternateGreetings || []).map(voxtaToStandard),
+      alternate_greetings: (character.AlternativeFirstMessages || []).map(voxtaToStandard),
       group_only_greetings: [],
       tags: character.Tags || [],
       creator: character.Creator || '',
@@ -170,7 +170,7 @@ export function ccv3ToVoxta(card: CCv3Data): VoxtaCharacter {
     Profile: standardToVoxta(cardData.description),
     Scenario: standardToVoxta(cardData.scenario),
     FirstMessage: standardToVoxta(cardData.first_mes),
-    AlternateGreetings: (cardData.alternate_greetings || []).map(standardToVoxta),
+    AlternativeFirstMessages: (cardData.alternate_greetings || []).map(standardToVoxta),
     MessageExamples: standardToVoxta(cardData.mes_example || ''),
 
     // System prompts

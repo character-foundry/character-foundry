@@ -80,7 +80,7 @@ export interface VoxtaCharacter {
   Profile?: string;         // Profile/Backstory
   Scenario?: string;
   FirstMessage?: string;
-  AlternateGreetings?: string[]; // Alternate greetings (Voxta next version)
+  AlternativeFirstMessages?: string[]; // Alternate greetings (maps to CCv3 alternate_greetings)
   MessageExamples?: string;
 
   // System prompts
