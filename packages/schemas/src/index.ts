@@ -59,10 +59,15 @@ export {
 
 // Detection
 export {
+  type SpecDetectionResult,
   detectSpec,
+  detectSpecDetailed,
   hasLorebook,
   looksLikeCard,
 } from './detection.js';
+
+// Normalizer
+export { CardNormalizer } from './normalizer.js';
 
 // Type aliases for convenience
 export type CharacterBook = import('./ccv3.js').CCv3CharacterBook;

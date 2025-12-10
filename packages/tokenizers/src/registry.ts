@@ -37,3 +37,8 @@ export const registry = new TokenizerRegistry();
 export function countTokens(text: string, tokenizerId?: string): number {
   return registry.get(tokenizerId).count(text);
 }
+
+// Helper to get a tokenizer by ID
+export function getTokenizer(tokenizerId?: string): TokenizerAdapter {
+  return registry.get(tokenizerId);
+}

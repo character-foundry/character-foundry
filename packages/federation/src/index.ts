@@ -153,3 +153,17 @@ export {
   type NodeInfoResponse,
   handleActor,
 } from './routes/index.js';
+
+// HTTP Signatures
+export {
+  type ParsedSignature,
+  type SignatureValidationOptions,
+  type SignatureValidationResult,
+  type SigningOptions,
+  parseSignatureHeader,
+  buildSigningString,
+  verifyHttpSignature,
+  validateActivitySignature as validateHttpSignature,
+  signRequest,
+  calculateDigest,
+} from './http-signatures.js';
