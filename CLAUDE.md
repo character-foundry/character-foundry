@@ -85,6 +85,12 @@ Metadata validation for optimistic UI with server authority:
 
 Packages publish to GitHub Packages on push to master. Bump version in package.json to trigger publish.
 
+**CRITICAL: GitHub Actions uses `NPM_TOKEN` secret (NOT `GITHUB_TOKEN`)**
+- GitHub rejects secrets starting with `GITHUB_` prefix
+- The PAT with `write:packages` scope is stored as `NPM_TOKEN`
+- DO NOT change the workflow to use `GITHUB_TOKEN` or `secrets.GITHUB_*`
+- If publish fails with 403, check that `NPM_TOKEN` secret exists and workflow uses it
+
 ### Published Versions
 
 | Package | Version |
