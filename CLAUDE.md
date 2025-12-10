@@ -91,6 +91,21 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 - DO NOT change the workflow to use `GITHUB_TOKEN` or `secrets.GITHUB_*`
 - If publish fails with 403, check that `NPM_TOKEN` secret exists and workflow uses it
 
+### Release Checklist
+
+**FOLLOW THIS EVERY TIME before pushing version bumps:**
+
+1. [ ] `pnpm build` - Ensure all packages build
+2. [ ] `pnpm test` - Ensure all tests pass
+3. [ ] Check dependency chain - if bumping core/schemas, bump ALL packages that depend on them:
+   - `core` → schemas, png, charx, voxta, lorebook, loader, exporter, normalizer, federation
+   - `schemas` → png, charx, voxta, lorebook, loader, exporter, normalizer, federation
+4. [ ] Update version table below
+5. [ ] Update README.md package versions table
+6. [ ] `git push origin master` - Triggers publish workflow
+7. [ ] Verify workflow succeeds in GitHub Actions
+8. [ ] If workflow fails, check `NPM_TOKEN` secret and fix WITHOUT changing to `GITHUB_TOKEN`
+
 ### Published Versions
 
 | Package | Version |
@@ -100,6 +115,7 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 | `@character-foundry/png` | 0.0.3 |
 | `@character-foundry/charx` | 0.0.3 |
 | `@character-foundry/exporter` | 0.1.1 |
+| `@character-foundry/normalizer` | 0.1.1 |
 | `@character-foundry/voxta` | 0.1.6 |
 | `@character-foundry/loader` | 0.1.6 |
 | `@character-foundry/federation` | 0.1.5 |

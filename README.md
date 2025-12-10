@@ -38,7 +38,7 @@ const pngBuffer = exportCard(card, assets, { format: 'png' });
 | `@character-foundry/lorebook` | 0.0.1 | Lorebook parsing, extraction, insertion | [docs/lorebook.md](docs/lorebook.md) |
 | `@character-foundry/loader` | 0.1.6 | Universal `parseCard()` with format detection + metadata validation | [docs/loader.md](docs/loader.md) |
 | `@character-foundry/exporter` | 0.1.1 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
-| `@character-foundry/normalizer` | 0.1.0 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
+| `@character-foundry/normalizer` | 0.1.1 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
 | `@character-foundry/tokenizers` | 0.1.0 | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
 | `@character-foundry/media` | 0.1.0 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
 | `@character-foundry/federation` | 0.1.5 | ActivityPub federation + HTTP signatures + D1 store (experimental) | [docs/federation.md](docs/federation.md) |
