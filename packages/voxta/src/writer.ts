@@ -12,6 +12,7 @@ import type {
   VoxtaWriteOptions,
   VoxtaBuildResult,
   VoxtaCharacter,
+  VoxtaScenario,
   VoxtaExtensionData,
   CompressionLevel,
 } from './types.js';
@@ -171,11 +172,17 @@ export function writeVoxta(
 
     const tags = asset.tags || [];
 
+    // Check if this is the main icon (used as thumbnail only, not in Assets folder)
+    const isMainIcon = asset.type === 'icon' && (
+      tags.includes('portrait-override') ||
+      asset.name === 'main' ||
+      asset.isMain
+    );
+
     if (asset.type === 'sound' || tags.includes('voice')) {
       voxtaPath = `Characters/${characterId}/Assets/VoiceSamples/${finalFilename}`;
     } else if (asset.type === 'icon' || asset.type === 'emotion') {
-      voxtaPath = `Characters/${characterId}/Assets/Avatars/Default/${finalFilename}`;
-
+      // Track main icon for thumbnail (but don't add to Assets folder)
       if (asset.type === 'icon') {
         if (tags.includes('portrait-override')) {
           mainThumbnail = asset;
@@ -183,6 +190,13 @@ export function writeVoxta(
           mainThumbnail = asset;
         }
       }
+
+      // Skip adding main icon to Assets folder - it will only be the thumbnail
+      if (isMainIcon) {
+        continue;
+      }
+
+      voxtaPath = `Characters/${characterId}/Assets/Avatars/Default/${finalFilename}`;
     } else {
       voxtaPath = `Characters/${characterId}/Assets/Misc/${finalFilename}`;
     }
@@ -203,6 +217,56 @@ export function writeVoxta(
     ];
   }
 
+  // 5. Add scenario if provided (uses scenario.Id as key)
+  let scenarioId: string | undefined;
+  if (options.scenario) {
+    const scenario = options.scenario;
+    scenarioId = scenario.Id;
+
+    // Ensure scenario has required fields
+    const scenarioData: VoxtaScenario = {
+      ...scenario,
+      $type: 'scenario',
+      PackageId: packageId,
+      DateModified: dateNow,
+    };
+
+    // Write scenario.json
+    zipEntries[`Scenarios/${scenarioId}/scenario.json`] = [
+      fromString(JSON.stringify(scenarioData, null, 2)),
+      { level: compressionLevel as CompressionLevel },
+    ];
+
+    // Add scenario thumbnail if provided
+    if (options.scenarioThumbnail) {
+      zipEntries[`Scenarios/${scenarioId}/thumbnail.png`] = [
+        options.scenarioThumbnail,
+        { level: compressionLevel as CompressionLevel },
+      ];
+    }
+
+    // Update package.json EntryResource to point to scenario (Kind: 3)
+    if (includePackageJson) {
+      const packageMeta = {
+        $type: 'package',
+        Id: packageId,
+        Name: scenario.Name || cardData.name,
+        Version: scenario.Version || cardData.character_version || '1.0.0',
+        Description: scenario.Description || cardData.description,
+        Creator: scenario.Creator || cardData.creator,
+        ExplicitContent: scenario.ExplicitContent ?? true,
+        EntryResource: { Kind: 3, Id: scenarioId }, // Kind 3 = Scenario
+        ThumbnailResource: { Kind: 3, Id: scenarioId },
+        DateCreated: scenario.DateCreated || voxtaExt?.original?.DateCreated || dateNow,
+        DateModified: dateNow,
+      };
+      zipEntries['package.json'] = [
+        fromString(JSON.stringify(packageMeta, null, 2)),
+        { level: compressionLevel as CompressionLevel },
+      ];
+    }
+  }
+
   // Create ZIP
   const buffer = zipSync(zipEntries);
 
@@ -211,6 +275,7 @@ export function writeVoxta(
     assetCount,
     totalSize: buffer.length,
     characterId,
+    scenarioId,
   };
 }
 

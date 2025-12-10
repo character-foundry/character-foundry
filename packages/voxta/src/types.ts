@@ -179,12 +179,74 @@ export interface VoxtaAction {
   Disabled?: boolean;
   Once?: boolean;
   FlagsFilter?: string;
+  EvaluateNextEvent?: boolean;
   Effect?: {
     SetFlags?: string[];
+    Script?: string;
+    Event?: string;
+    Story?: string;
+    Secret?: string;
+    Instructions?: string;
     MaxSentences?: number;
     MaxTokens?: number;
     [key: string]: unknown;
   };
+}
+
+/**
+ * Voxta scenario event (similar to action but for event triggers)
+ */
+export interface VoxtaEvent {
+  Id?: string;
+  Name: string;
+  Layer?: string;
+  Timing?: number;
+  Description?: string;
+  Arguments?: unknown[];
+  Disabled?: boolean;
+  FinalLayer?: boolean;
+  Once?: boolean;
+  FlagsFilter?: string;
+  EvaluateNextEvent?: boolean;
+  Effect?: {
+    SetFlags?: string[];
+    Script?: string;
+    Event?: string;
+    Story?: string;
+    Secret?: string;
+    Instructions?: string;
+    MaxSentences?: number;
+    MaxTokens?: number;
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * Voxta scenario context (conditional context blocks)
+ */
+export interface VoxtaContext {
+  Name: string;
+  Text: string;
+  FlagsFilter?: string;
+  Disabled?: boolean;
+}
+
+/**
+ * Voxta scenario role - maps characters to scenario slots
+ */
+export interface VoxtaRole {
+  Name: string;
+  Description?: string;
+  DefaultCharacterId: string;
+  EnabledOnStart?: boolean;
+}
+
+/**
+ * Voxta impersonation (user persona override)
+ */
+export interface VoxtaImpersonation {
+  Name: string;
+  Description?: string;
 }
 
 /**
@@ -200,8 +262,43 @@ export interface VoxtaScenario {
   Client?: string;
   Creator?: string;
   Description?: string;
+
+  // Core content
+  Template?: string;
+  Messages?: string;
+  SystemPrompt?: string;
+  SystemPromptOverrideType?: number;
+
+  // Character mappings
+  Roles?: VoxtaRole[];
+  NarratorCharacterId?: string;
+  Impersonation?: VoxtaImpersonation;
+
+  // Scripting/automation
   SharedScripts?: VoxtaScript[];
   Actions?: VoxtaAction[];
+  Events?: VoxtaEvent[];
+  Contexts?: VoxtaContext[];
+
+  // Settings
+  ExplicitContent?: boolean;
+  ChatFlow?: number;
+  ChatStyle?: number;
+  MemoryBooks?: string[];
+
+  // Metadata
+  Thumbnail?: {
+    ETag?: number;
+    RandomizedETag?: string;
+    ContentType?: string;
+  };
+  DateCreated?: string;
+  DateModified?: string;
+
+  // App control (optional)
+  UserId?: string;
+  AppControlled?: boolean;
+  Locked?: boolean;
 }
 
 /**
@@ -241,6 +338,14 @@ export interface ExtractedVoxtaBook {
 }
 
 /**
+ * Voxta export type
+ * - 'package': Has package.json with full metadata
+ * - 'scenario': Has Scenarios/ folder but no package.json (scenario export)
+ * - 'character': Only has Characters/ folder (single/multi character export)
+ */
+export type VoxtaExportType = 'package' | 'scenario' | 'character';
+
+/**
  * Complete extracted Voxta data
  */
 export interface VoxtaData {
@@ -248,6 +353,14 @@ export interface VoxtaData {
   characters: ExtractedVoxtaCharacter[];
   scenarios: ExtractedVoxtaScenario[];
   books: ExtractedVoxtaBook[];
+
+  /**
+   * Type of export detected:
+   * - 'package': Has package.json
+   * - 'scenario': Has Scenarios/ but no package.json
+   * - 'character': Only Characters/ (no package.json or Scenarios/)
+   */
+  exportType: VoxtaExportType;
 }
 
 /**
@@ -279,6 +392,10 @@ export interface VoxtaWriteOptions {
   includePackageJson?: boolean;
   characterId?: string;
   packageId?: string;
+  /** Scenario to include - uses scenario.Id as the key */
+  scenario?: VoxtaScenario;
+  /** Scenario thumbnail */
+  scenarioThumbnail?: BinaryData;
 }
 
 /**
@@ -289,6 +406,8 @@ export interface VoxtaBuildResult {
   assetCount: number;
   totalSize: number;
   characterId: string;
+  /** Scenario ID if a scenario was included */
+  scenarioId?: string;
 }
 
 /**

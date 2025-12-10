@@ -210,6 +210,7 @@ export function readVoxta(
     characters: [],
     scenarios: [],
     books: [],
+    exportType: 'character', // Default, will be updated based on contents
   };
 
   // Temporary maps to aggregate data parts
@@ -349,6 +350,14 @@ export function readVoxta(
       result.books.push(book as ExtractedVoxtaBook);
     }
   }
+
+  // Determine export type based on contents
+  if (result.package) {
+    result.exportType = 'package';
+  } else if (result.scenarios.length > 0) {
+    result.exportType = 'scenario';
+  }
+  // else stays 'character' (default)
 
   return result;
 }
