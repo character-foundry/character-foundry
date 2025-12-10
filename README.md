@@ -14,9 +14,12 @@ A universal TypeScript library for reading, writing, and converting AI character
 
 ## Quick Start
 
+```bash
+pnpm add @character-foundry/character-foundry
+```
+
 ```typescript
-import { parseCard } from '@character-foundry/loader';
-import { exportCard } from '@character-foundry/exporter';
+import { parseCard, exportCard } from '@character-foundry/character-foundry';
 
 // Load any format
 const { card, assets, format } = parseCard(buffer);
@@ -24,6 +27,14 @@ console.log(card.data.name); // Character name
 
 // Export to different format
 const pngBuffer = exportCard(card, assets, { format: 'png' });
+```
+
+Or import from specific packages:
+
+```typescript
+import { parseCard } from '@character-foundry/loader';
+import { exportCard } from '@character-foundry/exporter';
+import { readVoxta } from '@character-foundry/voxta';
 ```
 
 ## Packages
