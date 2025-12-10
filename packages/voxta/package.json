@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/voxta",
-  "version": "0.1.5-security.0",
+  "version": "0.1.6-security.0",
   "description": "Voxta package format reader and writer",
   "type": "module",
   "exports": {
