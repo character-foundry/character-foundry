@@ -6,11 +6,11 @@ Universal TypeScript library for reading, writing, and converting AI character c
 
 ```
 packages/
-  core/       - Binary utilities, base64, ZIP, URI parsing, errors
+  core/       - Binary utilities, base64, ZIP, URI parsing, UUID, data URLs, security
   schemas/    - CCv2, CCv3, Voxta types + format detection
-  png/        - PNG chunk handling, metadata stripping
+  png/        - PNG chunk handling, metadata stripping, inflate protection
   charx/      - CharX reader/writer, JPEG+ZIP hybrid support
-  voxta/      - Voxta packages, multi-character, merge utilities
+  voxta/      - Voxta packages, multi-character, scenarios, merge utilities
   lorebook/   - Lorebook parsing, extraction, insertion, format conversion
   loader/     - Universal parseCard() with format detection
   exporter/   - Universal exportCard() with loss reporting
@@ -36,19 +36,38 @@ pnpm typecheck   # TypeScript check
 - **50MB per-asset limit** - Enforced in all parsers
 - **Federation is gated** - Must call enableFederation() explicitly
 
+## Security Features
+
+- **ZIP preflight** - Validates uncompressed sizes before decompression (zip bomb protection)
+- **PNG inflate cap** - Limits zTXt/iTXt decompression to 50MB
+- **Secure UUID** - crypto.randomUUID() with fallback for non-secure contexts
+- **Data URL validation** - Safe parsing with size limits
+
+## Voxta Package Support
+
+Full round-trip editing with delta-based updates:
+- `mergeCharacterEdits()` - Apply CCv3 edits preserving Voxta-specific fields
+- `applyVoxtaDeltas()` - Update package with minimal changes
+- `extractCharacterPackage()` - Extract single character as new package
+- `addCharacterToPackage()` - Add character to existing package
+- **Export types**: `'package'` | `'scenario'` | `'character'` detection
+- **Scenario support**: Full `VoxtaScenario` with Roles[], Events[], Contexts[]
+
 ## Test Cards
 
 `.test_cards/` contains real voxpkg files for manual testing (gitignored).
 
 ## Open Issues
 
-- #1 - Voxta Package Round-Trip (in progress)
 - #3 - Validate RisuAI CharX against SillyTavern
 - #5 - CI: Add end-to-end tests
+- #7-#13 - Feature enhancements (see GitHub)
 
 ## Publishing
 
 Packages publish to GitHub Packages on push to master. Bump version in package.json to trigger publish.
+
+Current security prerelease branch: `security/phase-0-1-security-and-core`
 
 ## Docs
 
