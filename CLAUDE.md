@@ -64,10 +64,11 @@ Example package.json exports (REQUIRED pattern):
 
 ## Security Features
 
-- **ZIP preflight** - Validates uncompressed sizes before decompression (zip bomb protection)
+- **Streaming ZIP protection** - Tracks actual decompressed bytes during extraction, aborts if limits exceeded (protects against crafted archives that lie in central directory)
 - **PNG inflate cap** - Limits zTXt/iTXt decompression to 50MB
 - **Secure UUID** - crypto.randomUUID() with fallback for non-secure contexts
 - **Data URL validation** - Safe parsing with size limits
+- **Dual-package safe errors** - `isFoundryError()` uses Symbol.for() marker for cross-module compatibility
 
 ## Voxta Package Support
 
@@ -122,13 +123,7 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 
 1. [ ] `pnpm build` - Ensure all packages build with tsup (ESM + CJS)
 2. [ ] `pnpm test` - Ensure all tests pass
-3. [ ] **REGRESSION TEST** - Verify ESM AND CJS imports work:
-   ```bash
-   # Test ESM import
-   node --input-type=module -e "import('@character-foundry/loader').then(m => console.log('ESM OK:', Object.keys(m)))"
-   # Test CJS require
-   node -e "console.log('CJS OK:', Object.keys(require('@character-foundry/loader')))"
-   ```
+3. [ ] `pnpm verify-build` - Automated ESM/CJS import verification for all packages
 4. [ ] Check dependency chain - if bumping core/schemas, bump ALL dependent packages:
    - `core` → schemas, png, charx, voxta, lorebook, loader, exporter, normalizer, federation
    - `schemas` → png, charx, voxta, lorebook, loader, exporter, normalizer, federation
@@ -136,7 +131,7 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 6. [ ] Update version table below
 7. [ ] Update README.md package versions table
 8. [ ] `git push origin master` - Triggers publish workflow
-9. [ ] Verify workflow succeeds in GitHub Actions
+9. [ ] Verify workflow succeeds in GitHub Actions (includes verify-build step)
 10. [ ] If workflow fails, check `NPM_TOKEN` secret and fix WITHOUT changing to `GITHUB_TOKEN`
 
 ### Published Versions

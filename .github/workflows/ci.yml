@@ -30,3 +30,6 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Verify ESM/CJS builds
+        run: pnpm verify-build

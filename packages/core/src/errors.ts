@@ -5,10 +5,16 @@
  * All errors extend FoundryError for consistent handling.
  */
 
+/** Symbol to identify FoundryError instances across ESM/CJS boundaries */
+const FOUNDRY_ERROR_MARKER = Symbol.for('@character-foundry/core:FoundryError');
+
 /**
  * Base error class for all Character Foundry errors
  */
 export class FoundryError extends Error {
+  /** @internal Marker for cross-module identification */
+  readonly [FOUNDRY_ERROR_MARKER] = true;
+
   constructor(message: string, public readonly code: string) {
     super(message);
     this.name = 'FoundryError';
@@ -111,16 +117,25 @@ export class DataLossError extends FoundryError {
 
 /**
  * Check if an error is a FoundryError
+ *
+ * Uses Symbol.for() marker instead of instanceof to handle dual ESM/CJS package loading.
+ * In dual-package environments, instanceof can fail if the error comes from a different
+ * module instance (e.g., ESM vs CJS version of the same package). Symbol.for() creates
+ * a global symbol shared across all module instances.
  */
 export function isFoundryError(error: unknown): error is FoundryError {
-  return error instanceof FoundryError;
+  return (
+    error instanceof Error &&
+    FOUNDRY_ERROR_MARKER in error &&
+    (error as Record<symbol, unknown>)[FOUNDRY_ERROR_MARKER] === true
+  );
 }
 
 /**
  * Wrap unknown errors in a FoundryError
  */
 export function wrapError(error: unknown, context?: string): FoundryError {
-  if (error instanceof FoundryError) {
+  if (isFoundryError(error)) {
     return error;
   }
 

@@ -53,6 +53,7 @@ export {
   type ZipSizeLimits,
   type ZipCentralDirEntry,
   type ZipPreflightResult,
+  type Unzipped,
   ZipPreflightError,
   DEFAULT_ZIP_LIMITS,
   isZipBuffer,
@@ -64,6 +65,7 @@ export {
   isValidZip,
   isPathSafe,
   preflightZipSizes,
+  streamingUnzipSync,
 } from './zip.js';
 
 // URI utilities

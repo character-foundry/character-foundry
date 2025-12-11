@@ -4,13 +4,13 @@
  * Extracts and parses .voxpkg files.
  */
 
-import { unzipSync, type Unzipped } from 'fflate';
 import {
   type BinaryData,
+  type Unzipped,
   toString,
   findZipStart,
   getZipOffset,
-  preflightZipSizes,
+  streamingUnzipSync,
   ZipPreflightError,
   ParseError,
   SizeLimitError,
@@ -173,13 +173,12 @@ export function readVoxta(
 ): VoxtaData {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
-  // Handle SFX archives
-  const zipData = findZipStart(data);
-
-  // SECURITY: Preflight check - validate ZIP central directory BEFORE decompression
-  // This prevents zip bomb attacks by checking uncompressed sizes in metadata
+  // SECURITY: Streaming unzip with real-time byte limit enforcement
+  // This tracks ACTUAL decompressed bytes and aborts if limits exceeded,
+  // protecting against malicious archives that lie about sizes in central directory
+  let unzipped: Unzipped;
   try {
-    preflightZipSizes(zipData, {
+    unzipped = streamingUnzipSync(data, {
       maxFileSize: opts.maxAssetSize,
       maxTotalSize: opts.maxTotalSize,
       maxFiles: 10000, // Voxta packages can have many files
@@ -192,14 +191,6 @@ export function readVoxta(
         err.oversizedEntry || 'Voxta package'
       );
     }
-    throw err;
-  }
-
-  // Unzip (now safe - preflight passed)
-  let unzipped: Unzipped;
-  try {
-    unzipped = unzipSync(zipData);
-  } catch (err) {
     throw new ParseError(
       `Failed to unzip Voxta package: ${err instanceof Error ? err.message : String(err)}`,
       'voxta'
@@ -218,23 +209,10 @@ export function readVoxta(
   const scenarioMap = new Map<string, Partial<ExtractedVoxtaScenario>>();
   const bookMap = new Map<string, Partial<ExtractedVoxtaBook>>();
 
-  let totalSize = 0;
-
-  // Process entries
+  // Process entries (size limits already enforced by streamingUnzipSync)
   for (const [fileName, fileData] of Object.entries(unzipped)) {
     // Skip directories
     if (fileName.endsWith('/') || fileData.length === 0) continue;
-
-    // Per-file size check
-    if (fileData.length > opts.maxAssetSize) {
-      throw new SizeLimitError(fileData.length, opts.maxAssetSize, `File '${fileName}'`);
-    }
-
-    // Total size check
-    totalSize += fileData.length;
-    if (totalSize > opts.maxTotalSize) {
-      throw new SizeLimitError(totalSize, opts.maxTotalSize, 'Total Voxta package size');
-    }
 
     // 1. Package Metadata
     if (fileName === 'package.json') {

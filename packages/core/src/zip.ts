@@ -5,7 +5,8 @@
  * Uses Uint8Array for universal browser/Node.js compatibility.
  */
 
-import { indexOf, type BinaryData } from './binary.js';
+import { indexOf, concat, type BinaryData } from './binary.js';
+import { Unzip, UnzipInflate, UnzipPassThrough, type Unzipped, type UnzipFile } from 'fflate';
 
 // ZIP local file header signature: PK\x03\x04
 export const ZIP_SIGNATURE = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
@@ -323,3 +324,122 @@ function readUInt32LEFromBytes(data: BinaryData, offset: number): number {
     (data[offset + 3]! << 24)
   ) >>> 0; // Convert to unsigned
 }
+
+/**
+ * Streaming ZIP extraction with real-time byte limit enforcement.
+ *
+ * Unlike preflightZipSizes which only checks central directory metadata,
+ * this function tracks ACTUAL decompressed bytes during extraction and
+ * aborts immediately if limits are exceeded. This protects against
+ * malicious archives that lie about sizes in their central directory.
+ *
+ * @param data - ZIP file data (can be SFX/self-extracting)
+ * @param limits - Size limits to enforce
+ * @returns Promise resolving to extracted files
+ * @throws ZipPreflightError if limits are exceeded during extraction
+ */
+export function streamingUnzipSync(
+  data: BinaryData,
+  limits: ZipSizeLimits = DEFAULT_ZIP_LIMITS
+): Unzipped {
+  // Find ZIP start (handles SFX/hybrid archives)
+  const zipData = findZipStart(data);
+
+  const result: Unzipped = {};
+  let totalBytes = 0;
+  let fileCount = 0;
+  let error: Error | null = null;
+
+  // Track chunks per file for concatenation
+  const fileChunks = new Map<string, Uint8Array[]>();
+
+  const unzipper = new Unzip((file: UnzipFile) => {
+    if (error) return;
+
+    // Skip directories
+    if (file.name.endsWith('/')) {
+      file.start();
+      return;
+    }
+
+    fileCount++;
+    if (fileCount > limits.maxFiles) {
+      error = new ZipPreflightError(
+        `File count ${fileCount} exceeds limit ${limits.maxFiles}`
+      );
+      file.terminate();
+      return;
+    }
+
+    const chunks: Uint8Array[] = [];
+    fileChunks.set(file.name, chunks);
+    let fileBytes = 0;
+
+    file.ondata = (err, chunk, final) => {
+      if (error) return;
+
+      if (err) {
+        error = err;
+        return;
+      }
+
+      if (chunk && chunk.length > 0) {
+        fileBytes += chunk.length;
+        totalBytes += chunk.length;
+
+        // Check per-file size limit (actual decompressed bytes)
+        if (fileBytes > limits.maxFileSize) {
+          error = new ZipPreflightError(
+            `File "${file.name}" actual size ${fileBytes} exceeds limit ${limits.maxFileSize}`,
+            undefined,
+            undefined,
+            file.name,
+            fileBytes,
+            limits.maxFileSize
+          );
+          file.terminate();
+          return;
+        }
+
+        // Check total size limit (actual decompressed bytes)
+        if (totalBytes > limits.maxTotalSize) {
+          error = new ZipPreflightError(
+            `Total actual size ${totalBytes} exceeds limit ${limits.maxTotalSize}`,
+            totalBytes,
+            limits.maxTotalSize
+          );
+          file.terminate();
+          return;
+        }
+
+        chunks.push(chunk);
+      }
+
+      if (final && !error) {
+        // Concatenate all chunks for this file
+        result[file.name] = concat(...chunks);
+      }
+    };
+
+    file.start();
+  });
+
+  // Register decompression handlers
+  unzipper.register(UnzipInflate);     // DEFLATE (compression method 8)
+  unzipper.register(UnzipPassThrough); // Stored (compression method 0)
+
+  // Push all data - fflate processes synchronously when given full buffer
+  unzipper.push(zipData, true);
+
+  // If an error occurred during processing, throw it
+  if (error) {
+    throw error;
+  }
+
+  return result;
+}
+
+/**
+ * Re-export Unzipped type for convenience
+ */
+export type { Unzipped };

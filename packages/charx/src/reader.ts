@@ -5,16 +5,16 @@
  * Supports standard CharX, Risu CharX, and JPEG+ZIP hybrid formats.
  */
 
-import { unzipSync, type Unzipped } from 'fflate';
 import {
   type BinaryData,
+  type Unzipped,
   toString,
   base64Decode,
   findZipStart,
   parseURI,
   isJpegCharX,
   getZipOffset,
-  preflightZipSizes,
+  streamingUnzipSync,
   ZipPreflightError,
   ParseError,
   SizeLimitError,
@@ -84,13 +84,12 @@ export function readCharX(
 ): CharxData {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
-  // Handle SFX archives (JPEG+ZIP hybrid)
-  const zipData = findZipStart(data);
-
-  // SECURITY: Preflight check - validate ZIP central directory BEFORE decompression
-  // This prevents zip bomb attacks by checking uncompressed sizes in metadata
+  // SECURITY: Streaming unzip with real-time byte limit enforcement
+  // This tracks ACTUAL decompressed bytes and aborts if limits exceeded,
+  // protecting against malicious archives that lie about sizes in central directory
+  let unzipped: Unzipped;
   try {
-    preflightZipSizes(zipData, {
+    unzipped = streamingUnzipSync(data, {
       maxFileSize: opts.maxAssetSize,
       maxTotalSize: opts.maxTotalSize,
       maxFiles: 10000, // CharX can have many assets
@@ -103,14 +102,6 @@ export function readCharX(
         err.oversizedEntry || 'CharX archive'
       );
     }
-    throw err;
-  }
-
-  // Unzip synchronously (now safe - preflight passed)
-  let unzipped: Unzipped;
-  try {
-    unzipped = unzipSync(zipData);
-  } catch (err) {
     throw new ParseError(
       `Failed to unzip CharX: ${err instanceof Error ? err.message : String(err)}`,
       'charx'
@@ -121,22 +112,11 @@ export function readCharX(
   const assets: CharxAssetInfo[] = [];
   const metadata = new Map<number, CharxMetaEntry>();
   let moduleRisum: BinaryData | undefined;
-  let totalSize = 0;
 
-  // Process entries
+  // Process entries (size limits already enforced by streamingUnzipSync)
   for (const [fileName, fileData] of Object.entries(unzipped)) {
     // Skip directories (empty or ends with /)
     if (fileName.endsWith('/') || fileData.length === 0) continue;
-
-    // Check file size
-    if (fileData.length > opts.maxAssetSize) {
-      throw new SizeLimitError(fileData.length, opts.maxAssetSize, `File ${fileName}`);
-    }
-
-    totalSize += fileData.length;
-    if (totalSize > opts.maxTotalSize) {
-      throw new SizeLimitError(totalSize, opts.maxTotalSize, 'Total CharX size');
-    }
 
     // Handle card.json
     if (fileName === 'card.json') {
@@ -294,12 +274,14 @@ function matchAssetsToDescriptors(
  * Extract just the card.json from a CharX buffer (quick validation)
  */
 export function readCardJsonOnly(data: BinaryData): CCv3Data {
-  const zipData = findZipStart(data);
-
+  // Use streaming unzip with conservative limits for card.json extraction
+  // This protects against zip bombs even for the "quick validation" path
   let unzipped: Unzipped;
   try {
-    unzipped = unzipSync(zipData, {
-      filter: (file) => file.name === 'card.json',
+    unzipped = streamingUnzipSync(data, {
+      maxFileSize: DEFAULT_OPTIONS.maxFileSize, // 10MB for card.json
+      maxTotalSize: DEFAULT_OPTIONS.maxTotalSize, // 200MB total
+      maxFiles: 10000,
     });
   } catch (err) {
     throw new ParseError(
