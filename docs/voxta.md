@@ -1,20 +1,21 @@
 # Voxta Package Documentation
 
 **Package:** `@character-foundry/voxta`
-**Version:** 0.1.6
+**Version:** 0.1.8
 **Environment:** Node.js and Browser
 
-The `@character-foundry/voxta` package handles reading, writing, and editing Voxta package files (`.voxpkg`) - a multi-character container format with support for memory books, scenarios, and rich assets.
+The `@character-foundry/voxta` package handles reading, writing, and editing Voxta package files (`.voxpkg`) - a multi-character container format with support for memory books, scenarios, collections, and rich assets.
 
 ## Features
 
 - Full Voxta package reading and writing
 - `VoxtaCharacter` with `AlternativeFirstMessages` (maps to CCv3 `alternate_greetings`)
-- `VoxtaBook` and `VoxtaScenario` support
+- `VoxtaBook`, `VoxtaScenario`, and `VoxtaCollection` support
+- **Collections** - Organizational groupings for characters, scenarios, and books
 - **Delta-based editing** - `mergeCharacterEdits()`, `applyVoxtaDeltas()`
 - **Package utilities** - `extractCharacterPackage()`, `addCharacterToPackage()`
 - **Macro conversion** - `voxtaToStandard()`, `standardToVoxta()`
-- Export type detection: `'package'` | `'scenario'` | `'character'`
+- Export type detection: `'package'` | `'scenario'` | `'character'` | `'collection'`
 
 ## Table of Contents
 
@@ -23,6 +24,7 @@ The `@character-foundry/voxta` package handles reading, writing, and editing Vox
 - [Reader](#reader)
 - [Writer](#writer)
 - [Mapper](#mapper)
+- [Collections](#collections)
 - [Merge Utilities](#merge-utilities)
 - [Loss Reporting](#loss-reporting)
 - [Macros](#macros)
@@ -36,12 +38,14 @@ Voxta packages are ZIP archives containing:
 - Multiple characters
 - Memory books (lorebooks) that can be shared
 - Scenarios
+- Collections (organizational groupings)
 - Assets (images, audio, TTS configs)
 
 Key differences from other formats:
 - **Multi-character**: One package can contain many characters
 - **Shared books**: Memory books can be referenced by multiple characters
 - **Rich metadata**: TTS configs, scripts, scenarios
+- **Collections**: Organize content into themed folders with resource references
 
 ---
 
@@ -50,9 +54,11 @@ Key differences from other formats:
 ```
 character.voxpkg (ZIP archive)
 ├── package.json              # Package metadata
+├── thumbnail.png             # Package thumbnail
 ├── Characters/
 │   ├── {uuid}/
 │   │   ├── character.json    # Character data
+│   │   ├── thumbnail.png
 │   │   └── Assets/
 │   │       ├── avatar.png
 │   │       └── emotions/
@@ -62,9 +68,15 @@ character.voxpkg (ZIP archive)
 │   ├── {uuid}/
 │   │   └── book.json         # Memory book
 │   └── ...
-└── Scenarios/
+├── Scenarios/
+│   └── {uuid}/
+│       ├── scenario.json
+│       ├── thumbnail.png
+│       └── Assets/           # Scenario-specific assets
+└── Collections/
     └── {uuid}/
-        └── scenario.json
+        ├── collection.json   # Collection with resource refs
+        └── thumbnail.png
 ```
 
 ### Character JSON
@@ -112,6 +124,8 @@ interface VoxtaData {
   characters: ExtractedVoxtaCharacter[];
   books: ExtractedVoxtaBook[];
   scenarios: ExtractedVoxtaScenario[];
+  collections: ExtractedVoxtaCollection[];
+  exportType: VoxtaExportType;
 }
 
 interface ExtractedVoxtaCharacter {
@@ -151,11 +165,12 @@ const data = await readVoxtaAsync(buffer, {
 
 ### Export Types
 
-Voxta packages come in three export types:
+Voxta packages come in four export types:
 
 | Type | Description | Structure |
 |------|-------------|-----------|
 | `package` | Full package with metadata | Has `package.json` at root |
+| `collection` | Collection export | Has `Collections/` folder |
 | `scenario` | Scenario export | Has `Scenarios/` but no `package.json` |
 | `character` | Character export | Only `Characters/` folder |
 
@@ -165,6 +180,9 @@ const data = readVoxta(buffer);
 switch (data.exportType) {
   case 'package':
     console.log(`Package: ${data.package?.Name}`);
+    break;
+  case 'collection':
+    console.log(`Collection with ${data.collections.length} collections`);
     break;
   case 'scenario':
     console.log(`Scenario with ${data.scenarios.length} scenarios`);
@@ -263,6 +281,115 @@ const voxtaBook = ccv3LorebookToVoxtaBook(ccv3Card.data.character_book);
 | `extensions.visual_description` | `Description` (appearance) |
 
 **Note:** The CCv3 `description` field maps to Voxta `Profile` (backstory/personality), while the Voxta `Description` field contains physical/visual appearance which is stored in `extensions.visual_description`.
+
+---
+
+## Collections
+
+Collections organize resources (characters, scenarios, books) into themed folders.
+
+### Collection Types
+
+```typescript
+import { VoxtaResourceKind } from '@character-foundry/voxta';
+
+// Resource kinds for collection items
+enum VoxtaResourceKind {
+  Character = 1,
+  Book = 2,
+  Scenario = 3,
+}
+
+interface VoxtaCollection {
+  $type: 'collection';
+  Id: string;
+  Name: string;
+  Version?: string;
+  PackageId?: string;
+  ExplicitContent?: boolean;
+  Root: VoxtaCollectionRoot;
+  Thumbnail?: { RandomizedETag?: string; ContentType?: string };
+  DateCreated?: string;
+  DateModified?: string;
+}
+
+interface VoxtaCollectionRoot {
+  Folders: VoxtaCollectionFolder[];
+}
+
+interface VoxtaCollectionFolder {
+  Name: string;
+  Description?: string;
+  Kind: VoxtaResourceKind;  // Type of resources in this folder
+  Items: VoxtaCollectionItem[];
+  Folders?: VoxtaCollectionFolder[];  // Nested folders
+}
+
+interface VoxtaCollectionItem {
+  Resource: VoxtaResourceRef;
+}
+
+interface VoxtaResourceRef {
+  Kind: VoxtaResourceKind;
+  Id: string;  // UUID of the referenced resource
+}
+```
+
+### Reading Collections
+
+```typescript
+import { readVoxta } from '@character-foundry/voxta';
+
+const data = readVoxta(buffer);
+
+// Access collections
+for (const collection of data.collections) {
+  console.log(`Collection: ${collection.data.Name}`);
+
+  // Iterate folders
+  for (const folder of collection.data.Root.Folders) {
+    console.log(`  Folder: ${folder.Name} (${folder.Items.length} items)`);
+
+    // Get referenced resource IDs
+    for (const item of folder.Items) {
+      const { Kind, Id } = item.Resource;
+      console.log(`    - ${Kind === 1 ? 'Character' : Kind === 3 ? 'Scenario' : 'Book'}: ${Id}`);
+    }
+  }
+}
+```
+
+### Collection Example
+
+```json
+{
+  "$type": "collection",
+  "Id": "9152ae18-f6bb-2cdb-0cd0-bdeaf8a41543",
+  "Name": "Fallout 18",
+  "PackageId": "531cd884-451b-c0e2-9865-7f53b3665411",
+  "Root": {
+    "Folders": [
+      {
+        "Name": "Adventure",
+        "Description": "Main scenario",
+        "Kind": 3,
+        "Items": [
+          { "Resource": { "Kind": 3, "Id": "93a8f3ab-ffb5-6bb1-d7a0-e64c277d84be" } }
+        ]
+      },
+      {
+        "Name": "Vault Dwellers",
+        "Description": "Characters from Vault 18",
+        "Kind": 1,
+        "Items": [
+          { "Resource": { "Kind": 1, "Id": "23ac4f7e-c899-67b6-2276-6594fb467c91" } },
+          { "Resource": { "Kind": 1, "Id": "83502444-1700-62b1-e3d5-1448cc4954df" } }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ---
 

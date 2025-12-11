@@ -65,6 +65,21 @@ describe('isVoxta', () => {
     expect(isVoxta(zipData)).toBe(true);
   });
 
+  it('should detect Voxta package with Collections directory', () => {
+    const collection = {
+      $type: 'collection',
+      Id: 'collection-123',
+      Name: 'Test Collection',
+      Root: { Folders: [] },
+    };
+
+    const zipData = zipSync({
+      'Collections/collection-123/collection.json': fromString(JSON.stringify(collection)),
+    });
+
+    expect(isVoxta(zipData)).toBe(true);
+  });
+
   it('should detect Voxta package with character.json at root', () => {
     const character = {
       $type: 'character',
@@ -236,5 +251,78 @@ describe('readVoxta', () => {
     expect(result.scenarios).toHaveLength(1);
     expect(result.scenarios[0].id).toBe('scenario-123');
     expect(result.scenarios[0].data.Name).toBe('Test Scenario');
+  });
+
+  it('should read collections', () => {
+    const collection = {
+      $type: 'collection',
+      Id: 'collection-123',
+      Name: 'Test Collection',
+      PackageId: 'pkg-123',
+      Root: {
+        Folders: [
+          {
+            Name: 'Characters',
+            Kind: 1,
+            Items: [
+              { Resource: { Kind: 1, Id: 'char-1' } },
+              { Resource: { Kind: 1, Id: 'char-2' } },
+            ],
+          },
+        ],
+      },
+    };
+
+    const zipData = zipSync({
+      'Collections/collection-123/collection.json': fromString(JSON.stringify(collection)),
+    });
+
+    const result = readVoxta(zipData);
+
+    expect(result.collections).toHaveLength(1);
+    expect(result.collections[0].id).toBe('collection-123');
+    expect(result.collections[0].data.Name).toBe('Test Collection');
+    expect(result.collections[0].data.Root.Folders).toHaveLength(1);
+    expect(result.collections[0].data.Root.Folders[0].Items).toHaveLength(2);
+  });
+
+  it('should detect collection export type', () => {
+    const collection = {
+      $type: 'collection',
+      Id: 'collection-123',
+      Name: 'Test Collection',
+      Root: { Folders: [] },
+    };
+
+    const zipData = zipSync({
+      'Collections/collection-123/collection.json': fromString(JSON.stringify(collection)),
+    });
+
+    const result = readVoxta(zipData);
+
+    expect(result.exportType).toBe('collection');
+  });
+
+  it('should read collection thumbnail', () => {
+    const collection = {
+      $type: 'collection',
+      Id: 'collection-123',
+      Name: 'Test Collection',
+      Root: { Folders: [] },
+    };
+
+    // Minimal PNG header for testing
+    const fakePng = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+
+    const zipData = zipSync({
+      'Collections/collection-123/collection.json': fromString(JSON.stringify(collection)),
+      'Collections/collection-123/thumbnail.png': fakePng,
+    });
+
+    const result = readVoxta(zipData);
+
+    expect(result.collections).toHaveLength(1);
+    expect(result.collections[0].thumbnail).toBeDefined();
+    expect(result.collections[0].thumbnail).toEqual(fakePng);
   });
 });

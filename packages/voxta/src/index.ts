@@ -15,10 +15,16 @@ export type {
   VoxtaBook,
   VoxtaAction,
   VoxtaScenario,
+  VoxtaCollection,
+  VoxtaCollectionFolder,
+  VoxtaCollectionItem,
+  VoxtaCollectionRoot,
+  VoxtaResourceRef,
   ExtractedVoxtaAsset,
   ExtractedVoxtaCharacter,
   ExtractedVoxtaScenario,
   ExtractedVoxtaBook,
+  ExtractedVoxtaCollection,
   VoxtaData,
   VoxtaReadOptions,
   VoxtaWriteAsset,
@@ -26,7 +32,10 @@ export type {
   VoxtaBuildResult,
   VoxtaExtensionData,
   VoxtaLossReport,
+  VoxtaExportType,
 } from './types.js';
+
+export { VoxtaResourceKind } from './types.js';
 
 // Reader
 export {

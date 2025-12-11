@@ -21,10 +21,12 @@ import type {
   ExtractedVoxtaCharacter,
   ExtractedVoxtaScenario,
   ExtractedVoxtaBook,
+  ExtractedVoxtaCollection,
   VoxtaPackage,
   VoxtaCharacter,
   VoxtaScenario,
   VoxtaBook,
+  VoxtaCollection,
 } from './types.js';
 
 const DEFAULT_OPTIONS: Required<VoxtaReadOptions> = {
@@ -159,6 +161,7 @@ export function isVoxta(data: BinaryData): boolean {
     'Characters/',
     'MemoryBooks/',
     'Scenarios/',
+    'Collections/',
   ];
 
   return scanZipCentralDirectory(zipData, markers);
@@ -201,6 +204,7 @@ export function readVoxta(
     characters: [],
     scenarios: [],
     books: [],
+    collections: [],
     exportType: 'character', // Default, will be updated based on contents
   };
 
@@ -208,6 +212,7 @@ export function readVoxta(
   const charMap = new Map<string, Partial<ExtractedVoxtaCharacter>>();
   const scenarioMap = new Map<string, Partial<ExtractedVoxtaScenario>>();
   const bookMap = new Map<string, Partial<ExtractedVoxtaBook>>();
+  const collectionMap = new Map<string, Partial<ExtractedVoxtaCollection>>();
 
   // Process entries (size limits already enforced by streamingUnzipSync)
   for (const [fileName, fileData] of Object.entries(unzipped)) {
@@ -308,6 +313,31 @@ export function readVoxta(
       }
       continue;
     }
+
+    // 5. Collections - Path: Collections/{uuid}/...
+    const collectionMatch = fileName.match(/^Collections\/([^/]+)\/(.+)$/);
+    if (collectionMatch) {
+      const [, collectionId, subPath] = collectionMatch;
+
+      if (!collectionMap.has(collectionId!)) {
+        collectionMap.set(collectionId!, { id: collectionId });
+      }
+      const collectionEntry = collectionMap.get(collectionId!)!;
+
+      if (subPath === 'collection.json') {
+        try {
+          collectionEntry.data = JSON.parse(toString(fileData)) as VoxtaCollection;
+        } catch (err) {
+          throw new ParseError(
+            `Failed to parse collection.json for ${collectionId}: ${err instanceof Error ? err.message : String(err)}`,
+            'voxta'
+          );
+        }
+      } else if (subPath!.startsWith('thumbnail.')) {
+        collectionEntry.thumbnail = fileData;
+      }
+      continue;
+    }
   }
 
   // Assemble final results - filter incomplete entries
@@ -329,9 +359,18 @@ export function readVoxta(
     }
   }
 
+  for (const [, collection] of collectionMap) {
+    if (collection.data) {
+      result.collections.push(collection as ExtractedVoxtaCollection);
+    }
+  }
+
   // Determine export type based on contents
   if (result.package) {
     result.exportType = 'package';
+  } else if (result.collections.length > 0) {
+    // Collections without package.json = collection export
+    result.exportType = 'collection';
   } else if (result.scenarios.length > 0) {
     result.exportType = 'scenario';
   }

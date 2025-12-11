@@ -12,6 +12,24 @@ import type { BinaryData } from '@character-foundry/core';
 export type CompressionLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 /**
+ * Voxta resource kind enumeration
+ * Used in EntryResource, ThumbnailResource, and Collection references
+ */
+export enum VoxtaResourceKind {
+  Character = 1,
+  Book = 2,
+  Scenario = 3,
+}
+
+/**
+ * Voxta resource reference
+ */
+export interface VoxtaResourceRef {
+  Kind: VoxtaResourceKind | number;
+  Id: string;
+}
+
+/**
  * Voxta package metadata
  */
 export interface VoxtaPackage {
@@ -22,14 +40,8 @@ export interface VoxtaPackage {
   Description?: string;
   Creator?: string;
   ExplicitContent?: boolean;
-  EntryResource?: {
-    Kind: number; // 1=Character, 3=Scenario
-    Id: string;
-  };
-  ThumbnailResource?: {
-    Kind: number;
-    Id: string;
-  };
+  EntryResource?: VoxtaResourceRef;
+  ThumbnailResource?: VoxtaResourceRef;
   DateCreated?: string;
   DateModified?: string;
 }
@@ -162,6 +174,52 @@ export interface VoxtaBook {
   ExplicitContent?: boolean;
   Creator?: string;
   Items: VoxtaBookItem[];
+  DateCreated?: string;
+  DateModified?: string;
+}
+
+/**
+ * Voxta collection item (reference to a resource)
+ */
+export interface VoxtaCollectionItem {
+  Resource: VoxtaResourceRef;
+}
+
+/**
+ * Voxta collection folder (organizational grouping)
+ */
+export interface VoxtaCollectionFolder {
+  Name: string;
+  Description?: string;
+  /** Kind of resources in this folder (1=Character, 2=Book, 3=Scenario) */
+  Kind: VoxtaResourceKind | number;
+  Items: VoxtaCollectionItem[];
+  /** Nested folders (if any) */
+  Folders?: VoxtaCollectionFolder[];
+}
+
+/**
+ * Voxta collection root structure
+ */
+export interface VoxtaCollectionRoot {
+  Folders: VoxtaCollectionFolder[];
+}
+
+/**
+ * Voxta collection - organizes resources into themed groups
+ */
+export interface VoxtaCollection {
+  $type: 'collection';
+  Id: string;
+  Name: string;
+  Version?: string;
+  PackageId?: string;
+  ExplicitContent?: boolean;
+  Root: VoxtaCollectionRoot;
+  Thumbnail?: {
+    RandomizedETag?: string;
+    ContentType?: string;
+  };
   DateCreated?: string;
   DateModified?: string;
 }
@@ -338,12 +396,22 @@ export interface ExtractedVoxtaBook {
 }
 
 /**
+ * Extracted Voxta collection with assets
+ */
+export interface ExtractedVoxtaCollection {
+  id: string;
+  data: VoxtaCollection;
+  thumbnail?: BinaryData;
+}
+
+/**
  * Voxta export type
  * - 'package': Has package.json with full metadata
  * - 'scenario': Has Scenarios/ folder but no package.json (scenario export)
  * - 'character': Only has Characters/ folder (single/multi character export)
+ * - 'collection': Has Collections/ folder (bundled content with organization)
  */
-export type VoxtaExportType = 'package' | 'scenario' | 'character';
+export type VoxtaExportType = 'package' | 'scenario' | 'character' | 'collection';
 
 /**
  * Complete extracted Voxta data
@@ -353,12 +421,14 @@ export interface VoxtaData {
   characters: ExtractedVoxtaCharacter[];
   scenarios: ExtractedVoxtaScenario[];
   books: ExtractedVoxtaBook[];
+  collections: ExtractedVoxtaCollection[];
 
   /**
    * Type of export detected:
    * - 'package': Has package.json
    * - 'scenario': Has Scenarios/ but no package.json
    * - 'character': Only Characters/ (no package.json or Scenarios/)
+   * - 'collection': Has Collections/ folder
    */
   exportType: VoxtaExportType;
 }
