@@ -207,7 +207,7 @@ pnpm install
 # Build all packages
 pnpm build
 
-# Run tests (287 tests)
+# Run tests (476 tests)
 pnpm test
 
 # Typecheck

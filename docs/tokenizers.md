@@ -1,7 +1,7 @@
 # Tokenizers Package Documentation
 
 **Package:** `@character-foundry/tokenizers`
-**Version:** 0.1.0
+**Version:** 0.1.1
 **Environment:** Node.js and Browser
 
 The `@character-foundry/tokenizers` package provides token counting for character cards using GPT-4 and other tokenizer implementations.

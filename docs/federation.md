@@ -1,7 +1,7 @@
 # Federation Package Documentation
 
 **Package:** `@character-foundry/federation`
-**Version:** 0.1.5
+**Version:** 0.1.6
 **Environment:** Node.js, Browser, and Cloudflare Workers
 
 The `@character-foundry/federation` package provides experimental ActivityPub-based federation for syncing character cards across platforms.

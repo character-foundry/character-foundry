@@ -1,7 +1,7 @@
 # Loader Package Documentation
 
 **Package:** `@character-foundry/loader`
-**Version:** 0.1.6
+**Version:** 0.1.7
 **Environment:** Node.js and Browser
 
 The `@character-foundry/loader` package provides universal character card loading with automatic format detection. It handles PNG, CharX, Voxta, and raw JSON formats.

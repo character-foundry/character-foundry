@@ -1,7 +1,7 @@
 # PNG Package Documentation
 
 **Package:** `@character-foundry/png`
-**Version:** 0.0.3
+**Version:** 0.0.4
 **Environment:** Node.js and Browser
 
 The `@character-foundry/png` package handles reading and writing character card data embedded in PNG files using tEXt/zTXt chunks.

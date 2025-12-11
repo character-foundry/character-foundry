@@ -1,7 +1,7 @@
 # Media Package Documentation
 
 **Package:** `@character-foundry/media`
-**Version:** 0.1.0
+**Version:** 0.1.1
 **Environment:** Node.js and Browser
 
 The `@character-foundry/media` package provides image processing utilities for character cards - format detection, dimension parsing, and thumbnail generation.

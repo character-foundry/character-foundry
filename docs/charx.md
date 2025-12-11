@@ -1,7 +1,7 @@
 # CharX Package Documentation
 
 **Package:** `@character-foundry/charx`
-**Version:** 0.0.3
+**Version:** 0.0.4
 **Environment:** Node.js and Browser
 
 The `@character-foundry/charx` package handles reading and writing CharX format files - a ZIP-based container format used by RisuAI that supports multiple assets.

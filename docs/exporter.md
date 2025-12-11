@@ -1,7 +1,7 @@
 # Exporter Package Documentation
 
 **Package:** `@character-foundry/exporter`
-**Version:** 0.1.1
+**Version:** 0.1.2
 **Environment:** Node.js and Browser
 
 The `@character-foundry/exporter` package provides universal character card exporting with format conversion and loss detection.

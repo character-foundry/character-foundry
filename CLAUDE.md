@@ -133,6 +133,7 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 8. [ ] `git push origin master` - Triggers publish workflow
 9. [ ] Verify workflow succeeds in GitHub Actions (includes verify-build step)
 10. [ ] If workflow fails, check `NPM_TOKEN` secret and fix WITHOUT changing to `GITHUB_TOKEN`
+11. [ ] **NEW PACKAGES ONLY**: Verify visibility=public and repo linked (see Troubleshooting below)
 
 ### Published Versions
 
@@ -151,6 +152,54 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 | `@character-foundry/federation` | 0.1.6 |
 | `@character-foundry/media` | 0.1.1 |
 | `@character-foundry/tokenizers` | 0.1.1 |
+
+### Publishing Troubleshooting
+
+**CRITICAL: New packages publish as "internal" with no repo link by default. This breaks CI.**
+
+#### Verify Package Health
+
+Run this command to check all packages:
+```bash
+gh api "/orgs/character-foundry/packages?package_type=npm" --jq '.[] | {name: .name, visibility: .visibility, repo: .repository.full_name}'
+```
+
+**All packages MUST show:**
+- `visibility: "public"` (NOT "internal")
+- `repo: "character-foundry/character-foundry"` (NOT null)
+
+#### Fix Broken Package (Manual UI Required)
+
+If a package shows `visibility: "internal"` or `repo: null`:
+
+1. Go to: `https://github.com/orgs/character-foundry/packages/npm/package/PACKAGE_NAME/settings`
+2. Change **Visibility** from "Internal" → "Public"
+3. Under **Link to source repository** → Select `character-foundry/character-foundry`
+4. Save changes
+
+#### After Publishing a NEW Package
+
+**IMMEDIATELY after first publish:**
+1. Run the verify command above
+2. Check the new package shows `public` + linked repo
+3. If not, fix via UI settings (gh CLI needs write:packages scope which we don't have)
+
+#### Common Issues
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| 403 on publish | NPM_TOKEN missing/expired | Regenerate PAT, update secret |
+| Package not installable | visibility: "internal" | Change to "public" in UI |
+| Package shows in wrong org | Wrong registry URL | Check .npmrc and package.json |
+| CI fails after new package | Package created as "internal" | Fix visibility + link repo in UI |
+
+#### Why This Happens
+
+GitHub Packages creates new packages with:
+- `visibility: "internal"` (org-only access)
+- `repository: null` (not linked to source)
+
+This is a GitHub default, not something we control in the workflow. The PAT token can publish, but the package inherits org defaults which are restrictive.
 
 ## Docs
 
