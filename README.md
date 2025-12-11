@@ -46,7 +46,7 @@ import { readVoxta } from '@character-foundry/voxta';
 | `@character-foundry/schemas` | 0.1.1 | CCv2, CCv3, Voxta types + detection + CardNormalizer | [docs/schemas.md](docs/schemas.md) |
 | `@character-foundry/png` | 0.0.4 | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
 | `@character-foundry/charx` | 0.0.4 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
-| `@character-foundry/voxta` | 0.1.7 | Voxta packages, multi-character, scenarios, merge utilities | [docs/voxta.md](docs/voxta.md) |
+| `@character-foundry/voxta` | 0.1.8 | Voxta packages, multi-character, scenarios, collections, merge utilities | [docs/voxta.md](docs/voxta.md) |
 | `@character-foundry/lorebook` | 0.0.2 | Lorebook parsing, extraction, insertion | [docs/lorebook.md](docs/lorebook.md) |
 | `@character-foundry/loader` | 0.1.7 | Universal `parseCard()` with format detection + metadata validation | [docs/loader.md](docs/loader.md) |
 | `@character-foundry/exporter` | 0.1.2 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
