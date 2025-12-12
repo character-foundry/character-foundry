@@ -1,16 +1,17 @@
 # Loader Package Documentation
 
 **Package:** `@character-foundry/loader`
-**Version:** 0.1.7
+**Version:** 0.1.8
 **Environment:** Node.js and Browser
 
-The `@character-foundry/loader` package provides universal character card loading with automatic format detection. It handles PNG, CharX, Voxta, and raw JSON formats.
+The `@character-foundry/loader` package provides universal character card and lorebook loading with automatic format detection. It handles PNG, CharX, Voxta, raw JSON character cards, and standalone lorebook files.
 
 ## Features
 
-- **Universal loading** - `parseCard()` handles any supported format
-- Automatic format detection (PNG, CharX, Voxta, JSON)
+- **Universal loading** - `parseCard()` for cards, `parseLorebook()` for lorebooks, `parse()` for both
+- Automatic format detection (PNG, CharX, Voxta, JSON, Lorebook)
 - Normalization to CCv3 format
+- **Discriminated union result** - `parse()` returns `CardParseResult | LorebookParseResult`
 - **Server-side metadata validation** - `validateClientMetadata()`, `computeContentHash()`
 - Optimistic UI support with authoritative server validation
 
@@ -19,6 +20,8 @@ The `@character-foundry/loader` package provides universal character card loadin
 - [Overview](#overview)
 - [Format Detection](#format-detection)
 - [Parsing](#parsing)
+- [Lorebook Parsing](#lorebook-parsing)
+- [Universal Parser](#universal-parser)
 - [Usage Examples](#usage-examples)
 - [Server-side Metadata Validation](#server-side-metadata-validation)
 
@@ -50,7 +53,7 @@ const { card, assets, format, originalShape } = parseCard(buffer);
 ### Types
 
 ```typescript
-type ContainerFormat = 'png' | 'charx' | 'voxta' | 'json' | 'unknown';
+type ContainerFormat = 'png' | 'charx' | 'voxta' | 'json' | 'lorebook' | 'unknown';
 
 interface DetectionResult {
   format: ContainerFormat;
@@ -150,6 +153,94 @@ All input formats are converted to CCv3:
 The `originalShape` field tells you what the source was:
 - `'v2'` - Was TavernCard V2
 - `'v3'` - Was CCv3 or Voxta
+
+---
+
+## Lorebook Parsing
+
+The loader can parse standalone lorebook files in various formats (SillyTavern world_info, CCv3 character_book, Agnai, etc.).
+
+### Types
+
+```typescript
+type LorebookFormat = 'ccv3' | 'sillytavern' | 'agnai' | 'risu' | 'wyvern' | 'unknown';
+
+interface LorebookParseResult {
+  type: 'lorebook';                    // Discriminator
+  book: CCv3CharacterBook;             // Normalized lorebook
+  containerFormat: 'lorebook';
+  lorebookFormat: LorebookFormat;      // Detected original format
+  originalShape: unknown;              // Raw original data
+  rawJson: string;
+  rawBuffer: BinaryData;
+}
+```
+
+### Parsing Lorebooks
+
+```typescript
+import { parseLorebook } from '@character-foundry/loader';
+
+// Parse any lorebook format
+const result = parseLorebook(buffer);
+
+console.log(result.type);               // 'lorebook'
+console.log(result.lorebookFormat);     // 'sillytavern', 'ccv3', etc.
+console.log(result.book.entries.length); // Number of entries
+```
+
+### Supported Lorebook Formats
+
+| Format | Detection |
+|--------|-----------|
+| **CCv3** | `entries` array with `keys`/`content` objects |
+| **SillyTavern** | `entries` object keyed by uid |
+| **Agnai** | `kind: 'memory'` with `keywords`/`entry` format |
+| **Risu** | `type: 'risu'` or `ripiVersion` field |
+| **Wyvern** | `format: 'wyvern'` or `wyvern` field |
+
+---
+
+## Universal Parser
+
+The `parse()` function handles both character cards and standalone lorebooks, returning a discriminated union.
+
+### Types
+
+```typescript
+interface CardParseResult extends ParseResult {
+  type: 'card';
+}
+
+type UniversalParseResult = CardParseResult | LorebookParseResult;
+```
+
+### Usage
+
+```typescript
+import { parse } from '@character-foundry/loader';
+
+const result = parse(buffer);
+
+// Type narrowing with discriminator
+if (result.type === 'card') {
+  // CardParseResult
+  console.log(result.card.data.name);
+  console.log(result.assets.length);
+} else {
+  // LorebookParseResult
+  console.log(result.book.name);
+  console.log(result.book.entries.length);
+}
+```
+
+### When to Use Each Function
+
+| Function | Use Case |
+|----------|----------|
+| `parseCard()` | You know it's a character card |
+| `parseLorebook()` | You know it's a standalone lorebook |
+| `parse()` | Unknown content, could be either |
 
 ---
 

@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { zipSync } from 'fflate';
 import { fromString } from '@character-foundry/core';
-import { parseCard, parseCardAsync, getContainerFormat } from './loader.js';
+import { parseCard, parseCardAsync, getContainerFormat, parseLorebook, parse } from './loader.js';
 
 describe('parseCard', () => {
   describe('CharX parsing', () => {
@@ -254,5 +254,192 @@ describe('getContainerFormat', () => {
     const data = new Uint8Array([0x00, 0x01, 0x02]);
 
     expect(getContainerFormat(data)).toBe('unknown');
+  });
+});
+
+describe('parseLorebook', () => {
+  it('should parse SillyTavern world_info format', () => {
+    const lorebook = {
+      name: 'Test Lorebook',
+      description: 'A test lorebook',
+      entries: {
+        '0': {
+          uid: 0,
+          key: ['dragon', 'wyrm'],
+          content: 'Dragons are mythical creatures.',
+          order: 0,
+          disable: false,
+          selective: false,
+        },
+        '1': {
+          uid: 1,
+          key: ['elf', 'elven'],
+          content: 'Elves are ancient beings.',
+          order: 1,
+          disable: false,
+          selective: true,
+        },
+      },
+    };
+
+    const data = fromString(JSON.stringify(lorebook));
+    const result = parseLorebook(data);
+
+    expect(result.type).toBe('lorebook');
+    expect(result.containerFormat).toBe('lorebook');
+    expect(result.lorebookFormat).toBe('sillytavern');
+    expect(result.book.name).toBe('Test Lorebook');
+    expect(result.book.entries.length).toBe(2);
+    expect(result.book.entries[0]!.keys).toContain('dragon');
+    expect(result.book.entries[0]!.content).toBe('Dragons are mythical creatures.');
+  });
+
+  it('should parse CCv3 character_book format', () => {
+    const lorebook = {
+      name: 'CCv3 Lorebook',
+      entries: [
+        {
+          keys: ['magic', 'spell'],
+          content: 'Magic flows through the world.',
+          enabled: true,
+          insertion_order: 0,
+          id: 0,
+        },
+      ],
+    };
+
+    const data = fromString(JSON.stringify(lorebook));
+    const result = parseLorebook(data);
+
+    expect(result.type).toBe('lorebook');
+    expect(result.lorebookFormat).toBe('ccv3');
+    expect(result.book.entries.length).toBe(1);
+    expect(result.book.entries[0]!.keys).toContain('magic');
+  });
+
+  it('should parse Agnai format', () => {
+    const lorebook = {
+      kind: 'memory',
+      name: 'Agnai Lorebook',
+      entries: [
+        {
+          name: 'Entry 1',
+          entry: 'Some lore content.',
+          keywords: ['keyword1', 'keyword2'],
+          priority: 5,
+          weight: 1,
+          enabled: true,
+        },
+      ],
+    };
+
+    const data = fromString(JSON.stringify(lorebook));
+    const result = parseLorebook(data);
+
+    expect(result.type).toBe('lorebook');
+    expect(result.lorebookFormat).toBe('agnai');
+    expect(result.book.entries.length).toBe(1);
+    expect(result.book.entries[0]!.keys).toContain('keyword1');
+  });
+});
+
+describe('parse (universal)', () => {
+  it('should parse character card and return type=card', () => {
+    const card = {
+      spec: 'chara_card_v3',
+      spec_version: '3.0',
+      data: {
+        name: 'Universal Test',
+        description: 'Testing universal parse',
+        extensions: {},
+      },
+    };
+
+    const zipData = zipSync({
+      'card.json': fromString(JSON.stringify(card)),
+    });
+
+    const result = parse(zipData);
+
+    expect(result.type).toBe('card');
+    if (result.type === 'card') {
+      expect(result.card.data.name).toBe('Universal Test');
+      expect(result.containerFormat).toBe('charx');
+    }
+  });
+
+  it('should parse lorebook and return type=lorebook', () => {
+    const lorebook = {
+      name: 'Universal Lorebook',
+      entries: {
+        '0': {
+          uid: 0,
+          key: ['test'],
+          content: 'Test content.',
+        },
+      },
+    };
+
+    const data = fromString(JSON.stringify(lorebook));
+    const result = parse(data);
+
+    expect(result.type).toBe('lorebook');
+    if (result.type === 'lorebook') {
+      expect(result.book.name).toBe('Universal Lorebook');
+      expect(result.containerFormat).toBe('lorebook');
+    }
+  });
+
+  it('should parse JSON card correctly', () => {
+    const card = {
+      spec: 'chara_card_v3',
+      data: {
+        name: 'JSON Card',
+        description: 'A card in JSON',
+        extensions: {},
+      },
+    };
+
+    const data = fromString(JSON.stringify(card));
+    const result = parse(data);
+
+    expect(result.type).toBe('card');
+    if (result.type === 'card') {
+      expect(result.card.data.name).toBe('JSON Card');
+      expect(result.containerFormat).toBe('json');
+    }
+  });
+
+  it('should distinguish card from lorebook in JSON', () => {
+    // This card has data.name which is a card indicator
+    const card = {
+      spec: 'chara_card_v3',
+      data: {
+        name: 'A Card',
+        description: 'Not a lorebook',
+      },
+    };
+
+    // This is clearly a lorebook (entries object with uid/key/content)
+    const lorebook = {
+      entries: {
+        '0': { uid: 0, key: ['test'], content: 'Content' },
+      },
+    };
+
+    const cardResult = parse(fromString(JSON.stringify(card)));
+    const lorebookResult = parse(fromString(JSON.stringify(lorebook)));
+
+    expect(cardResult.type).toBe('card');
+    expect(lorebookResult.type).toBe('lorebook');
+  });
+
+  it('should throw on invalid JSON', () => {
+    expect(() => parse(fromString('not valid json'))).toThrow();
+  });
+
+  it('should throw on unrecognized format', () => {
+    const data = new Uint8Array([0x00, 0x01, 0x02, 0x03]);
+    expect(() => parse(data)).toThrow();
   });
 });

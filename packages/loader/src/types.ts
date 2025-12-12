@@ -5,7 +5,7 @@
  */
 
 import type { BinaryData } from '@character-foundry/core';
-import type { CCv3Data, Spec, SourceFormat } from '@character-foundry/schemas';
+import type { CCv3Data, CCv3CharacterBook, Spec, SourceFormat } from '@character-foundry/schemas';
 
 // Re-export for convenience
 export type { Spec, SourceFormat };
@@ -13,7 +13,7 @@ export type { Spec, SourceFormat };
 /**
  * Detected container format (the file type)
  */
-export type ContainerFormat = 'png' | 'charx' | 'voxta' | 'json' | 'unknown';
+export type ContainerFormat = 'png' | 'charx' | 'voxta' | 'json' | 'lorebook' | 'unknown';
 
 /**
  * Asset extracted from a card
@@ -95,3 +95,47 @@ export interface DetectionResult {
   /** Reason for detection */
   reason: string;
 }
+
+/**
+ * Known lorebook formats (from @character-foundry/lorebook)
+ */
+export type LorebookFormat =
+  | 'ccv3'           // Standard CCv3 character_book
+  | 'sillytavern'    // SillyTavern world_info JSON
+  | 'agnai'          // Agnai lorebook format
+  | 'risu'           // RisuAI .risulorebook
+  | 'wyvern'         // Wyvern format
+  | 'unknown';
+
+/**
+ * Result of parsing a standalone lorebook
+ */
+export interface LorebookParseResult {
+  /** Discriminator for type narrowing */
+  type: 'lorebook';
+  /** Normalized lorebook in CCv3 format */
+  book: CCv3CharacterBook;
+  /** Original container format */
+  containerFormat: 'lorebook';
+  /** Detected lorebook format */
+  lorebookFormat: LorebookFormat;
+  /** The raw JSON object before normalization */
+  originalShape: unknown;
+  /** Raw JSON string */
+  rawJson: string;
+  /** Original file buffer */
+  rawBuffer: BinaryData;
+}
+
+/**
+ * Result of parsing a character card (with discriminator)
+ */
+export interface CardParseResult extends ParseResult {
+  /** Discriminator for type narrowing */
+  type: 'card';
+}
+
+/**
+ * Union result from the universal parse() function
+ */
+export type UniversalParseResult = CardParseResult | LorebookParseResult;

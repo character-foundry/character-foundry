@@ -165,6 +165,9 @@ importers:
       '@character-foundry/core':
         specifier: workspace:*
         version: link:../core
+      '@character-foundry/lorebook':
+        specifier: workspace:*
+        version: link:../lorebook
       '@character-foundry/normalizer':
         specifier: workspace:*
         version: link:../normalizer

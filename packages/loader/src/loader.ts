@@ -11,12 +11,17 @@ import { extractFromPNG, removeAllTextChunks } from '@character-foundry/png';
 import { readCharX } from '@character-foundry/charx';
 import { readVoxta, voxtaToCCv3 } from '@character-foundry/voxta';
 import { ccv2ToCCv3 } from '@character-foundry/normalizer';
+import { parseLorebook as parseLorebookRaw, detectLorebookFormat } from '@character-foundry/lorebook';
 import { detectFormat } from './detector.js';
 import type {
   ParseResult,
   ParseOptions,
   ExtractedAsset,
   ContainerFormat,
+  LorebookParseResult,
+  CardParseResult,
+  UniversalParseResult,
+  LorebookFormat,
 } from './types.js';
 
 const DEFAULT_OPTIONS: Required<ParseOptions> = {
@@ -521,4 +526,158 @@ export async function parseCardAsync(
  */
 export function getContainerFormat(data: BinaryData): ContainerFormat {
   return detectFormat(data).format;
+}
+
+/**
+ * Parse a standalone lorebook from JSON data
+ */
+function parseLorebookData(data: BinaryData): LorebookParseResult {
+  let jsonStr: string;
+  try {
+    jsonStr = toString(data);
+  } catch (err) {
+    throw new ParseError(
+      `Failed to decode JSON: ${err instanceof Error ? err.message : String(err)}`,
+      'lorebook'
+    );
+  }
+
+  try {
+    const result = parseLorebookRaw(data);
+    return {
+      type: 'lorebook',
+      book: result.book,
+      containerFormat: 'lorebook',
+      lorebookFormat: result.originalFormat as LorebookFormat,
+      originalShape: result.originalShape,
+      rawJson: jsonStr,
+      rawBuffer: data,
+    };
+  } catch (err) {
+    throw new ParseError(
+      `Failed to parse lorebook: ${err instanceof Error ? err.message : String(err)}`,
+      'lorebook'
+    );
+  }
+}
+
+/**
+ * Check if JSON data looks like a lorebook (not a character card)
+ */
+function isLorebookJson(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+
+  // Quick check: if it has spec or spec_version, it's a character card
+  if (obj.spec || obj.spec_version) return false;
+
+  // Quick check: if it has data.name or data.description (CCv3 card structure), it's a card
+  if (obj.data && typeof obj.data === 'object') {
+    const dataObj = obj.data as Record<string, unknown>;
+    if (dataObj.name || dataObj.description) return false;
+  }
+
+  // Check for lorebook indicators
+  const format = detectLorebookFormat(data);
+  return format !== 'unknown';
+}
+
+/**
+ * Parse a standalone lorebook file
+ *
+ * @param data - Binary data of the lorebook file
+ * @returns LorebookParseResult with normalized lorebook
+ */
+export function parseLorebook(data: BinaryData): LorebookParseResult {
+  return parseLorebookData(data);
+}
+
+/**
+ * Async version of parseLorebook
+ */
+export async function parseLorebookAsync(data: BinaryData): Promise<LorebookParseResult> {
+  return parseLorebook(data);
+}
+
+/**
+ * Universal parser that handles both character cards and standalone lorebooks.
+ *
+ * Returns a discriminated union - check result.type to narrow:
+ * - 'card': CardParseResult with card data
+ * - 'lorebook': LorebookParseResult with lorebook data
+ *
+ * @param data - Binary data of the file
+ * @param options - Parsing options
+ * @returns UniversalParseResult (CardParseResult | LorebookParseResult)
+ *
+ * @example
+ * ```ts
+ * const result = parse(buffer);
+ * if (result.type === 'card') {
+ *   console.log(result.card.data.name);
+ * } else {
+ *   console.log(result.book.name, result.book.entries.length);
+ * }
+ * ```
+ */
+export function parse(data: BinaryData, options: ParseOptions = {}): UniversalParseResult {
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  const detection = detectFormat(data);
+
+  // For non-JSON formats, parse as card
+  if (detection.format !== 'json' && detection.format !== 'unknown') {
+    const result = parseCard(data, opts);
+    return { ...result, type: 'card' } as CardParseResult;
+  }
+
+  // For JSON, we need to determine if it's a card or lorebook
+  if (detection.format === 'json') {
+    let jsonStr: string;
+    let parsed: unknown;
+
+    try {
+      jsonStr = toString(data);
+      parsed = JSON.parse(jsonStr);
+    } catch (err) {
+      throw new ParseError(
+        `Failed to parse JSON: ${err instanceof Error ? err.message : String(err)}`,
+        'json'
+      );
+    }
+
+    // Check if it's a lorebook first (more specific check)
+    if (isLorebookJson(parsed)) {
+      return parseLorebookData(data);
+    }
+
+    // Otherwise try to parse as card
+    const spec = detectSpec(parsed);
+    if (spec) {
+      const result = parseJson(data, opts);
+      return { ...result, type: 'card' } as CardParseResult;
+    }
+
+    // Neither card nor lorebook - could still be unknown lorebook format
+    // Try lorebook as fallback
+    try {
+      return parseLorebookData(data);
+    } catch {
+      throw new ParseError('JSON does not appear to be a valid character card or lorebook', 'json');
+    }
+  }
+
+  throw new ParseError(
+    `Unrecognized format: ${detection.reason}`,
+    'unknown'
+  );
+}
+
+/**
+ * Async version of parse
+ */
+export async function parseAsync(
+  data: BinaryData,
+  options: ParseOptions = {}
+): Promise<UniversalParseResult> {
+  return parse(data, options);
 }

@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/loader",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Universal character card loader - detects format and parses any card type",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -30,6 +30,7 @@
   "dependencies": {
     "@character-foundry/charx": "workspace:*",
     "@character-foundry/core": "workspace:*",
+    "@character-foundry/lorebook": "workspace:*",
     "@character-foundry/normalizer": "workspace:*",
     "@character-foundry/png": "workspace:*",
     "@character-foundry/schemas": "workspace:*",
