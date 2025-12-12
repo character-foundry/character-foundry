@@ -34,6 +34,7 @@ const PACKAGES_TO_TEST = [
   'tokenizers',
   'media',
   'federation',
+  'app-framework',
 ];
 
 // Key exports to verify per package
@@ -50,6 +51,7 @@ const PACKAGE_EXPORTS = {
   tokenizers: ['countTokens', 'countCardTokens', 'getTokenizer'],
   media: ['detectImageFormat', 'getImageDimensions'],
   federation: ['enableFederation'],
+  'app-framework': ['AutoForm', 'Registry', 'settingsRegistry', 'widgetRegistry', 'analyzeSchema'],
 };
 
 let passed = 0;

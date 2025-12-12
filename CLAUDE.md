@@ -18,6 +18,7 @@ packages/
   tokenizers/ - GPT-4/LLaMA token counting + card field counting
   media/      - Image format detection, dimensions, thumbnail generation
   federation/ - ActivityPub federation + HTTP signatures + D1 store (experimental, gated)
+  app-framework/ - Schema-driven UI framework: Extension, Registry, AutoForm (React peer dep)
 ```
 
 ## Commands
@@ -299,6 +300,7 @@ pnpm build && pnpm test
 | `@character-foundry/federation` | 0.1.6 |
 | `@character-foundry/media` | 0.1.1 |
 | `@character-foundry/tokenizers` | 0.1.1 |
+| `@character-foundry/app-framework` | 0.1.0 |
 
 ### Publishing Troubleshooting
 

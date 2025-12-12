@@ -54,6 +54,7 @@ import { readVoxta } from '@character-foundry/voxta';
 | `@character-foundry/tokenizers` | 0.1.1 | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
 | `@character-foundry/media` | 0.1.1 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
 | `@character-foundry/federation` | 0.1.6 | ActivityPub federation + HTTP signatures + D1 store (experimental) | [docs/federation.md](docs/federation.md) |
+| `@character-foundry/app-framework` | 0.1.0 | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
 
 ## Installation
 
@@ -221,6 +222,7 @@ Detailed documentation for each package:
 - **[Tokenizers](docs/tokenizers.md)** - GPT-4/LLaMA token counting
 - **[Media](docs/media.md)** - Image format detection, dimensions, thumbnails
 - **[Federation](docs/federation.md)** - ActivityPub federation (experimental)
+- **[App Framework](docs/app-framework.md)** - Schema-driven UI with AutoForm
 
 ## Development
 
