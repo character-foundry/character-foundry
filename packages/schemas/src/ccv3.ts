@@ -4,99 +4,145 @@
  * Based on: https://github.com/kwaroran/character-card-spec-v3
  */
 
+import { z } from 'zod';
+import { AssetDescriptorSchema } from './common.js';
 import type { AssetDescriptor } from './common.js';
+
+// ============================================================================
+// Zod Schemas
+// ============================================================================
+
+/**
+ * Lorebook entry schema for v3 cards
+ */
+export const CCv3LorebookEntrySchema = z.object({
+  keys: z.array(z.string()),
+  content: z.string(),
+  enabled: z.boolean(),
+  insertion_order: z.number().int(),
+  // Optional fields
+  case_sensitive: z.boolean().optional(),
+  name: z.string().optional(),
+  priority: z.number().int().optional(),
+  id: z.number().int().optional(),
+  comment: z.string().optional(),
+  selective: z.boolean().optional(),
+  secondary_keys: z.array(z.string()).optional(),
+  constant: z.boolean().optional(),
+  position: z.enum(['before_char', 'after_char']).optional(),
+  extensions: z.record(z.unknown()).optional(),
+  // v3 specific
+  automation_id: z.string().optional(),
+  role: z.enum(['system', 'user', 'assistant']).optional(),
+  group: z.string().optional(),
+  scan_frequency: z.number().int().nonnegative().optional(),
+  probability: z.number().min(0).max(1).optional(),
+  use_regex: z.boolean().optional(),
+  depth: z.number().int().nonnegative().optional(),
+  selective_logic: z.enum(['AND', 'NOT']).optional(),
+});
+
+/**
+ * Character book (lorebook) schema for v3 cards
+ */
+export const CCv3CharacterBookSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  scan_depth: z.number().int().nonnegative().optional(),
+  token_budget: z.number().int().nonnegative().optional(),
+  recursive_scanning: z.boolean().optional(),
+  extensions: z.record(z.unknown()).optional(),
+  entries: z.array(CCv3LorebookEntrySchema),
+});
+
+/**
+ * Character Card v3 inner data structure schema
+ */
+export const CCv3DataInnerSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  personality: z.string(),
+  scenario: z.string(),
+  first_mes: z.string(),
+  mes_example: z.string(),
+  // Required metadata
+  creator: z.string(),
+  character_version: z.string(),
+  tags: z.array(z.string()),
+  // Required field (can be empty array)
+  group_only_greetings: z.array(z.string()),
+  // Optional fields
+  creator_notes: z.string().optional(),
+  system_prompt: z.string().optional(),
+  post_history_instructions: z.string().optional(),
+  alternate_greetings: z.array(z.string()).optional(),
+  character_book: CCv3CharacterBookSchema.optional(),
+  extensions: z.record(z.unknown()).optional(),
+  // v3 specific
+  assets: z.array(AssetDescriptorSchema).optional(),
+  nickname: z.string().optional(),
+  creator_notes_multilingual: z.record(z.string()).optional(),
+  source: z.array(z.string()).optional(),
+  creation_date: z.number().int().nonnegative().optional(),     // Unix timestamp in seconds
+  modification_date: z.number().int().nonnegative().optional(), // Unix timestamp in seconds
+});
+
+/**
+ * Character Card v3 full structure schema
+ */
+export const CCv3DataSchema = z.object({
+  spec: z.literal('chara_card_v3'),
+  spec_version: z.literal('3.0'),
+  data: CCv3DataInnerSchema,
+});
+
+// ============================================================================
+// TypeScript Types (inferred from Zod schemas)
+// ============================================================================
 
 /**
  * Lorebook entry for v3 cards
  */
-export interface CCv3LorebookEntry {
-  keys: string[];
-  content: string;
-  enabled: boolean;
-  insertion_order: number;
-  // Optional fields
-  case_sensitive?: boolean;
-  name?: string;
-  priority?: number;
-  id?: number;
-  comment?: string;
-  selective?: boolean;
-  secondary_keys?: string[];
-  constant?: boolean;
-  position?: 'before_char' | 'after_char';
-  extensions?: Record<string, unknown>;
-  // v3 specific
-  automation_id?: string;
-  role?: 'system' | 'user' | 'assistant';
-  group?: string;
-  scan_frequency?: number;
-  probability?: number;
-  use_regex?: boolean;
-  depth?: number;
-  selective_logic?: 'AND' | 'NOT';
-}
+export type CCv3LorebookEntry = z.infer<typeof CCv3LorebookEntrySchema>;
 
 /**
  * Character book (lorebook) for v3 cards
  */
-export interface CCv3CharacterBook {
-  name?: string;
-  description?: string;
-  scan_depth?: number;
-  token_budget?: number;
-  recursive_scanning?: boolean;
-  extensions?: Record<string, unknown>;
-  entries: CCv3LorebookEntry[];
-}
+export type CCv3CharacterBook = z.infer<typeof CCv3CharacterBookSchema>;
 
 /**
  * Character Card v3 inner data structure
  */
-export interface CCv3DataInner {
-  name: string;
-  description: string;
-  personality: string;
-  scenario: string;
-  first_mes: string;
-  mes_example: string;
-  // Required metadata
-  creator: string;
-  character_version: string;
-  tags: string[];
-  // Required field (can be empty array)
-  group_only_greetings: string[];
-  // Optional fields
-  creator_notes?: string;
-  system_prompt?: string;
-  post_history_instructions?: string;
-  alternate_greetings?: string[];
-  character_book?: CCv3CharacterBook;
-  extensions?: Record<string, unknown>;
-  // v3 specific
-  assets?: AssetDescriptor[];
-  nickname?: string;
-  creator_notes_multilingual?: Record<string, string>;
-  source?: string[];
-  creation_date?: number;     // Unix timestamp in seconds
-  modification_date?: number; // Unix timestamp in seconds
-}
+export type CCv3DataInner = z.infer<typeof CCv3DataInnerSchema>;
 
 /**
  * Character Card v3 full structure
  */
-export interface CCv3Data {
-  spec: 'chara_card_v3';
-  spec_version: '3.0';
-  data: CCv3DataInner;
-}
+export type CCv3Data = z.infer<typeof CCv3DataSchema>;
+
+// ============================================================================
+// Type Guards & Parsers
+// ============================================================================
 
 /**
  * Check if data is a v3 card
  */
 export function isV3Card(data: unknown): data is CCv3Data {
-  if (!data || typeof data !== 'object') return false;
-  const obj = data as Record<string, unknown>;
-  return obj.spec === 'chara_card_v3' && obj.data !== undefined;
+  return CCv3DataSchema.safeParse(data).success;
+}
+
+/**
+ * Parse and validate a v3 card
+ */
+export function parseV3Card(data: unknown): CCv3Data {
+  return CCv3DataSchema.parse(data);
+}
+
+/**
+ * Parse and validate v3 card inner data
+ */
+export function parseV3DataInner(data: unknown): CCv3DataInner {
+  return CCv3DataInnerSchema.parse(data);
 }
 
 /**
