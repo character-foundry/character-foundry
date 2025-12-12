@@ -1,20 +1,22 @@
 # Schemas Package Documentation
 
 **Package:** `@character-foundry/schemas`
-**Version:** 0.1.1
+**Version:** 0.2.0
 **Environment:** Node.js and Browser
 
-The `@character-foundry/schemas` package provides TypeScript type definitions and detection utilities for character card formats (CCv2, CCv3, Voxta, Risu extensions).
+The `@character-foundry/schemas` package provides TypeScript type definitions, **Zod runtime validation schemas**, and detection utilities for character card formats (CCv2, CCv3, Voxta, Risu extensions).
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Runtime Validation with Zod](#runtime-validation-with-zod)
 - [Common Types](#common-types)
 - [CCv2 Types](#ccv2-types)
 - [CCv3 Types](#ccv3-types)
 - [Risu Extension Types](#risu-extension-types)
 - [Normalized Card](#normalized-card)
 - [Detection Utilities](#detection-utilities)
+- [Validation Utilities](#validation-utilities)
 
 ---
 
@@ -28,7 +30,74 @@ Character cards come in several formats:
 | **CCv3** | `chara_card_v3` | Character Card V3, newer features |
 | **Risu** | CCv3 + extensions | RisuAI-specific extensions |
 
-This package defines TypeScript types for all formats and provides utilities to detect which format a card uses.
+This package defines TypeScript types for all formats, **Zod schemas for runtime validation**, and provides utilities to detect which format a card uses.
+
+---
+
+## Runtime Validation with Zod
+
+All types now have corresponding Zod schemas for runtime validation. Types are inferred from schemas using `z.infer<>` to ensure type-schema synchronization.
+
+### Quick Start
+
+```typescript
+import {
+  CCv3DataSchema,
+  CCv2DataSchema,
+  parseV3Card,
+  parseV2Data,
+  isV3Card,
+  safeParse
+} from '@character-foundry/schemas';
+
+// Type guard with runtime validation
+if (isV3Card(data)) {
+  // data is validated CCv3Data
+  console.log(data.data.name);
+}
+
+// Parse and validate (throws on error)
+const card = parseV3Card(unknownData);
+
+// Safe parse with error details
+const result = safeParse(CCv3DataSchema, data);
+if (result.success) {
+  console.log('Valid card:', result.data);
+} else {
+  console.error('Validation failed:', result.error);
+  console.error('Field:', result.field);
+}
+```
+
+### Available Schemas
+
+| Schema | Description |
+|--------|-------------|
+| `CCv3DataSchema` | Full CCv3 card structure |
+| `CCv3DataInnerSchema` | CCv3 inner data only |
+| `CCv3CharacterBookSchema` | CCv3 lorebook |
+| `CCv3LorebookEntrySchema` | CCv3 lorebook entry |
+| `CCv2DataSchema` | CCv2 unwrapped format |
+| `CCv2WrappedSchema` | CCv2 wrapped format |
+| `CCv2CharacterBookSchema` | CCv2 lorebook |
+| `CCv2LorebookEntrySchema` | CCv2 lorebook entry |
+| `AssetDescriptorSchema` | Asset metadata |
+| `ExtractedAssetSchema` | Extracted asset with data |
+| `SpecSchema` | Card spec version enum |
+| `SourceFormatSchema` | Source format enum |
+| `AssetTypeSchema` | Asset type enum |
+
+### Parse Functions
+
+```typescript
+// CCv3
+parseV3Card(data: unknown): CCv3Data
+parseV3DataInner(data: unknown): CCv3DataInner
+
+// CCv2
+parseV2Data(data: unknown): CCv2Data
+parseWrappedV2(data: unknown): CCv2Wrapped
+```
 
 ---
 
@@ -581,3 +650,96 @@ function hasAvatar(card: CCv3Data): boolean {
   return (card.data.assets || []).some(a => a.type === 'icon');
 }
 ```
+
+
+---
+
+## Validation Utilities
+
+The package provides utility functions for working with Zod validation errors.
+
+### `safeParse()`
+
+Wrapper around Zod's `.safeParse()` that returns simplified error information:
+
+```typescript
+import { safeParse, CCv3DataSchema } from '@character-foundry/schemas';
+
+const result = safeParse(CCv3DataSchema, unknownData);
+
+if (result.success) {
+  console.log('Valid card:', result.data);
+} else {
+  console.error('Error:', result.error);    // Human-readable message
+  console.error('Field:', result.field);    // First error field path
+}
+```
+
+### `zodErrorToMessage()`
+
+Convert Zod error to human-readable message:
+
+```typescript
+import { zodErrorToMessage } from '@character-foundry/schemas';
+import { z } from 'zod';
+
+try {
+  CCv3DataSchema.parse(invalidData);
+} catch (err) {
+  if (err instanceof z.ZodError) {
+    const message = zodErrorToMessage(err, 'Card validation failed');
+    console.error(message);
+    // "Card validation failed - data.name: Required; data.creator: Required"
+  }
+}
+```
+
+### `getFirstErrorField()`
+
+Extract the first error field path from Zod error:
+
+```typescript
+import { getFirstErrorField } from '@character-foundry/schemas';
+import { z } from 'zod';
+
+try {
+  CCv3DataSchema.parse(invalidData);
+} catch (err) {
+  if (err instanceof z.ZodError) {
+    const field = getFirstErrorField(err);
+    console.error(`Validation failed at: ${field}`);
+    // "Validation failed at: data"
+  }
+}
+```
+
+---
+
+## Migration from 0.1.x to 0.2.0
+
+Version 0.2.0 adds Zod schemas while maintaining full backwards compatibility:
+
+**No Breaking Changes:**
+- All existing TypeScript types are unchanged
+- Type guards (`isV3Card`, `isWrappedV2`) work the same way
+- Existing code continues to work without modification
+
+**New Features:**
+- Zod schemas available for all types
+- New parse functions (`parseV3Card`, `parseV2Data`)
+- Validation utilities (`safeParse`, `zodErrorToMessage`)
+
+**Opt-In Migration:**
+```typescript
+// Old approach (still works)
+if (data && typeof data === 'object' && 'spec' in data) {
+  // Manual validation
+}
+
+// New approach (recommended)
+import { isV3Card } from '@character-foundry/schemas';
+if (isV3Card(data)) {
+  // Runtime validated
+}
+```
+
