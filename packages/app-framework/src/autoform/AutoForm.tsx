@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback, type ReactNode } from 'react';
+import { useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { z } from 'zod';
 import { useForm, Controller, FormProvider, type DefaultValues, type Path } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -149,6 +149,7 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
   }, [fieldInfoMap]);
 
   // Setup react-hook-form
+  // shouldUnregister ensures hidden/conditional fields don't leak stale values
   const methods = useForm<z.infer<T>>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -157,6 +158,7 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
       ...values,
     } as DefaultValues<z.infer<T>>,
     mode: 'onChange',
+    shouldUnregister: true,
   });
 
   const { control, handleSubmit, watch, formState, reset } = methods;
@@ -164,9 +166,13 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
   // Watch all values for conditional field evaluation
   const watchedValues = watch();
 
-  // Sync external values in controlled mode
+  // Track previous values to avoid unnecessary resets in controlled mode
+  const prevValuesRef = useRef<z.infer<T> | undefined>(values);
+
+  // Sync external values in controlled mode (with deep comparison)
   useEffect(() => {
-    if (values) {
+    if (values && !shallowEqual(values, prevValuesRef.current)) {
+      prevValuesRef.current = values;
       reset({ ...schemaDefaults, ...defaultValues, ...values } as z.infer<T>);
     }
   }, [values, reset, schemaDefaults, defaultValues]);
@@ -181,15 +187,29 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
     }
   }, [watchedValues, onChange, schema]);
 
-  // Get hint for a field (supports dot notation)
+  // Known FieldUIHint keys for detection
+  const HINT_KEYS = new Set([
+    'widget', 'label', 'placeholder', 'helperText', 'hidden', 'readOnly',
+    'className', 'condition', 'group', 'rows', 'accept', 'multiple', 'maxSize',
+    'options', 'searchable', 'searchPlaceholder', 'noResultsText',
+  ]);
+
+  // Check if an object is a FieldUIHint (has at least one known hint property)
+  const isFieldUIHint = useCallback((obj: unknown): obj is FieldUIHint => {
+    if (!obj || typeof obj !== 'object') return false;
+    return Object.keys(obj).some((key) => HINT_KEYS.has(key));
+  }, []);
+
+  // Get hint for a field (supports dot notation and nested syntax)
   const getHint = useCallback(
     (fieldName: string): FieldUIHint | undefined => {
-      // First try direct dot-notation key
+      // First try direct dot-notation key (e.g., 'profile.name')
       if (fieldName in uiHints) {
-        return uiHints[fieldName] as FieldUIHint;
+        const hint = uiHints[fieldName];
+        if (isFieldUIHint(hint)) return hint;
       }
 
-      // Then try nested object access
+      // Then try nested object access (e.g., uiHints.profile.name)
       const parts = fieldName.split('.');
       let current: unknown = uiHints;
       for (const part of parts) {
@@ -197,15 +217,14 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
         current = (current as Record<string, unknown>)[part];
       }
 
-      // Check if it's a FieldUIHint (has widget or other hint properties)
-      if (current && typeof current === 'object' && !('widget' in current)) {
-        // It might be a nested UIHints object, not a FieldUIHint
-        return undefined;
+      // Check if we found a valid FieldUIHint
+      if (isFieldUIHint(current)) {
+        return current;
       }
 
-      return current as FieldUIHint | undefined;
+      return undefined;
     },
-    [uiHints]
+    [uiHints, isFieldUIHint]
   );
 
   // Evaluate if a field's condition is met
@@ -394,4 +413,33 @@ function setNestedValue(obj: Record<string, unknown>, path: string, value: unkno
   if (lastPart !== undefined) {
     current[lastPart] = value;
   }
+}
+
+/**
+ * Shallow equality check for objects.
+ * Prevents unnecessary reset() calls in controlled mode.
+ */
+function shallowEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (typeof a !== 'object' || typeof b !== 'object') return a === b;
+
+  const keysA = Object.keys(a as object);
+  const keysB = Object.keys(b as object);
+
+  if (keysA.length !== keysB.length) return false;
+
+  for (const key of keysA) {
+    const valA = (a as Record<string, unknown>)[key];
+    const valB = (b as Record<string, unknown>)[key];
+
+    // For nested objects, do recursive shallow check (one level deep)
+    if (typeof valA === 'object' && typeof valB === 'object' && valA !== null && valB !== null) {
+      if (!shallowEqual(valA, valB)) return false;
+    } else if (valA !== valB) {
+      return false;
+    }
+  }
+
+  return true;
 }

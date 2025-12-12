@@ -53,6 +53,7 @@ export class WidgetRegistry extends Registry<string, WidgetDefinition> {
 
   /**
    * Check if a widget ID is a built-in widget type.
+   * This list must stay in sync with the BuiltinWidget type in ui-hints.ts.
    */
   isBuiltinWidget(id: string): id is BuiltinWidget {
     const builtins: string[] = [
@@ -67,6 +68,8 @@ export class WidgetRegistry extends Registry<string, WidgetDefinition> {
       'slider',
       'color-picker',
       'tag-input',
+      'searchable-select',
+      'file-upload',
     ];
     return builtins.includes(id);
   }

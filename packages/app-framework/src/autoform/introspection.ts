@@ -167,6 +167,33 @@ export function analyzeField(name: string, zodType: z.ZodTypeAny): FieldInfo {
     currentType = currentType._def.schema;
   }
 
+  // Handle ZodUnion - pick the first option for rendering
+  if (currentType instanceof z.ZodUnion) {
+    const options = currentType._def.options as z.ZodTypeAny[];
+    if (options.length > 0 && options[0]) {
+      // Use first option as representative type
+      currentType = options[0];
+    }
+  }
+
+  // Handle ZodDiscriminatedUnion - analyze the discriminator
+  if (currentType instanceof z.ZodDiscriminatedUnion) {
+    // For discriminated unions, we can't easily pick a single type
+    // Return as 'ZodDiscriminatedUnion' and let widgets handle it
+    // Consumers can use the discriminator to conditionally render
+  }
+
+  // Handle ZodRecord - treat as a special case (key-value pairs)
+  // Records are rendered as text by default, custom widgets can handle them
+  if (currentType instanceof z.ZodRecord) {
+    // Leave as ZodRecord - widgets can check typeName
+  }
+
+  // Handle ZodSet - treat like an array
+  if (currentType instanceof z.ZodSet) {
+    // Leave as ZodSet - similar to array handling
+  }
+
   const typeName = currentType.constructor.name;
 
   // Extract nested fields for ZodObject
@@ -286,7 +313,7 @@ function extractEnumValues(zodType: z.ZodTypeAny): string[] | undefined {
 }
 
 /**
- * Extract inner type for compound types (arrays, etc.).
+ * Extract inner type for compound types (arrays, sets, etc.).
  */
 function extractInnerType(
   name: string,
@@ -294,6 +321,10 @@ function extractInnerType(
 ): FieldInfo | undefined {
   if (zodType instanceof z.ZodArray) {
     return analyzeField(`${name}[]`, zodType._def.type);
+  }
+
+  if (zodType instanceof z.ZodSet) {
+    return analyzeField(`${name}[]`, zodType._def.valueType);
   }
 
   return undefined;
@@ -416,8 +447,18 @@ export function getDefaultWidgetType(fieldInfo: FieldInfo): string {
         return 'tag-input';
       }
       return 'text'; // Fallback
+    case 'ZodSet':
+      // Sets are similar to arrays - string sets become tag inputs
+      if (innerType?.typeName === 'ZodString') {
+        return 'tag-input';
+      }
+      return 'text'; // Fallback
     case 'ZodObject':
       return 'nested'; // Special marker for nested objects
+    case 'ZodRecord':
+      return 'text'; // Records need custom widgets or JSON editor
+    case 'ZodDiscriminatedUnion':
+      return 'select'; // Use discriminator field to select variant
     case 'ZodDate':
       return 'text'; // Could be 'date' widget
     default:

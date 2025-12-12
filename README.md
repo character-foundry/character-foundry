@@ -54,7 +54,7 @@ import { readVoxta } from '@character-foundry/voxta';
 | `@character-foundry/tokenizers` | 0.1.1 | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
 | `@character-foundry/media` | 0.1.1 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
 | `@character-foundry/federation` | 0.1.6 | ActivityPub federation + HTTP signatures + D1 store (experimental) | [docs/federation.md](docs/federation.md) |
-| `@character-foundry/app-framework` | 0.2.0 | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
+| `@character-foundry/app-framework` | 0.2.1 | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
 
 ## Installation
 
