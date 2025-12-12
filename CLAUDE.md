@@ -7,7 +7,7 @@ Universal TypeScript library for reading, writing, and converting AI character c
 ```
 packages/
   core/       - Binary utilities, base64, ZIP, URI parsing, UUID, data URLs, security
-  schemas/    - CCv2, CCv3, Voxta types + format detection + CardNormalizer
+  schemas/    - CCv2, CCv3, Voxta types + Zod runtime validation + format detection
   png/        - PNG chunk handling, metadata stripping, inflate protection
   charx/      - CharX reader/writer, JPEG+ZIP hybrid support
   voxta/      - Voxta packages, multi-character, scenarios, merge utilities
@@ -63,6 +63,7 @@ Example package.json exports (REQUIRED pattern):
 - **Loss detection** - checkExportLoss() before format conversion
 - **50MB per-asset limit** - Enforced in all parsers
 - **Federation is gated** - Must call enableFederation() explicitly
+- **Runtime validation** - Zod schemas available for all core types (CCv2, CCv3, assets)
 
 ## Security Features
 
@@ -104,10 +105,51 @@ Metadata validation for optimistic UI with server authority:
 - Tag validation callback support
 - Returns authoritative values + discrepancies
 
+## Runtime Validation with Zod
+
+The `@character-foundry/schemas` package now includes comprehensive Zod schemas for runtime validation:
+
+**Available Schemas:**
+- `CCv3DataSchema` - Full v3 card structure
+- `CCv2DataSchema` / `CCv2WrappedSchema` - v2 card formats
+- `AssetDescriptorSchema` - Asset metadata validation
+- `SpecSchema`, `SourceFormatSchema`, `AssetTypeSchema` - Enum schemas
+
+**Usage:**
+```typescript
+import { CCv3DataSchema, parseV3Card, isV3Card } from '@character-foundry/schemas';
+
+// Type guard using Zod
+if (isV3Card(data)) {
+  // data is CCv3Data (validated at runtime)
+}
+
+// Parse with validation
+try {
+  const card = parseV3Card(unknownData);
+  // card is guaranteed valid CCv3Data
+} catch (err) {
+  // Detailed Zod validation errors
+}
+
+// Safe parse with error details
+import { safeParse } from '@character-foundry/schemas';
+const result = safeParse(CCv3DataSchema, data);
+if (result.success) {
+  console.log(result.data);
+} else {
+  console.error(result.error, result.field);
+}
+```
+
+**Type Inference Pattern:**
+All TypeScript types are inferred from Zod schemas using `z.infer<>`, ensuring type-schema sync.
+
 ## Open Issues
 
 - #3 - Validate RisuAI CharX against SillyTavern
 - #5 - CI: Add end-to-end tests
+- #15 - Runtime validation (Phase 1 ✅ complete, Phase 2-4 pending)
 
 ## Publishing
 

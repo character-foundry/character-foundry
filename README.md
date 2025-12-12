@@ -78,6 +78,30 @@ pnpm add @character-foundry/loader @character-foundry/exporter
 
 ## Features
 
+### Runtime Validation with Zod
+
+```typescript
+import { CCv3DataSchema, parseV3Card, isV3Card, safeParse } from '@character-foundry/schemas';
+
+// Type guard with runtime validation
+if (isV3Card(unknownData)) {
+  // Data is validated CCv3Data
+  console.log(unknownData.data.name);
+}
+
+// Parse with validation (throws on invalid data)
+const card = parseV3Card(jsonData);
+
+// Safe parse with detailed errors
+const result = safeParse(CCv3DataSchema, data);
+if (result.success) {
+  console.log(result.data);
+} else {
+  console.error(`Validation failed: ${result.error}`);
+  console.error(`Field: ${result.field}`);
+}
+```
+
 ### Universal Loader
 
 ```typescript
