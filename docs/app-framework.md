@@ -125,6 +125,9 @@ interface AutoFormProps<T extends z.ZodObject<any>> {
 | `z.enum([...])` (10+ options) | SearchableSelect | Filterable |
 | `z.array(z.string())` | TagInput | Chip/tag input |
 | `z.object({...})` | Nested rendering | Recursive field group |
+| `z.union([...])` | First option type | Picks first union member |
+| `z.set(z.string())` | TagInput | Like array |
+| `z.record(...)` | TextInput | Custom widget recommended |
 
 ---
 
@@ -305,6 +308,8 @@ const schema = z.object({
   }}
 />
 ```
+
+**Important:** Hidden conditional fields are automatically unregistered from form state, preventing stale/sensitive data from leaking into submissions.
 
 ### Condition Types
 
