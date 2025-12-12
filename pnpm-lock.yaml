@@ -24,40 +24,40 @@ importers:
   packages/character-foundry:
     dependencies:
       '@character-foundry/charx':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../charx
       '@character-foundry/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@character-foundry/exporter':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../exporter
       '@character-foundry/federation':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../federation
       '@character-foundry/loader':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../loader
       '@character-foundry/lorebook':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../lorebook
       '@character-foundry/media':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../media
       '@character-foundry/normalizer':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../normalizer
       '@character-foundry/png':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../png
       '@character-foundry/schemas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schemas
       '@character-foundry/tokenizers':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../tokenizers
       '@character-foundry/voxta':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../voxta
     devDependencies:
       typescript:
@@ -67,10 +67,10 @@ importers:
   packages/charx:
     dependencies:
       '@character-foundry/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@character-foundry/schemas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schemas
       fflate:
         specifier: ^0.8.0
@@ -104,19 +104,19 @@ importers:
   packages/exporter:
     dependencies:
       '@character-foundry/charx':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../charx
       '@character-foundry/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@character-foundry/png':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../png
       '@character-foundry/schemas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schemas
       '@character-foundry/voxta':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../voxta
     devDependencies:
       fflate:
@@ -135,16 +135,16 @@ importers:
   packages/federation:
     dependencies:
       '@character-foundry/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@character-foundry/exporter':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../exporter
       '@character-foundry/loader':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../loader
       '@character-foundry/schemas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schemas
     devDependencies:
       tsup:
@@ -160,25 +160,25 @@ importers:
   packages/loader:
     dependencies:
       '@character-foundry/charx':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../charx
       '@character-foundry/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@character-foundry/lorebook':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../lorebook
       '@character-foundry/normalizer':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../normalizer
       '@character-foundry/png':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../png
       '@character-foundry/schemas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schemas
       '@character-foundry/voxta':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../voxta
     devDependencies:
       fflate:
@@ -197,10 +197,10 @@ importers:
   packages/lorebook:
     dependencies:
       '@character-foundry/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@character-foundry/schemas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schemas
     devDependencies:
       tsup:
@@ -232,10 +232,10 @@ importers:
   packages/normalizer:
     dependencies:
       '@character-foundry/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@character-foundry/schemas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schemas
     devDependencies:
       tsup:
@@ -251,10 +251,10 @@ importers:
   packages/png:
     dependencies:
       '@character-foundry/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@character-foundry/schemas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schemas
       fflate:
         specifier: ^0.8.0
@@ -301,10 +301,10 @@ importers:
   packages/voxta:
     dependencies:
       '@character-foundry/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@character-foundry/schemas':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schemas
       fflate:
         specifier: ^0.8.0
