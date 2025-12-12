@@ -300,7 +300,7 @@ pnpm build && pnpm test
 | `@character-foundry/federation` | 0.1.6 |
 | `@character-foundry/media` | 0.1.1 |
 | `@character-foundry/tokenizers` | 0.1.1 |
-| `@character-foundry/app-framework` | 0.1.0 |
+| `@character-foundry/app-framework` | 0.2.0 |
 
 ### Publishing Troubleshooting
 

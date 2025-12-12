@@ -11,6 +11,8 @@ export type {
   BuiltinWidget,
   FieldWidgetProps,
   FieldUIHint,
+  FieldCondition,
+  FieldGroupProps,
   UIHints,
 } from './ui-hints';
 export type { RegistryListener, RegistryItemBase } from './registry';

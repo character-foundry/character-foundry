@@ -10,7 +10,7 @@ export interface FieldInfo {
   /** The Zod type (unwrapped from optional/nullable/default) */
   zodType: z.ZodTypeAny;
 
-  /** Zod type constructor name (e.g., 'ZodString', 'ZodNumber') */
+  /** Zod type constructor name (e.g., 'ZodString', 'ZodNumber', 'ZodObject') */
   typeName: string;
 
   /** Whether the field is optional */
@@ -30,6 +30,18 @@ export interface FieldInfo {
 
   /** Inner type info for arrays, optionals, etc. */
   innerType?: FieldInfo;
+
+  /**
+   * For nested objects: Map of child field names to their FieldInfo.
+   * Only populated when typeName === 'ZodObject'.
+   */
+  nestedFields?: Map<string, FieldInfo>;
+
+  /**
+   * For nested objects: The inner ZodObject schema.
+   * Useful for recursive AutoForm rendering.
+   */
+  innerSchema?: z.ZodObject<z.ZodRawShape>;
 
   /** Validation constraints extracted from the schema */
   constraints?: FieldConstraints;
@@ -57,16 +69,60 @@ export interface FieldConstraints {
  * Extract field information from a ZodObject schema.
  *
  * @param schema - Zod object schema to analyze
+ * @param prefix - Optional prefix for nested field names (e.g., "parent.")
  * @returns Map of field names to their analyzed information
  */
 export function analyzeSchema<T extends z.ZodRawShape>(
-  schema: z.ZodObject<T>
-): Map<keyof T, FieldInfo> {
+  schema: z.ZodObject<T>,
+  prefix = ''
+): Map<string, FieldInfo> {
   const shape = schema.shape;
-  const fields = new Map<keyof T, FieldInfo>();
+  const fields = new Map<string, FieldInfo>();
 
   for (const [name, zodType] of Object.entries(shape)) {
-    fields.set(name as keyof T, analyzeField(name, zodType as z.ZodTypeAny));
+    const fullName = prefix ? `${prefix}.${name}` : name;
+    fields.set(fullName, analyzeField(fullName, zodType as z.ZodTypeAny));
+  }
+
+  return fields;
+}
+
+/**
+ * Flatten a nested schema into a single Map with dot-notation keys.
+ * Useful for forms that need flat access to all fields.
+ *
+ * @example
+ * ```ts
+ * const schema = z.object({
+ *   name: z.string(),
+ *   profile: z.object({
+ *     bio: z.string(),
+ *   }),
+ * });
+ *
+ * const flat = flattenSchema(schema);
+ * // Map { 'name' => ..., 'profile' => ..., 'profile.bio' => ... }
+ * ```
+ */
+export function flattenSchema<T extends z.ZodRawShape>(
+  schema: z.ZodObject<T>,
+  prefix = ''
+): Map<string, FieldInfo> {
+  const fields = new Map<string, FieldInfo>();
+  const shape = schema.shape;
+
+  for (const [name, zodType] of Object.entries(shape)) {
+    const fullName = prefix ? `${prefix}.${name}` : name;
+    const fieldInfo = analyzeField(fullName, zodType as z.ZodTypeAny);
+    fields.set(fullName, fieldInfo);
+
+    // Recursively flatten nested objects
+    if (fieldInfo.typeName === 'ZodObject' && fieldInfo.innerSchema) {
+      const nestedFields = flattenSchema(fieldInfo.innerSchema, fullName);
+      for (const [nestedName, nestedInfo] of nestedFields) {
+        fields.set(nestedName, nestedInfo);
+      }
+    }
   }
 
   return fields;
@@ -75,7 +131,7 @@ export function analyzeSchema<T extends z.ZodRawShape>(
 /**
  * Analyze a single Zod field to extract its type information.
  *
- * @param name - Field name
+ * @param name - Field name (can include dots for nested paths)
  * @param zodType - Zod type to analyze
  * @returns Analyzed field information
  */
@@ -113,6 +169,22 @@ export function analyzeField(name: string, zodType: z.ZodTypeAny): FieldInfo {
 
   const typeName = currentType.constructor.name;
 
+  // Extract nested fields for ZodObject
+  let nestedFields: Map<string, FieldInfo> | undefined;
+  let innerSchema: z.ZodObject<z.ZodRawShape> | undefined;
+
+  if (currentType instanceof z.ZodObject) {
+    innerSchema = currentType as z.ZodObject<z.ZodRawShape>;
+    nestedFields = new Map();
+    const shape = currentType.shape;
+    for (const [childName, childType] of Object.entries(shape)) {
+      nestedFields.set(
+        childName,
+        analyzeField(`${name}.${childName}`, childType as z.ZodTypeAny)
+      );
+    }
+  }
+
   return {
     name,
     zodType: currentType,
@@ -123,7 +195,66 @@ export function analyzeField(name: string, zodType: z.ZodTypeAny): FieldInfo {
     description,
     enumValues: extractEnumValues(currentType),
     innerType: extractInnerType(name, currentType),
+    nestedFields,
+    innerSchema,
     constraints: extractConstraints(currentType),
+  };
+}
+
+/**
+ * Get the value at a dot-notation path from an object.
+ *
+ * @example
+ * ```ts
+ * getValueAtPath({ profile: { name: 'John' } }, 'profile.name') // 'John'
+ * ```
+ */
+export function getValueAtPath(
+  obj: Record<string, unknown>,
+  path: string
+): unknown {
+  const parts = path.split('.');
+  let current: unknown = obj;
+
+  for (const part of parts) {
+    if (current == null || typeof current !== 'object') {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[part];
+  }
+
+  return current;
+}
+
+/**
+ * Set a value at a dot-notation path in an object (immutably).
+ *
+ * @example
+ * ```ts
+ * setValueAtPath({ profile: { name: 'John' } }, 'profile.name', 'Jane')
+ * // { profile: { name: 'Jane' } }
+ * ```
+ */
+export function setValueAtPath(
+  obj: Record<string, unknown>,
+  path: string,
+  value: unknown
+): Record<string, unknown> {
+  const parts = path.split('.');
+  if (parts.length === 0 || parts[0] === undefined) {
+    return obj;
+  }
+  if (parts.length === 1) {
+    return { ...obj, [parts[0]]: value };
+  }
+
+  const first = parts[0];
+  const rest = parts.slice(1);
+  const nested = (obj[first] as Record<string, unknown>) ?? {};
+
+  return {
+    ...obj,
+    [first]: setValueAtPath(nested, rest.join('.'), value),
   };
 }
 
@@ -273,14 +404,20 @@ export function getDefaultWidgetType(fieldInfo: FieldInfo): string {
       return 'switch';
     case 'ZodEnum':
     case 'ZodNativeEnum':
-      // Use radio for small enums, select for larger
-      return enumValues && enumValues.length <= 4 ? 'radio' : 'select';
+      // Use radio for small enums, searchable-select for large
+      if (enumValues) {
+        if (enumValues.length <= 4) return 'radio';
+        if (enumValues.length > 10) return 'searchable-select';
+      }
+      return 'select';
     case 'ZodArray':
       // String arrays become tag inputs
       if (innerType?.typeName === 'ZodString') {
         return 'tag-input';
       }
       return 'text'; // Fallback
+    case 'ZodObject':
+      return 'nested'; // Special marker for nested objects
     case 'ZodDate':
       return 'text'; // Could be 'date' widget
     default:
@@ -303,4 +440,11 @@ export function isSecretField(fieldInfo: FieldInfo): boolean {
     lowerDesc.includes('token') ||
     lowerDesc.includes('credential')
   );
+}
+
+/**
+ * Check if a field is a nested object type.
+ */
+export function isNestedObject(fieldInfo: FieldInfo): boolean {
+  return fieldInfo.typeName === 'ZodObject' && fieldInfo.nestedFields != null;
 }

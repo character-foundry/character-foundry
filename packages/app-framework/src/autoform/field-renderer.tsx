@@ -5,11 +5,14 @@ import type { FieldUIHint, FieldWidgetProps } from '../types/ui-hints';
 import { useWidgetRegistry } from './hooks/useWidgetRegistry';
 import {
   TextInput,
+  Textarea,
   NumberInput,
   Switch,
   Select,
+  SearchableSelect,
   TagInput,
   SecretInput,
+  FileUpload,
 } from './widgets';
 
 /**
@@ -33,6 +36,12 @@ export interface FieldRendererProps {
 
   /** Whether the field is disabled */
   disabled?: boolean;
+
+  /**
+   * For nested objects: render function for nested fields.
+   * Called with the nested field info to recursively render.
+   */
+  renderNestedField?: (fieldInfo: FieldInfo) => React.ReactNode;
 }
 
 /**
@@ -40,14 +49,16 @@ export interface FieldRendererProps {
  */
 const BUILTIN_WIDGETS: Record<string, ComponentType<FieldWidgetProps<unknown>>> = {
   text: TextInput as ComponentType<FieldWidgetProps<unknown>>,
+  textarea: Textarea as ComponentType<FieldWidgetProps<unknown>>,
   number: NumberInput as ComponentType<FieldWidgetProps<unknown>>,
   switch: Switch as ComponentType<FieldWidgetProps<unknown>>,
   checkbox: Switch as ComponentType<FieldWidgetProps<unknown>>,
   select: Select as ComponentType<FieldWidgetProps<unknown>>,
+  'searchable-select': SearchableSelect as ComponentType<FieldWidgetProps<unknown>>,
   radio: Select as ComponentType<FieldWidgetProps<unknown>>, // Could be RadioGroup
   password: SecretInput as ComponentType<FieldWidgetProps<unknown>>,
   'tag-input': TagInput as ComponentType<FieldWidgetProps<unknown>>,
-  textarea: TextInput as ComponentType<FieldWidgetProps<unknown>>, // Could be Textarea widget
+  'file-upload': FileUpload as ComponentType<FieldWidgetProps<unknown>>,
   slider: NumberInput as ComponentType<FieldWidgetProps<unknown>>, // Could be Slider widget
   'color-picker': TextInput as ComponentType<FieldWidgetProps<unknown>>, // Could be ColorPicker widget
 };
@@ -75,8 +86,29 @@ export function FieldRenderer({
   onChange,
   error,
   disabled,
+  renderNestedField,
 }: FieldRendererProps) {
   const widgetRegistry = useWidgetRegistry();
+
+  // Handle nested objects
+  if (fieldInfo.typeName === 'ZodObject' && fieldInfo.nestedFields && renderNestedField) {
+    const nestedFields = Array.from(fieldInfo.nestedFields.values());
+    const fieldBaseName = fieldInfo.name.split('.').pop() ?? fieldInfo.name;
+
+    return (
+      <div data-nested-object data-field={fieldInfo.name}>
+        <fieldset data-nested-fieldset>
+          <legend data-nested-legend>
+            {hint?.label ?? fieldInfo.description ?? formatLabel(fieldBaseName)}
+          </legend>
+          {hint?.helperText && <p data-helper>{hint.helperText}</p>}
+          <div data-nested-fields>
+            {nestedFields.map((nestedInfo) => renderNestedField(nestedInfo))}
+          </div>
+        </fieldset>
+      </div>
+    );
+  }
 
   // Determine which widget to use
   let Widget: ComponentType<FieldWidgetProps<unknown>>;
@@ -95,10 +127,20 @@ export function FieldRenderer({
   } else {
     // Auto-detect from Zod type
     const defaultType = getDefaultWidgetType(fieldInfo);
-    Widget =
-      BUILTIN_WIDGETS[defaultType] ??
-      TYPE_TO_WIDGET[fieldInfo.typeName] ??
-      (TextInput as ComponentType<FieldWidgetProps<unknown>>);
+
+    // Check for textarea hint (rows > 1)
+    if (fieldInfo.typeName === 'ZodString' && hint?.rows && hint.rows > 1) {
+      Widget = Textarea as ComponentType<FieldWidgetProps<unknown>>;
+    }
+    // Check for searchable-select
+    else if (defaultType === 'searchable-select') {
+      Widget = SearchableSelect as ComponentType<FieldWidgetProps<unknown>>;
+    } else {
+      Widget =
+        BUILTIN_WIDGETS[defaultType] ??
+        TYPE_TO_WIDGET[fieldInfo.typeName] ??
+        (TextInput as ComponentType<FieldWidgetProps<unknown>>);
+    }
 
     // Override to SecretInput if field looks like a secret
     if (fieldInfo.typeName === 'ZodString' && isSecretField(fieldInfo)) {
@@ -113,12 +155,15 @@ export function FieldRenderer({
       ? fieldInfo.enumValues.map((v) => ({ value: v, label: v }))
       : undefined);
 
+  // Extract field base name (last segment of dot-notation path)
+  const fieldBaseName = fieldInfo.name.split('.').pop() ?? fieldInfo.name;
+
   // Build the props for the widget
   const props: FieldWidgetProps<unknown> = {
     value,
     onChange,
-    name: fieldInfo.name,
-    label: hint?.label ?? fieldInfo.description ?? formatLabel(fieldInfo.name),
+    name: fieldInfo.name, // Full path for form registration
+    label: hint?.label ?? fieldInfo.description ?? formatLabel(fieldBaseName),
     error,
     disabled: disabled || hint?.readOnly,
     required: !fieldInfo.isOptional,

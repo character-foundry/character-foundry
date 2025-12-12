@@ -1,6 +1,9 @@
 export { TextInput } from './TextInput';
+export { Textarea } from './Textarea';
 export { NumberInput } from './NumberInput';
 export { Switch } from './Switch';
 export { Select } from './Select';
+export { SearchableSelect } from './SearchableSelect';
 export { TagInput } from './TagInput';
 export { SecretInput } from './SecretInput';
+export { FileUpload, type FileUploadValue } from './FileUpload';
