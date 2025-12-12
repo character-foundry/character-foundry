@@ -28,10 +28,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@character-foundry/core": "workspace:*",
-    "@character-foundry/exporter": "workspace:*",
-    "@character-foundry/loader": "workspace:*",
-    "@character-foundry/schemas": "workspace:*"
+    "@character-foundry/core": "workspace:^",
+    "@character-foundry/exporter": "workspace:^",
+    "@character-foundry/loader": "workspace:^",
+    "@character-foundry/schemas": "workspace:^"
   },
   "devDependencies": {
     "tsup": "^8.5.1",

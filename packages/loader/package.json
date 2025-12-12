@@ -28,13 +28,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@character-foundry/charx": "workspace:*",
-    "@character-foundry/core": "workspace:*",
-    "@character-foundry/lorebook": "workspace:*",
-    "@character-foundry/normalizer": "workspace:*",
-    "@character-foundry/png": "workspace:*",
-    "@character-foundry/schemas": "workspace:*",
-    "@character-foundry/voxta": "workspace:*"
+    "@character-foundry/charx": "workspace:^",
+    "@character-foundry/core": "workspace:^",
+    "@character-foundry/lorebook": "workspace:^",
+    "@character-foundry/normalizer": "workspace:^",
+    "@character-foundry/png": "workspace:^",
+    "@character-foundry/schemas": "workspace:^",
+    "@character-foundry/voxta": "workspace:^"
   },
   "devDependencies": {
     "fflate": "^0.8.1",

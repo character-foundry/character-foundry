@@ -38,6 +38,8 @@ pnpm typecheck   # TypeScript check
 - tsup.config.ts in each package with `format: ['esm', 'cjs']`
 - DO NOT change build to tsc-only - it breaks CJS consumers
 - DO NOT remove `require` exports - it breaks Node.js CommonJS users
+- **Internal deps use `workspace:^`** - Publishes as semver ranges (e.g., `^0.0.3`), not exact versions
+  - DO NOT use `workspace:*` - it publishes exact versions and breaks dep chain
 
 Example package.json exports (REQUIRED pattern):
 ```json
@@ -117,6 +119,108 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 - DO NOT change the workflow to use `GITHUB_TOKEN` or `secrets.GITHUB_*`
 - If publish fails with 403, check that `NPM_TOKEN` secret exists and workflow uses it
 
+### When to Bump Versions - FOOLPROOF GUIDE
+
+**BEFORE making ANY changes to a package, determine what version bump is needed:**
+
+#### Step 1: What kind of change are you making?
+
+**Bug fix / security fix / internal refactor (NO public API changes):**
+- Bump PATCH version (0.0.X)
+- Example: `0.0.3` → `0.0.4`
+- Dependents automatically pick this up via `^0.0.3` range
+
+**New export / new function / new feature (backwards compatible):**
+- Bump MINOR version (0.X.0)
+- Example: `0.0.3` → `0.1.0`
+- Dependents automatically pick this up via `^0.0.3` range
+- **IF dependent packages use the new feature, bump them too**
+
+**Breaking change / removed export / changed signature:**
+- Bump MAJOR version (X.0.0)
+- Example: `0.0.3` → `1.0.0` (or `0.3.0` if using 0.x convention)
+- **MUST bump ALL dependent packages** - they will break with the old version
+
+#### Step 2: Did you add a NEW export to core or schemas?
+
+**Example: Adding `streamingUnzipSync` to `@character-foundry/core`**
+
+1. **Check if any packages already import it** (common mistake):
+   ```bash
+   grep -r "streamingUnzipSync" packages/*/src --include="*.ts"
+   ```
+
+2. **If packages already import it but it doesn't exist in published version:**
+   - This is a version drift bug - the code imports something unpublished
+   - Bump core IMMEDIATELY (MINOR version: `0.0.3` → `0.1.0`)
+   - Update version tables in CLAUDE.md and README.md
+   - Commit and push to publish
+
+3. **If no one imports it yet:**
+   - Safe to bump MINOR version when you're ready
+   - Bump core when you add the export, not when dependents use it
+
+#### Step 3: Verify version consistency
+
+**Run this check BEFORE committing:**
+```bash
+# Check that all imports exist in published versions
+pnpm build && pnpm test
+```
+
+**If tests pass but you get "cannot find module" in production:**
+- You have version drift - an import exists in local code but not in published version
+- Find the missing export: `git log -p -- packages/PACKAGE/src/index.ts`
+- Bump the package that should export it
+
+#### Common Mistakes
+
+❌ **Adding a function to `core` without bumping version**
+- Dependents import it locally (works)
+- Published version doesn't have it (breaks)
+- **Fix:** Bump core IMMEDIATELY when adding exports
+
+❌ **Forgetting that `workspace:^` only works for PUBLISHED versions**
+- Local dev uses workspace code (latest)
+- Production uses `^0.0.3` semver range (published only)
+- **Fix:** Always bump before pushing if you added exports
+
+❌ **Bumping dependents but not the provider**
+- `voxta@0.1.8` imports from `core@^0.0.3`
+- But `streamingUnzipSync` was never in published `core@0.0.3`
+- **Fix:** Bump core FIRST, then push
+
+### Version Bump Workflow
+
+**When you add/change exports in a package:**
+
+1. Immediately bump the package version:
+   - New export/feature: bump MINOR (`0.0.3` → `0.1.0`)
+   - Bug fix: bump PATCH (`0.0.3` → `0.0.4`)
+   - Breaking change: bump MAJOR (`0.0.3` → `1.0.0`)
+
+2. Update version tables:
+   - CLAUDE.md "Published Versions" table
+   - README.md "Packages" table
+
+3. Run verification:
+   ```bash
+   pnpm build
+   pnpm test
+   pnpm verify-build
+   ```
+
+4. Commit and push:
+   ```bash
+   git add packages/PACKAGE/package.json CLAUDE.md README.md
+   git commit -m "chore(PACKAGE): bump to X.Y.Z"
+   git push origin master
+   ```
+
+5. Wait for GitHub Actions to publish
+
+6. **ONLY THEN** can dependents safely import the new exports
+
 ### Release Checklist
 
 **FOLLOW THIS EVERY TIME before pushing version bumps:**
@@ -124,9 +228,10 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 1. [ ] `pnpm build` - Ensure all packages build with tsup (ESM + CJS)
 2. [ ] `pnpm test` - Ensure all tests pass
 3. [ ] `pnpm verify-build` - Automated ESM/CJS import verification for all packages
-4. [ ] Check dependency chain - if bumping core/schemas, bump ALL dependent packages:
-   - `core` → schemas, png, charx, voxta, lorebook, loader, exporter, normalizer, federation
-   - `schemas` → png, charx, voxta, lorebook, loader, exporter, normalizer, federation
+4. [ ] Bump version ONLY for the changed package (workspace:^ handles deps automatically)
+   - Patch bump (0.0.x): Bug fixes, no API changes - dependents auto-accept via `^`
+   - Minor bump (0.x.0): New features, backwards compatible - dependents need bump if using new features
+   - Major bump (x.0.0): Breaking changes - ALL dependents MUST be bumped
 5. [ ] Verify package.json has BOTH `import` AND `require` exports (see Build Requirements)
 6. [ ] Update version table below
 7. [ ] Update README.md package versions table
@@ -140,7 +245,7 @@ Packages publish to GitHub Packages on push to master. Bump version in package.j
 | Package | Version |
 |---------|---------|
 | `@character-foundry/character-foundry` | 0.1.1 |
-| `@character-foundry/core` | 0.0.3 |
+| `@character-foundry/core` | 0.0.4 |
 | `@character-foundry/schemas` | 0.1.1 |
 | `@character-foundry/png` | 0.0.4 |
 | `@character-foundry/charx` | 0.0.4 |

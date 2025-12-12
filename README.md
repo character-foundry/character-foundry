@@ -42,7 +42,7 @@ import { readVoxta } from '@character-foundry/voxta';
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
 | **`@character-foundry/character-foundry`** | **0.1.1** | **Meta package - installs everything** | - |
-| `@character-foundry/core` | 0.0.3 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
+| `@character-foundry/core` | 0.0.4 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
 | `@character-foundry/schemas` | 0.1.1 | CCv2, CCv3, Voxta types + detection + CardNormalizer | [docs/schemas.md](docs/schemas.md) |
 | `@character-foundry/png` | 0.0.4 | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
 | `@character-foundry/charx` | 0.0.4 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
