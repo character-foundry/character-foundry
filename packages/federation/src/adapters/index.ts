@@ -13,6 +13,7 @@ export {
 // HTTP adapter
 export {
   HttpPlatformAdapter,
+  InvalidResourceIdError,
   createArchiveAdapter,
   createHubAdapter,
   type HttpAdapterConfig,

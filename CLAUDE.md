@@ -68,11 +68,21 @@ Example package.json exports (REQUIRED pattern):
 
 ## Security Features
 
+### Core (Both Modes)
+
 - **Streaming ZIP protection** - Tracks actual decompressed bytes during extraction, aborts if limits exceeded (protects against crafted archives that lie in central directory)
+- **Path traversal protection** - Configurable `unsafePathHandling`: `'skip'` (default), `'warn'`, `'reject'`
 - **PNG inflate cap** - Limits zTXt/iTXt decompression to 50MB
 - **Secure UUID** - crypto.randomUUID() with fallback for non-secure contexts
 - **Data URL validation** - Safe parsing with size limits
 - **Dual-package safe errors** - `isFoundryError()` uses Symbol.for() marker for cross-module compatibility
+
+### Federation (Full Mode Only)
+
+- **HTTP signature strict mode** - Opt-in enforcement of `(request-target)`, `host`, `date` headers
+- **Secure hashing** - Opt-in SHA-256 for change detection (vs default 32-bit fast hash)
+- **SSRF protection** - Resource ID validation prevents path traversal and protocol injection
+- **Sync mutex** - Prevents concurrent `syncAll()` overlapping
 
 ## Voxta Package Support
 
@@ -288,7 +298,7 @@ pnpm build && pnpm test
 | Package | Version |
 |---------|---------|
 | `@character-foundry/character-foundry` | 0.1.1 |
-| `@character-foundry/core` | 0.0.4 |
+| `@character-foundry/core` | 0.1.0 |
 | `@character-foundry/schemas` | 0.2.0 |
 | `@character-foundry/png` | 0.0.4 |
 | `@character-foundry/charx` | 0.0.4 |
@@ -297,7 +307,7 @@ pnpm build && pnpm test
 | `@character-foundry/lorebook` | 0.0.2 |
 | `@character-foundry/voxta` | 0.1.8 |
 | `@character-foundry/loader` | 0.1.8 |
-| `@character-foundry/federation` | 0.1.6 |
+| `@character-foundry/federation` | 0.2.0 |
 | `@character-foundry/media` | 0.1.1 |
 | `@character-foundry/tokenizers` | 0.1.1 |
 | `@character-foundry/app-framework` | 0.2.1 |

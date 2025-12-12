@@ -136,6 +136,7 @@ export {
   BasePlatformAdapter,
   MemoryPlatformAdapter,
   HttpPlatformAdapter,
+  InvalidResourceIdError,
   SillyTavernAdapter,
   createArchiveAdapter,
   createHubAdapter,
@@ -164,6 +165,7 @@ export {
 
 // HTTP Signatures
 export {
+  REQUIRED_SIGNED_HEADERS,
   type ParsedSignature,
   type SignatureValidationOptions,
   type SignatureValidationResult,

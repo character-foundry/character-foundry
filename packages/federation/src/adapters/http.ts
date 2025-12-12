@@ -64,6 +64,66 @@ export interface HttpAdapterConfig {
 }
 
 /**
+ * Error thrown when resource ID validation fails
+ */
+export class InvalidResourceIdError extends Error {
+  constructor(
+    public readonly id: string,
+    public readonly reason: string
+  ) {
+    super(`Invalid resource ID "${id}": ${reason}`);
+    this.name = 'InvalidResourceIdError';
+  }
+}
+
+/**
+ * Validate and encode a resource ID to prevent SSRF and path traversal attacks.
+ *
+ * @security This prevents:
+ * - Path traversal (../ sequences)
+ * - Absolute path injection (/etc/passwd)
+ * - Protocol injection (https://evil.com)
+ * - URL encoding attacks (%2e%2e)
+ *
+ * @param id - The resource ID to validate
+ * @returns URL-encoded safe ID
+ * @throws InvalidResourceIdError if ID contains malicious patterns
+ */
+function validateAndEncodeId(id: string): string {
+  // Decode any URL encoding first to catch %2e%2e (encoded ..)
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(id);
+  } catch {
+    // Invalid URL encoding - reject
+    throw new InvalidResourceIdError(id, 'invalid URL encoding');
+  }
+
+  // Check decoded value for path traversal
+  if (decoded.includes('..')) {
+    throw new InvalidResourceIdError(id, 'path traversal detected');
+  }
+
+  // Check for absolute paths
+  if (decoded.startsWith('/')) {
+    throw new InvalidResourceIdError(id, 'absolute path not allowed');
+  }
+
+  // Check for protocol injection (http://, https://, file://, etc.)
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(decoded)) {
+    throw new InvalidResourceIdError(id, 'protocol injection detected');
+  }
+
+  // Check for backslashes (Windows-style paths)
+  if (decoded.includes('\\')) {
+    throw new InvalidResourceIdError(id, 'backslash not allowed');
+  }
+
+  // URL-encode the ID for safe concatenation
+  return encodeURIComponent(id);
+}
+
+/**
  * HTTP-based platform adapter
  */
 export class HttpPlatformAdapter extends BasePlatformAdapter {
@@ -109,12 +169,17 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
   }
 
   /**
-   * Build full URL
+   * Build full URL with optional resource ID.
+   *
+   * @security ID is validated and encoded to prevent SSRF/path traversal.
+   * @throws InvalidResourceIdError if ID contains malicious patterns
    */
   private buildUrl(endpoint: string, id?: string): string {
     let url = `${this.config.baseUrl}${endpoint}`;
     if (id) {
-      url = `${url}/${id}`;
+      // Validate and encode ID to prevent SSRF and path traversal
+      const safeId = validateAndEncodeId(id);
+      url = `${url}/${safeId}`;
     }
     return url;
   }

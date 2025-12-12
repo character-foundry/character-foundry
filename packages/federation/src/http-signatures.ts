@@ -21,6 +21,12 @@ export interface ParsedSignature {
 }
 
 /**
+ * Required headers for strict signature validation.
+ * These headers MUST be included in the signed header list when strictMode is enabled.
+ */
+export const REQUIRED_SIGNED_HEADERS = ['(request-target)', 'host', 'date'] as const;
+
+/**
  * Signature validation options
  */
 export interface SignatureValidationOptions {
@@ -32,6 +38,20 @@ export interface SignatureValidationOptions {
   fetchActor: (actorId: string) => Promise<FederatedActor | null>;
   /** Maximum age in seconds for Date header. Default: 300 (5 minutes) */
   maxAge?: number;
+  /**
+   * Enable strict signature validation mode.
+   *
+   * When enabled, signatures MUST include these headers: (request-target), host, date.
+   * This prevents replay attacks and cross-host request reuse.
+   *
+   * Default: false (for backwards compatibility with existing federation peers)
+   * Recommended: true for new deployments
+   *
+   * @security Without strict mode, attackers can:
+   * - Replay captured requests if Date is not signed
+   * - Reuse signatures across different hosts if host is not signed
+   */
+  strictMode?: boolean;
 }
 
 /**
@@ -163,6 +183,10 @@ export async function verifyHttpSignature(
 
 /**
  * Validate an incoming activity's HTTP signature
+ *
+ * @security Enable `strictMode` for production deployments to prevent:
+ * - Replay attacks (requires Date header in signature)
+ * - Cross-host request reuse (requires host header in signature)
  */
 export async function validateActivitySignature(
   activity: FederatedActivity,
@@ -181,7 +205,31 @@ export async function validateActivitySignature(
     return { valid: false, error: 'Invalid Signature header format' };
   }
 
-  // Verify Date header freshness
+  // STRICT MODE: Enforce required headers in signature
+  // This prevents replay attacks and cross-host request reuse
+  if (options.strictMode) {
+    const missingHeaders = REQUIRED_SIGNED_HEADERS.filter(
+      (h) => !parsed.headers.includes(h)
+    );
+    if (missingHeaders.length > 0) {
+      return {
+        valid: false,
+        error: `Strict mode: signature missing required headers: ${missingHeaders.join(', ')}`,
+      };
+    }
+
+    // In strict mode, Date header MUST be present (not just signed)
+    if (!headers.get('Date')) {
+      return { valid: false, error: 'Strict mode: Date header required' };
+    }
+
+    // In strict mode, host header MUST be present
+    if (!headers.get('host') && !headers.get('Host')) {
+      return { valid: false, error: 'Strict mode: host header required' };
+    }
+  }
+
+  // Verify Date header freshness (if present)
   const dateHeader = headers.get('Date');
   if (dateHeader) {
     const requestDate = new Date(dateHeader);

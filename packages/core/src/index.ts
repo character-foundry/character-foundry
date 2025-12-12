@@ -50,6 +50,7 @@ export {
 export {
   ZIP_SIGNATURE,
   JPEG_SIGNATURE,
+  type UnsafePathHandling,
   type ZipSizeLimits,
   type ZipCentralDirEntry,
   type ZipPreflightResult,

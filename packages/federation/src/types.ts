@@ -273,6 +273,7 @@ export type FederationEventType =
   | 'sync:started'
   | 'sync:completed'
   | 'sync:failed'
+  | 'sync:skipped'
   | 'actor:followed'
   | 'actor:unfollowed';
 

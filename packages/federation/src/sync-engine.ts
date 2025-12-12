@@ -20,9 +20,14 @@ import { cardToActivityPub, generateCardId } from './activitypub.js';
 import { assertFederationEnabled } from './index.js';
 
 /**
- * Generate a simple hash of card content for change detection
+ * Generate a simple hash of card content for change detection (32-bit djb2-style).
+ *
+ * Fast but has collision potential (~2^16 birthday bound). Suitable for
+ * local change detection where collisions are unlikely and recoverable.
+ *
+ * @see hashCardSecure for cryptographic alternative
  */
-function hashCard(card: CCv3Data): string {
+function hashCardFast(card: CCv3Data): string {
   const content = JSON.stringify(card);
   let hash = 0;
   for (let i = 0; i < content.length; i++) {
@@ -31,6 +36,23 @@ function hashCard(card: CCv3Data): string {
     hash = hash & hash; // Convert to 32-bit integer
   }
   return Math.abs(hash).toString(36);
+}
+
+/**
+ * Generate a SHA-256 hash of card content for secure change detection.
+ *
+ * Cryptographically secure with negligible collision probability.
+ * Recommended for federation sync where hash collisions could cause
+ * data loss or missed updates across systems.
+ *
+ * @security Use this for cross-system sync to prevent collision attacks
+ */
+async function hashCardSecure(card: CCv3Data): Promise<string> {
+  const content = JSON.stringify(card);
+  const data = new TextEncoder().encode(content);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
@@ -45,6 +67,16 @@ export interface SyncEngineOptions {
   stateStore: SyncStateStore;
   /** Auto-sync interval in ms (0 to disable) */
   autoSyncInterval?: number;
+  /**
+   * Use SHA-256 for change detection instead of fast 32-bit hash.
+   *
+   * Default: false (fast hash for backwards compatibility)
+   * Recommended: true for federation sync across untrusted systems
+   *
+   * @security Fast hash has collision potential (~2^16 birthday bound).
+   * SHA-256 is cryptographically secure but slightly slower.
+   */
+  secureHashing?: boolean;
 }
 
 /**
@@ -58,6 +90,14 @@ export class SyncEngine {
   private actorId: string;
   private listeners: Map<FederationEventType, Set<FederationEventListener>> = new Map();
   private autoSyncTimer?: ReturnType<typeof setInterval>;
+  private secureHashing: boolean;
+
+  /**
+   * Mutex flag to prevent concurrent syncAll() executions.
+   * When autoSyncInterval triggers while a sync is in progress,
+   * the new sync is skipped to prevent race conditions.
+   */
+  private syncInProgress = false;
 
   constructor(options: SyncEngineOptions) {
     assertFederationEnabled('SyncEngine');
@@ -65,13 +105,25 @@ export class SyncEngine {
     this.baseUrl = options.baseUrl;
     this.actorId = options.actorId;
     this.stateStore = options.stateStore;
+    this.secureHashing = options.secureHashing ?? false;
 
     if (options.autoSyncInterval && options.autoSyncInterval > 0) {
       this.autoSyncTimer = setInterval(
-        () => this.syncAll(),
+        () => void this.syncAll(), // void to handle Promise without blocking
         options.autoSyncInterval
       );
     }
+  }
+
+  /**
+   * Generate a hash for change detection.
+   * Uses SHA-256 if secureHashing is enabled, otherwise fast 32-bit hash.
+   */
+  private async hashCard(card: CCv3Data): Promise<string> {
+    if (this.secureHashing) {
+      return hashCardSecure(card);
+    }
+    return hashCardFast(card);
   }
 
   /**
@@ -185,8 +237,8 @@ export class SyncEngine {
       if (syncState?.platformIds[targetPlatform]) {
         const existingCard = await targetAdapter.getCard(syncState.platformIds[targetPlatform]!);
         if (existingCard) {
-          const existingHash = hashCard(existingCard);
-          const newHash = hashCard(card);
+          const existingHash = await this.hashCard(existingCard);
+          const newHash = await this.hashCard(card);
 
           if (existingHash !== syncState.versionHash && newHash !== syncState.versionHash) {
             // Both sides changed - conflict!
@@ -217,7 +269,7 @@ export class SyncEngine {
       );
 
       // Update sync state
-      const newHash = hashCard(card);
+      const newHash = await this.hashCard(card);
       const now = new Date().toISOString();
 
       // Create new state or use existing
@@ -323,23 +375,38 @@ export class SyncEngine {
   }
 
   /**
-   * Sync all platforms with each other
+   * Sync all platforms with each other.
+   *
+   * Includes mutex protection to prevent concurrent executions when
+   * triggered by autoSyncInterval. If a sync is already in progress,
+   * subsequent calls are skipped and emit a 'sync:skipped' event.
    */
   async syncAll(): Promise<Map<string, SyncResult[]>> {
-    const results = new Map<string, SyncResult[]>();
-    const platforms = Array.from(this.platforms.keys());
-
-    for (let i = 0; i < platforms.length; i++) {
-      for (let j = i + 1; j < platforms.length; j++) {
-        const source = platforms[i]!;
-        const target = platforms[j]!;
-        const key = `${source}->${target}`;
-
-        results.set(key, await this.syncPlatform(source, target));
-      }
+    // Mutex: prevent concurrent sync operations
+    if (this.syncInProgress) {
+      this.emit('sync:skipped', { reason: 'already_in_progress', timestamp: new Date().toISOString() });
+      return new Map();
     }
 
-    return results;
+    this.syncInProgress = true;
+    try {
+      const results = new Map<string, SyncResult[]>();
+      const platforms = Array.from(this.platforms.keys());
+
+      for (let i = 0; i < platforms.length; i++) {
+        for (let j = i + 1; j < platforms.length; j++) {
+          const source = platforms[i]!;
+          const target = platforms[j]!;
+          const key = `${source}->${target}`;
+
+          results.set(key, await this.syncPlatform(source, target));
+        }
+      }
+
+      return results;
+    } finally {
+      this.syncInProgress = false;
+    }
   }
 
   /**
@@ -414,7 +481,7 @@ export class SyncEngine {
       }
 
       // Push resolved card to all platforms
-      const newHash = hashCard(sourceCard);
+      const newHash = await this.hashCard(sourceCard);
       const now = new Date().toISOString();
 
       for (const [platform, id] of Object.entries(syncState.platformIds)) {

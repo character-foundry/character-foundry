@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/core",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "Core utilities for character card handling",
   "type": "module",
   "exports": {

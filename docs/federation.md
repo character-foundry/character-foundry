@@ -596,6 +596,139 @@ interface SignatureValidationResult {
 
 ---
 
+## Security Configuration
+
+The federation package includes several security options that can be configured based on your deployment mode.
+
+### Deployment Modes
+
+| Mode | Description | Recommended Settings |
+|------|-------------|---------------------|
+| **Full (local/web)** | Full federation with other instances | `strictMode: true`, `secureHashing: true` |
+| **PWA LITE** | Local-only editing, no federation | Federation disabled (default) |
+
+### HTTP Signature Strict Mode
+
+By default, signature validation is permissive for backwards compatibility. Enable strict mode for production deployments:
+
+```typescript
+import { validateHttpSignature } from '@character-foundry/federation';
+
+const result = await validateHttpSignature(activity, headers, {
+  method: 'POST',
+  path: '/inbox',
+  fetchActor,
+  maxAge: 300,
+  strictMode: true, // Recommended for production
+});
+```
+
+**Strict mode enforces:**
+- `(request-target)` header MUST be signed
+- `host` header MUST be present and signed
+- `date` header MUST be present and signed
+
+**Security implications:**
+- Without `date` in signature: replay attacks possible
+- Without `host` in signature: cross-host request reuse possible
+
+### Secure Hashing
+
+By default, change detection uses a fast 32-bit hash. Enable SHA-256 for cross-system federation:
+
+```typescript
+import { SyncEngine, enableFederation } from '@character-foundry/federation';
+
+enableFederation();
+
+const engine = new SyncEngine({
+  baseUrl: 'https://example.com',
+  actorId: 'https://example.com/actor',
+  stateStore,
+  autoSyncInterval: 60000,
+  secureHashing: true, // Recommended for federation
+});
+```
+
+| Hash Mode | Algorithm | Collision Risk | Use Case |
+|-----------|-----------|----------------|----------|
+| Default | 32-bit djb2 | ~2^16 birthday bound | Local-only, trusted sources |
+| Secure | SHA-256 | Negligible | Cross-system federation |
+
+### SSRF Protection
+
+The HTTP adapter validates resource IDs to prevent SSRF and path traversal attacks:
+
+```typescript
+import { HttpPlatformAdapter, InvalidResourceIdError } from '@character-foundry/federation';
+
+const adapter = new HttpPlatformAdapter({
+  platform: 'external',
+  displayName: 'External Platform',
+  baseUrl: 'https://api.example.com',
+  endpoints: { /* ... */ },
+});
+
+try {
+  // These will throw InvalidResourceIdError:
+  await adapter.getCard('../../../etc/passwd');
+  await adapter.getCard('https://evil.com/steal');
+  await adapter.getCard('/absolute/path');
+} catch (err) {
+  if (err instanceof InvalidResourceIdError) {
+    console.error(`Blocked malicious ID: ${err.id} (${err.reason})`);
+  }
+}
+```
+
+**Protected against:**
+- Path traversal (`../`)
+- Absolute paths (`/etc/passwd`, `C:\Windows`)
+- Protocol injection (`https://`, `file://`)
+- URL-encoded attacks (`%2e%2e`)
+
+### Recommended Production Configuration
+
+```typescript
+import {
+  enableFederation,
+  SyncEngine,
+  validateHttpSignature,
+  D1SyncStateStore,
+} from '@character-foundry/federation';
+
+// Enable federation
+enableFederation();
+
+// Validate incoming signatures with strict mode
+async function handleInbox(request: Request, activity: FederatedActivity) {
+  const result = await validateHttpSignature(activity, request.headers, {
+    method: 'POST',
+    path: '/inbox',
+    fetchActor,
+    strictMode: true, // Enforce required headers
+    maxAge: 300,      // 5 minute window
+  });
+
+  if (!result.valid) {
+    return new Response(result.error, { status: 401 });
+  }
+
+  // Process activity...
+}
+
+// Create engine with secure hashing
+const engine = new SyncEngine({
+  baseUrl: 'https://production.example.com',
+  actorId: 'https://production.example.com/actor',
+  stateStore: new D1SyncStateStore(env.DB),
+  autoSyncInterval: 60000,
+  secureHashing: true, // SHA-256 for change detection
+});
+```
+
+---
+
 ## Implementation Status
 
 | Feature | Status |
@@ -605,6 +738,9 @@ interface SignatureValidationResult {
 | NodeInfo handler | Implemented |
 | Actor endpoint | Implemented |
 | HTTP Signatures | Implemented (Web Crypto) |
+| HTTP Signature Strict Mode | Implemented |
+| Secure Hashing (SHA-256) | Implemented |
+| SSRF Protection | Implemented |
 | D1 State Store | Implemented (Cloudflare D1) |
 | Memory State Store | Implemented |
 | File State Store | Implemented |

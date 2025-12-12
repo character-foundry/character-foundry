@@ -316,18 +316,30 @@ if (isPathSafe(filename)) {
 ### Size Limits
 
 ```typescript
-import { type ZipSizeLimits, DEFAULT_ZIP_LIMITS } from '@character-foundry/core';
+import { type ZipSizeLimits, type UnsafePathHandling, DEFAULT_ZIP_LIMITS } from '@character-foundry/core';
 
 interface ZipSizeLimits {
   maxTotalSize: number;  // Max total uncompressed size
   maxFileSize: number;   // Max single file size
   maxFiles: number;      // Max number of files
+
+  /**
+   * How to handle files with unsafe paths (path traversal attempts).
+   * - 'skip': Silently ignore unsafe files (default, backwards compatible)
+   * - 'warn': Skip and call onUnsafePath callback
+   * - 'reject': Throw ZipPreflightError immediately
+   */
+  unsafePathHandling?: UnsafePathHandling;
+
+  /** Callback when unsafe path detected (only with 'warn' mode) */
+  onUnsafePath?: (path: string, reason: string) => void;
 }
 
 // DEFAULT_ZIP_LIMITS:
 // - maxFileSize: 52,428,800 (50 MB)
 // - maxTotalSize: 209,715,200 (200 MB)
 // - maxFiles: 1000
+// - unsafePathHandling: 'skip'
 ```
 
 ### Preflight Check (ZIP Bomb Protection)
@@ -365,6 +377,55 @@ try {
   }
 }
 ```
+
+### Streaming Extraction with Path Safety
+
+Extract ZIP with real-time byte limiting and path traversal protection:
+
+```typescript
+import { streamingUnzipSync, ZipPreflightError, type Unzipped } from '@character-foundry/core';
+
+// Default: Skip unsafe paths silently (backwards compatible)
+const files: Unzipped = streamingUnzipSync(zipData);
+
+// Strict mode: Reject unsafe paths immediately (recommended for untrusted input)
+const filesStrict: Unzipped = streamingUnzipSync(zipData, {
+  maxFileSize: 50 * 1024 * 1024,
+  maxTotalSize: 200 * 1024 * 1024,
+  maxFiles: 1000,
+  unsafePathHandling: 'reject', // Throws on path traversal
+});
+
+// Warn mode: Skip unsafe paths but log them for monitoring
+const filesWarn: Unzipped = streamingUnzipSync(zipData, {
+  maxFileSize: 50 * 1024 * 1024,
+  maxTotalSize: 200 * 1024 * 1024,
+  maxFiles: 1000,
+  unsafePathHandling: 'warn',
+  onUnsafePath: (path, reason) => {
+    console.warn(`Blocked unsafe path: ${path} (${reason})`);
+    // Optionally report to security monitoring
+  },
+});
+
+// Result is a map of filename -> Uint8Array
+for (const [filename, data] of Object.entries(files)) {
+  console.log(`${filename}: ${data.length} bytes`);
+}
+```
+
+**Path Safety Modes:**
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| `'skip'` | Silently ignore unsafe paths | Backwards compatibility (default) |
+| `'warn'` | Skip + call callback | Monitoring/logging |
+| `'reject'` | Throw `ZipPreflightError` | Strict security (recommended) |
+
+**Protected Against:**
+- Path traversal (`../`, `..\\`)
+- Absolute paths (`/etc/passwd`, `C:\Windows`)
+- Backslash sequences (`folder\file`)
 
 ---
 

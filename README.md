@@ -42,7 +42,7 @@ import { readVoxta } from '@character-foundry/voxta';
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
 | **`@character-foundry/character-foundry`** | **0.1.1** | **Meta package - installs everything** | - |
-| `@character-foundry/core` | 0.0.4 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
+| `@character-foundry/core` | 0.1.0 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
 | `@character-foundry/schemas` | 0.2.0 | CCv2, CCv3, Voxta types + Zod schemas + runtime validation | [docs/schemas.md](docs/schemas.md) |
 | `@character-foundry/png` | 0.0.4 | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
 | `@character-foundry/charx` | 0.0.4 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
@@ -53,7 +53,7 @@ import { readVoxta } from '@character-foundry/voxta';
 | `@character-foundry/normalizer` | 0.1.2 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
 | `@character-foundry/tokenizers` | 0.1.1 | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
 | `@character-foundry/media` | 0.1.1 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
-| `@character-foundry/federation` | 0.1.6 | ActivityPub federation + HTTP signatures + D1 store (experimental) | [docs/federation.md](docs/federation.md) |
+| `@character-foundry/federation` | 0.2.0 | ActivityPub federation + HTTP signatures + D1 store (experimental) | [docs/federation.md](docs/federation.md) |
 | `@character-foundry/app-framework` | 0.2.1 | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
 
 ## Installation
@@ -242,14 +242,26 @@ pnpm typecheck
 
 ## Security
 
+### Core Protection
+
 - **ZIP preflight** - Validates uncompressed sizes before decompression (zip bomb protection)
+- **Streaming ZIP protection** - Tracks actual decompressed bytes during extraction, aborts if limits exceeded
+- **Path traversal protection** - Configurable handling: `'skip'` (default), `'warn'`, or `'reject'` modes
 - **PNG inflate cap** - Limits zTXt/iTXt decompression to 50MB
 - **50MB per-asset limit** enforced across all parsers
 - **Secure UUID** - crypto.randomUUID() with fallback for non-secure contexts
 - **Data URL validation** - Safe parsing with size limits
-- **Federation gated** - must call `enableFederation()` explicitly
 - **Size checks** before base64 decode to prevent memory exhaustion
-- **Path traversal protection** in ZIP extraction
+
+### Federation Security (Opt-in)
+
+- **Gated by default** - must call `enableFederation()` explicitly
+- **HTTP signature strict mode** - Enforces `(request-target)`, `host`, `date` headers (opt-in)
+- **Secure hashing** - SHA-256 change detection for cross-system sync (opt-in)
+- **SSRF protection** - Validates resource IDs to prevent path traversal and protocol injection
+- **Sync mutex** - Prevents concurrent sync operations from overlapping
+
+See [docs/federation.md](docs/federation.md) for security configuration details.
 
 ## License
 

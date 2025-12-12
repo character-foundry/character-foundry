@@ -15,18 +15,47 @@ export const ZIP_SIGNATURE = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
 export const JPEG_SIGNATURE = new Uint8Array([0xff, 0xd8, 0xff]);
 
 /**
+ * How to handle unsafe paths (with .. or absolute paths) during extraction.
+ *
+ * - 'skip': Silently skip unsafe files (default, backwards compatible)
+ * - 'warn': Skip and call onUnsafePath callback for logging/monitoring
+ * - 'reject': Throw ZipPreflightError immediately (strictest, recommended for untrusted input)
+ */
+export type UnsafePathHandling = 'skip' | 'warn' | 'reject';
+
+/**
  * Size limits for ZIP operations
  */
 export interface ZipSizeLimits {
-  maxFileSize: number;    // Max size per file (default 50MB)
-  maxTotalSize: number;   // Max total size (default 200MB)
-  maxFiles: number;       // Max number of files (default 1000)
+  /** Max size per file (default 50MB) */
+  maxFileSize: number;
+  /** Max total size (default 200MB) */
+  maxTotalSize: number;
+  /** Max number of files (default 1000) */
+  maxFiles: number;
+  /**
+   * How to handle files with unsafe paths (path traversal attempts).
+   *
+   * Default: 'skip' (backwards compatible - silently ignores unsafe paths)
+   * Recommended: 'reject' for untrusted input (throws on path traversal)
+   *
+   * @security Path traversal (../) in ZIP entries can lead to arbitrary file
+   * overwrites when extracted to disk. While this library returns files in
+   * memory, consumers may write to disk using the paths.
+   */
+  unsafePathHandling?: UnsafePathHandling;
+  /**
+   * Callback invoked when unsafe path is detected (only with 'warn' handling).
+   * Use for logging/monitoring path traversal attempts.
+   */
+  onUnsafePath?: (path: string, reason: string) => void;
 }
 
 export const DEFAULT_ZIP_LIMITS: ZipSizeLimits = {
   maxFileSize: 50 * 1024 * 1024,   // 50MB per file (Risu standard)
   maxTotalSize: 200 * 1024 * 1024, // 200MB total
   maxFiles: 1000,
+  unsafePathHandling: 'skip',      // Backwards compatible default
 };
 
 /**
@@ -333,6 +362,11 @@ function readUInt32LEFromBytes(data: BinaryData, offset: number): number {
  * aborts immediately if limits are exceeded. This protects against
  * malicious archives that lie about sizes in their central directory.
  *
+ * @security Path safety is enforced based on `limits.unsafePathHandling`:
+ * - 'skip' (default): Silently ignores files with unsafe paths
+ * - 'warn': Skips unsafe files and calls onUnsafePath callback
+ * - 'reject': Throws ZipPreflightError on unsafe paths
+ *
  * @param data - ZIP file data (can be SFX/self-extracting)
  * @param limits - Size limits to enforce
  * @returns Promise resolving to extracted files
@@ -350,6 +384,9 @@ export function streamingUnzipSync(
   let fileCount = 0;
   let error: Error | null = null;
 
+  // Get path handling mode (default to 'skip' for backwards compatibility)
+  const unsafePathHandling = limits.unsafePathHandling ?? 'skip';
+
   // Track chunks per file for concatenation
   const fileChunks = new Map<string, Uint8Array[]>();
 
@@ -358,6 +395,33 @@ export function streamingUnzipSync(
 
     // Skip directories
     if (file.name.endsWith('/')) {
+      file.start();
+      return;
+    }
+
+    // SECURITY: Check for path traversal attacks
+    if (!isPathSafe(file.name)) {
+      const reason = file.name.includes('..')
+        ? 'path traversal (..)'
+        : file.name.startsWith('/') || /^[a-zA-Z]:/.test(file.name)
+          ? 'absolute path'
+          : 'backslash in path';
+
+      if (unsafePathHandling === 'reject') {
+        error = new ZipPreflightError(
+          `Unsafe path detected: "${file.name}" - ${reason}. ` +
+          `This may be a path traversal attack.`
+        );
+        file.terminate();
+        return;
+      }
+
+      if (unsafePathHandling === 'warn' && limits.onUnsafePath) {
+        limits.onUnsafePath(file.name, reason);
+      }
+
+      // Skip this file (consume but don't store) for 'skip' and 'warn' modes
+      file.ondata = () => { /* consume and discard */ };
       file.start();
       return;
     }
