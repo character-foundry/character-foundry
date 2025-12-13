@@ -57,6 +57,37 @@ Example package.json exports (REQUIRED pattern):
 }
 ```
 
+### External Dependencies (CRITICAL)
+
+**Dependencies with browser/node conditional exports MUST be marked external in tsup.config.ts**
+
+If bundled, tsup/esbuild will inline the Node.js version, breaking browser builds with errors like:
+```
+Uncaught TypeError: (0 , a.createRequire) is not a function
+```
+
+**Currently externalized:**
+- `fflate` - Used by: core, png, charx, voxta
+
+**tsup.config.ts pattern:**
+```typescript
+export default defineConfig({
+  entry: ['src/index.ts'],
+  format: ['esm', 'cjs'],
+  dts: true,
+  clean: true,
+  sourcemap: true,
+  splitting: false,
+  // Keep deps with browser/node conditional exports external
+  external: ['fflate'],
+});
+```
+
+**When adding a new dependency that has conditional exports:**
+1. Add it to `external` array in tsup.config.ts
+2. Verify with: `grep -l "createRequire" packages/*/dist/*` (should return nothing)
+3. Consumer's bundler will resolve the correct browser/node version
+
 ## Key Concepts
 
 - **CCv3 is the internal format** - Everything normalizes to CCv3
