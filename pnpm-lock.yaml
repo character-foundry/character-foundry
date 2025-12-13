@@ -69,6 +69,9 @@ importers:
 
   packages/character-foundry:
     dependencies:
+      '@character-foundry/app-framework':
+        specifier: workspace:^
+        version: link:../app-framework
       '@character-foundry/charx':
         specifier: workspace:^
         version: link:../charx
