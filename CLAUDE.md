@@ -298,14 +298,14 @@ pnpm build && pnpm test
 | Package | Version |
 |---------|---------|
 | `@character-foundry/character-foundry` | 0.1.2 |
-| `@character-foundry/core` | 0.1.0 |
+| `@character-foundry/core` | 0.1.1 |
 | `@character-foundry/schemas` | 0.2.0 |
-| `@character-foundry/png` | 0.0.4 |
-| `@character-foundry/charx` | 0.0.4 |
+| `@character-foundry/png` | 0.0.5 |
+| `@character-foundry/charx` | 0.0.5 |
 | `@character-foundry/exporter` | 0.1.2 |
 | `@character-foundry/normalizer` | 0.1.2 |
 | `@character-foundry/lorebook` | 0.0.2 |
-| `@character-foundry/voxta` | 0.1.9 |
+| `@character-foundry/voxta` | 0.1.10 |
 | `@character-foundry/loader` | 0.1.8 |
 | `@character-foundry/federation` | 0.2.0 |
 | `@character-foundry/media` | 0.1.1 |

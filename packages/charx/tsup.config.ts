@@ -7,4 +7,6 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   splitting: false,
+  // Keep fflate external - it has browser/node conditional exports
+  external: ['fflate'],
 });
