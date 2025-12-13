@@ -73,23 +73,24 @@ export function writeVoxta(
   if (book) {
     // Ensure we have a unique ID for the book
     if (!book.Id) book.Id = generateUUID();
-    
+
     // Add to memory books list if not already present
     if (!memoryBooks.includes(book.Id)) {
       memoryBooks.push(book.Id);
     }
 
-    // Write book to ZIP
+    // Write book to ZIP - character will reference it via MemoryBooks
     zipEntries[`Books/${book.Id}/book.json`] = [
       fromString(JSON.stringify(book, null, 2)),
       { level: compressionLevel as CompressionLevel },
     ];
 
-    // Force package.json for multi-asset bundles
-    includePackageJson = true;
+    // Note: We no longer force includePackageJson = true here.
+    // The Books/ folder is valid alongside Characters/ without package.json.
+    // This allows single-character exports with lorebooks.
   }
 
-  // 1. Package.json (optional, but required if lorebook exists)
+  // 1. Package.json (optional)
   if (includePackageJson) {
     const packageMeta = {
       $type: 'package',

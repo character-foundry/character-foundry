@@ -305,7 +305,7 @@ pnpm build && pnpm test
 | `@character-foundry/exporter` | 0.1.2 |
 | `@character-foundry/normalizer` | 0.1.2 |
 | `@character-foundry/lorebook` | 0.0.2 |
-| `@character-foundry/voxta` | 0.1.8 |
+| `@character-foundry/voxta` | 0.1.9 |
 | `@character-foundry/loader` | 0.1.8 |
 | `@character-foundry/federation` | 0.2.0 |
 | `@character-foundry/media` | 0.1.1 |
