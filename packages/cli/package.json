@@ -1,0 +1,65 @@
+{
+  "name": "@character-foundry/cli",
+  "version": "0.1.0",
+  "description": "CLI tool for inspecting, validating, and converting AI character cards",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "cf": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "@character-foundry/core": "workspace:^",
+    "@character-foundry/loader": "workspace:^",
+    "@character-foundry/exporter": "workspace:^",
+    "@character-foundry/schemas": "workspace:^",
+    "@character-foundry/tokenizers": "workspace:^"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/character-foundry/character-foundry.git",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "keywords": [
+    "character-card",
+    "ai",
+    "cli",
+    "tavern",
+    "voxta",
+    "charx"
+  ],
+  "author": "Character Foundry",
+  "license": "MIT"
+}

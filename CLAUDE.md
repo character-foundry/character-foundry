@@ -17,6 +17,7 @@ packages/
   normalizer/ - V2 ↔ V3 ↔ NormalizedCard conversion
   tokenizers/ - GPT-4/LLaMA token counting + card field counting
   media/      - Image format detection, dimensions, thumbnail generation
+  cli/        - Command-line tool: detect, info, validate, loss, export, extract-assets
   federation/ - ActivityPub federation + HTTP signatures + D1 store (experimental, gated)
   app-framework/ - Schema-driven UI framework: Extension, Registry, AutoForm (React peer dep)
 ```
@@ -124,6 +125,39 @@ Full round-trip editing with delta-based updates:
 - `addCharacterToPackage()` - Add character to existing package
 - **Export types**: `'package'` | `'scenario'` | `'character'` detection
 - **Scenario support**: Full `VoxtaScenario` with Roles[], Events[], Contexts[]
+
+## CLI Tool
+
+The `@character-foundry/cli` package provides a command-line interface for working with character cards.
+
+**Installation:**
+```bash
+npm install -g @character-foundry/cli
+# or use directly
+npx @character-foundry/cli detect card.png
+```
+
+**Commands:**
+```bash
+cf detect <file>              # Detect format and display basic info
+cf info <file>                # Full metadata with token counts
+cf validate <file>            # Schema validation with exit codes
+cf loss <file> --to <format>  # Preview data loss before conversion
+cf export <file> --to <fmt>   # Export to png/charx/voxta
+cf extract-assets <file>      # Extract all assets with manifest
+```
+
+**Exit Codes:**
+- 0: Success
+- 1: General error (IO, unexpected)
+- 2: Validation error
+- 3: Parse error
+- 4: Unsupported format
+
+**Options:**
+- `--json` - Output as JSON for scripting
+- `-q, --quiet` - Suppress non-essential output
+- `--tokenizer <id>` - Tokenizer for info command (default: gpt-4)
 
 ## Test Cards
 
@@ -341,6 +375,7 @@ pnpm build && pnpm test
 | `@character-foundry/federation` | 0.2.0 |
 | `@character-foundry/media` | 0.1.2 |
 | `@character-foundry/tokenizers` | 0.1.1 |
+| `@character-foundry/cli` | 0.1.0 |
 | `@character-foundry/app-framework` | 0.2.1 |
 
 ### Publishing Troubleshooting
