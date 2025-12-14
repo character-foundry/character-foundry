@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { unzipSync } from 'fflate';
 import {
   exportCard,
   getSupportedFormats,
@@ -119,6 +120,29 @@ describe('exportCard', () => {
       const result = exportCard(testCard, [testAsset], { format: 'charx' });
 
       expect(result.assetCount).toBe(1);
+    });
+
+    it('should include module.risum when exporting Risu CharX', () => {
+      const moduleRisum = new Uint8Array([0x01, 0x02, 0x03]);
+      const result = exportCard(testCard, [testAsset], {
+        format: 'charx',
+        charx: { spec: 'risu', moduleRisum },
+      });
+
+      const files = unzipSync(result.buffer);
+      expect(files['module.risum']).toBeDefined();
+      expect(files['module.risum']).toEqual(moduleRisum);
+    });
+
+    it('should NOT include module.risum when exporting standard CharX', () => {
+      const moduleRisum = new Uint8Array([0x01, 0x02, 0x03]);
+      const result = exportCard(testCard, [testAsset], {
+        format: 'charx',
+        charx: { spec: 'v3', moduleRisum },
+      });
+
+      const files = unzipSync(result.buffer);
+      expect(files['module.risum']).toBeUndefined();
     });
   });
 

@@ -229,13 +229,12 @@ All TypeScript types are inferred from Zod schemas using `z.infer<>`, ensuring t
 
 ## Publishing
 
-Packages publish to GitHub Packages on push to master. Bump version in package.json to trigger publish.
+Packages publish to **npm** (https://www.npmjs.com/org/character-foundry) on push to master. Bump version in package.json to trigger publish.
 
-**CRITICAL: GitHub Actions uses `NPM_TOKEN` secret (NOT `GITHUB_TOKEN`)**
-- GitHub rejects secrets starting with `GITHUB_` prefix
-- The PAT with `write:packages` scope is stored as `NPM_TOKEN`
-- DO NOT change the workflow to use `GITHUB_TOKEN` or `secrets.GITHUB_*`
-- If publish fails with 403, check that `NPM_TOKEN` secret exists and workflow uses it
+**Authentication:**
+- GitHub Actions uses `NPM_PUBLISH_TOKEN` secret (npm automation token)
+- Token generated at: https://www.npmjs.com/settings/YOUR_USERNAME/tokens
+- If publish fails with 403, check that `NPM_PUBLISH_TOKEN` secret exists and has correct permissions
 
 ### When to Bump Versions - FOOLPROOF GUIDE
 
@@ -380,51 +379,21 @@ pnpm build && pnpm test
 
 ### Publishing Troubleshooting
 
-**CRITICAL: New packages publish as "internal" with no repo link by default. This breaks CI.**
+#### Verify Package on npm
 
-#### Verify Package Health
-
-Run this command to check all packages:
+Check a package exists on npm:
 ```bash
-gh api "/orgs/character-foundry/packages?package_type=npm" --jq '.[] | {name: .name, visibility: .visibility, repo: .repository.full_name}'
+npm info @character-foundry/core
 ```
-
-**All packages MUST show:**
-- `visibility: "public"` (NOT "internal")
-- `repo: "character-foundry/character-foundry"` (NOT null)
-
-#### Fix Broken Package (Manual UI Required)
-
-If a package shows `visibility: "internal"` or `repo: null`:
-
-1. Go to: `https://github.com/orgs/character-foundry/packages/npm/package/PACKAGE_NAME/settings`
-2. Change **Visibility** from "Internal" → "Public"
-3. Under **Link to source repository** → Select `character-foundry/character-foundry`
-4. Save changes
-
-#### After Publishing a NEW Package
-
-**IMMEDIATELY after first publish:**
-1. Run the verify command above
-2. Check the new package shows `public` + linked repo
-3. If not, fix via UI settings (gh CLI needs write:packages scope which we don't have)
 
 #### Common Issues
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| 403 on publish | NPM_TOKEN missing/expired | Regenerate PAT, update secret |
-| Package not installable | visibility: "internal" | Change to "public" in UI |
-| Package shows in wrong org | Wrong registry URL | Check .npmrc and package.json |
-| CI fails after new package | Package created as "internal" | Fix visibility + link repo in UI |
-
-#### Why This Happens
-
-GitHub Packages creates new packages with:
-- `visibility: "internal"` (org-only access)
-- `repository: null` (not linked to source)
-
-This is a GitHub default, not something we control in the workflow. The PAT token can publish, but the package inherits org defaults which are restrictive.
+| 403 on publish | NPM_PUBLISH_TOKEN missing/expired | Regenerate token, update GitHub secret |
+| 404 on install | Package not yet published | Push to master to trigger publish |
+| Version conflict | Version already exists on npm | Bump version in package.json |
+| Scope not found | @character-foundry org not set up | Create org at npmjs.com/org/create |
 
 ## Docs
 

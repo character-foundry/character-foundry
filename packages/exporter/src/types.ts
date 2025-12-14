@@ -80,6 +80,8 @@ export interface CharxExportOptions extends ExportOptionsBase {
   includeReadme?: boolean;
   /** Emit x_meta for image assets (default: false, auto-enabled for risu spec) */
   emitXMeta?: boolean;
+  /** Risu module.risum binary to include (opaque, preserved from read) */
+  moduleRisum?: BinaryData;
 }
 
 /**

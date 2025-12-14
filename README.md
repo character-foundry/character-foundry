@@ -60,23 +60,16 @@ import { readVoxta } from '@character-foundry/voxta';
 
 ## Installation
 
-Packages are published to **GitHub Packages**. Configure your `.npmrc`:
-
-```ini
-@character-foundry:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-```
-
-Then install everything:
+Packages are published to **npm**. Install everything:
 
 ```bash
-pnpm add @character-foundry/character-foundry
+npm install @character-foundry/character-foundry
 ```
 
 Or install individual packages:
 
 ```bash
-pnpm add @character-foundry/loader @character-foundry/exporter
+npm install @character-foundry/loader @character-foundry/exporter
 ```
 
 ## Features

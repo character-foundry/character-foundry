@@ -47,6 +47,7 @@ export function exportToCharx(
     compressionLevel = 6,
     includeReadme = false,
     emitXMeta,
+    moduleRisum,
     checkLoss = true,
   } = options;
 
@@ -59,6 +60,7 @@ export function exportToCharx(
     compressionLevel,
     emitReadme: includeReadme,
     emitXMeta: emitXMeta ?? (spec === 'risu'),
+    moduleRisum: spec === 'risu' ? moduleRisum : undefined,
   });
 
   // Generate loss report if requested
