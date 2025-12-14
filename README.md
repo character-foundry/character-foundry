@@ -1,5 +1,5 @@
 # Character Foundry
-![Gemini_Generated_Image_fe3wjzfe3wjzfe3w](https://github.com/user-attachments/assets/a5862257-095b-403c-8c87-77a596691bc9)
+![Gemini_Generated_Image_w1vez7w1vez7w1ve (1)](https://github.com/user-attachments/assets/d07748a2-a21e-4331-9608-4c0543080bba)
 
 A universal TypeScript library for reading, writing, and converting AI character card formats.
 
