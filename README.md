@@ -224,6 +224,7 @@ Detailed documentation for each package:
 - **[Normalizer](docs/normalizer.md)** - V2 ↔ V3 ↔ NormalizedCard conversion
 - **[Tokenizers](docs/tokenizers.md)** - GPT-4/LLaMA token counting
 - **[Media](docs/media.md)** - Image format detection, dimensions, thumbnails
+- **[CLI](docs/cli.md)** - Command-line tool for character cards
 - **[Federation](docs/federation.md)** - ActivityPub federation (experimental)
 - **[App Framework](docs/app-framework.md)** - Schema-driven UI with AutoForm
 
