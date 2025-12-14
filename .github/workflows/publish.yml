@@ -31,7 +31,8 @@ jobs:
       - name: Build All
         run: pnpm build
 
-      - name: Publish to npm
-        run: pnpm publish -r --no-git-checks
+      - name: Publish to npm with provenance
+        run: pnpm publish -r --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
