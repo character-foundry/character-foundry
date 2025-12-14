@@ -101,6 +101,9 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
 
   const extracted = extractFromPNG(data);
 
+  // Track warnings for non-fatal issues
+  const warnings: string[] = [];
+
   // Convert to v3 if needed
   let card: CCv3Data;
   if (extracted.spec === 'v3') {
@@ -213,7 +216,9 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
             
             usedChunks.add(chunk.keyword);
           } catch (e) {
-            // Ignore decode errors
+            // Track decode errors as warnings
+            const msg = e instanceof Error ? e.message : String(e);
+            warnings.push(`Failed to decode asset chunk ${chunk.keyword}: ${msg}`);
           }
         }
       }
@@ -257,8 +262,10 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
               data: buffer,
               path: `pngchunk:${assetId}`,
             });
-          } catch {
-            // Ignore
+          } catch (e) {
+            // Track decode errors as warnings
+            const msg = e instanceof Error ? e.message : String(e);
+            warnings.push(`Failed to decode orphan chunk ${chunk.keyword}: ${msg}`);
           }
         }
       }
@@ -274,6 +281,7 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
     originalShape: extracted.data,
     rawJson: JSON.stringify(extracted.data),
     rawBuffer: data,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
 
@@ -313,10 +321,11 @@ function parseCharx(data: BinaryData, options: Required<ParseOptions>): ParseRes
     originalShape: charxData.card,
     rawJson: JSON.stringify(charxData.card),
     rawBuffer: data,
-    metadata: charxData.metadata ? {
+    metadata: {
       dateCreated: undefined,
       dateModified: undefined,
-    } : undefined,
+      moduleRisum: charxData.moduleRisum,
+    },
   };
 }
 

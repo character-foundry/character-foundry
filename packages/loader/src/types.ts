@@ -67,7 +67,11 @@ export interface ParseResult {
     dateCreated?: string;
     /** Modification date */
     dateModified?: string;
+    /** Risu module.risum binary (opaque, preserved for round-trip) */
+    moduleRisum?: BinaryData;
   };
+  /** Non-fatal warnings encountered during parsing */
+  warnings?: string[];
 }
 
 /**

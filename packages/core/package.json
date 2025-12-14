@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Core utilities for character card handling",
   "type": "module",
   "exports": {
@@ -12,6 +12,16 @@
       "require": {
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
+      }
+    },
+    "./zip": {
+      "import": {
+        "types": "./dist/zip.d.ts",
+        "default": "./dist/zip.js"
+      },
+      "require": {
+        "types": "./dist/zip.d.cts",
+        "default": "./dist/zip.cjs"
       }
     }
   },

@@ -7,6 +7,7 @@
 
 import { detectImageFormat, getMimeType, type ImageFormat } from './format.js';
 import { getImageDimensions } from './dimensions.js';
+import { ValidationError, ParseError } from '@character-foundry/core';
 
 /**
  * Thumbnail generation options
@@ -55,13 +56,13 @@ export async function createThumbnail(
   // Verify input is a valid image
   const format = detectImageFormat(imageData);
   if (!format) {
-    throw new Error('Input is not a recognized image format');
+    throw new ValidationError('Input is not a recognized image format', 'imageData');
   }
 
   // Get dimensions to check if resize is needed
   const dims = getImageDimensions(imageData);
   if (!dims) {
-    throw new Error('Could not determine image dimensions');
+    throw new ParseError('Could not determine image dimensions');
   }
 
   // Check if resize is needed
@@ -87,8 +88,9 @@ async function createThumbnailNode(
   try {
     sharp = (await import('sharp')).default;
   } catch {
-    throw new Error(
-      'sharp is required for thumbnail generation in Node.js. Install with: npm install sharp'
+    throw new ValidationError(
+      'sharp is required for thumbnail generation in Node.js. Install with: npm install sharp',
+      'dependency'
     );
   }
 

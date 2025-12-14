@@ -12,6 +12,7 @@ import type {
   CCv3CharacterBook,
 } from '@character-foundry/schemas';
 import { getV2Data, isWrappedV2, isV3Card } from '@character-foundry/schemas';
+import { FormatNotSupportedError } from '@character-foundry/core';
 
 /**
  * Normalize CCv2 data to NormalizedCard
@@ -80,5 +81,5 @@ export function normalize(input: CCv2Data | CCv2Wrapped | CCv3Data): NormalizedC
     return normalizeV2(input as CCv2Data | CCv2Wrapped);
   }
 
-  throw new Error('Unknown card format');
+  throw new FormatNotSupportedError('unknown', 'normalization');
 }

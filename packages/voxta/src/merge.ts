@@ -8,13 +8,15 @@ import { unzipSync, zipSync, type Unzipped, type Zippable } from 'fflate';
 import {
   type BinaryData,
   fromString,
-  findZipStart,
-  preflightZipSizes,
-  ZipPreflightError,
   ParseError,
   SizeLimitError,
   generateUUID,
 } from '@character-foundry/core';
+import {
+  findZipStart,
+  preflightZipSizes,
+  ZipPreflightError,
+} from '@character-foundry/core/zip';
 import type { CCv3Data, CCv3CharacterBook } from '@character-foundry/schemas';
 import type {
   VoxtaCharacter,

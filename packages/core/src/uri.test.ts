@@ -66,6 +66,15 @@ describe('URI utilities', () => {
       expect(parsed.chunkCandidates).toContain('chara-ext-asset_0');
     });
 
+    it('parses pngchunk: URIs directly', () => {
+      const parsed = parseURI('pngchunk:0');
+      expect(parsed.scheme).toBe('pngchunk');
+      expect(parsed.chunkKey).toBe('0');
+      expect(parsed.chunkCandidates).toContain('0');
+      expect(parsed.chunkCandidates).toContain('pngchunk:0');
+      expect(parsed.chunkCandidates).toContain('__asset:0');
+    });
+
     it('parses ccdefault:', () => {
       const parsed = parseURI('ccdefault:');
       expect(parsed.scheme).toBe('ccdefault');
@@ -98,6 +107,7 @@ describe('URI utilities', () => {
       expect(isURISafe('ccdefault:')).toBe(true);
       expect(isURISafe('https://example.com')).toBe(true);
       expect(isURISafe('__asset:0')).toBe(true);
+      expect(isURISafe('pngchunk:0')).toBe(true); // pngchunk: is safe
       expect(isURISafe('data:image/png;base64,abc')).toBe(true);
     });
 

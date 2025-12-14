@@ -42,18 +42,18 @@ import { readVoxta } from '@character-foundry/voxta';
 
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
-| **`@character-foundry/character-foundry`** | **0.1.2** | **Meta package - installs everything** | - |
-| `@character-foundry/core` | 0.1.1 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
+| **`@character-foundry/character-foundry`** | **0.1.3** | **Meta package - installs everything** | - |
+| `@character-foundry/core` | 0.1.2 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
 | `@character-foundry/schemas` | 0.2.0 | CCv2, CCv3, Voxta types + Zod schemas + runtime validation | [docs/schemas.md](docs/schemas.md) |
 | `@character-foundry/png` | 0.0.5 | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
-| `@character-foundry/charx` | 0.0.5 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
-| `@character-foundry/voxta` | 0.1.10 | Voxta packages, multi-character, scenarios, collections, merge utilities | [docs/voxta.md](docs/voxta.md) |
+| `@character-foundry/charx` | 0.0.6 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
+| `@character-foundry/voxta` | 0.1.11 | Voxta packages, multi-character, scenarios, collections, merge utilities | [docs/voxta.md](docs/voxta.md) |
 | `@character-foundry/lorebook` | 0.0.2 | Lorebook parsing, extraction, insertion | [docs/lorebook.md](docs/lorebook.md) |
-| `@character-foundry/loader` | 0.1.8 | Universal `parseCard()` + `parseLorebook()` + `parse()` with format detection | [docs/loader.md](docs/loader.md) |
-| `@character-foundry/exporter` | 0.1.2 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
-| `@character-foundry/normalizer` | 0.1.2 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
+| `@character-foundry/loader` | 0.1.9 | Universal `parseCard()` + `parseLorebook()` + `parse()` with format detection | [docs/loader.md](docs/loader.md) |
+| `@character-foundry/exporter` | 0.1.3 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
+| `@character-foundry/normalizer` | 0.1.3 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
 | `@character-foundry/tokenizers` | 0.1.1 | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
-| `@character-foundry/media` | 0.1.1 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
+| `@character-foundry/media` | 0.1.2 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
 | `@character-foundry/federation` | 0.2.0 | ActivityPub federation + HTTP signatures + D1 store (experimental) | [docs/federation.md](docs/federation.md) |
 | `@character-foundry/app-framework` | 0.2.1 | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
 
@@ -112,10 +112,11 @@ import { parseCard } from '@character-foundry/loader';
 // Handles PNG, CharX, Voxta, JSON automatically
 const result = parseCard(buffer);
 
-// result.format: 'png' | 'charx' | 'voxta' | 'json'
+// result.containerFormat: 'png' | 'charx' | 'voxta' | 'json'
 // result.card: CCv3Data (always normalized to v3)
-// result.assets: Asset[] (extracted images, audio, etc.)
-// result.originalShape: 'v2' | 'v3' (original format)
+// result.assets: ExtractedAsset[] (extracted images, audio, etc.)
+// result.spec: 'chara_card_v2' | 'chara_card_v3' (detected spec version)
+// result.sourceFormat: 'ccv2' | 'ccv3' | 'voxta' | ... (source format indicator)
 ```
 
 ### Lorebook Management
@@ -234,7 +235,7 @@ pnpm install
 # Build all packages
 pnpm build
 
-# Run tests (476 tests)
+# Run tests (~630 tests)
 pnpm test
 
 # Typecheck

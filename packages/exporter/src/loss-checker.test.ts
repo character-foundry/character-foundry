@@ -92,7 +92,7 @@ describe('checkExportLoss', () => {
   });
 
   describe('Voxta export', () => {
-    it('should report loss of system_prompt', () => {
+    it('should NOT report loss of system_prompt (Voxta supports it)', () => {
       const card = createTestCard({
         system_prompt: 'You are helpful.',
       });
@@ -100,11 +100,11 @@ describe('checkExportLoss', () => {
 
       const report = checkExportLoss(card, assets, 'voxta');
 
-      expect(report.lostFields).toContain('system_prompt');
-      expect(report.isLossless).toBe(false);
+      expect(report.lostFields).not.toContain('system_prompt');
+      expect(report.isLossless).toBe(true);
     });
 
-    it('should report loss of alternate_greetings', () => {
+    it('should NOT report loss of alternate_greetings (Voxta supports it)', () => {
       const card = createTestCard({
         alternate_greetings: ['Hi!', 'Hey!'],
       });
@@ -112,7 +112,8 @@ describe('checkExportLoss', () => {
 
       const report = checkExportLoss(card, assets, 'voxta');
 
-      expect(report.lostFields.some((f) => f.includes('alternate_greetings'))).toBe(true);
+      expect(report.lostFields.some((f) => f.includes('alternate_greetings'))).toBe(false);
+      expect(report.isLossless).toBe(true);
     });
 
     it('should report loss of group_only_greetings', () => {
@@ -140,8 +141,9 @@ describe('checkExportLoss', () => {
 });
 
 describe('preExportCheck', () => {
-  it('should allow export and report loss', () => {
-    const card = createTestCard({ system_prompt: 'Test' });
+  it('should allow export and report loss for group_only_greetings', () => {
+    // group_only_greetings is NOT supported by Voxta (unlike system_prompt which IS)
+    const card = createTestCard({ group_only_greetings: ['Welcome all!'] });
     const assets = [createTestAsset()];
 
     const check = preExportCheck(card, assets, 'voxta');
@@ -151,9 +153,9 @@ describe('preExportCheck', () => {
   });
 
   it('should suggest alternative formats with less loss', () => {
+    // group_only_greetings causes loss in Voxta but not in CharX/PNG
     const card = createTestCard({
-      system_prompt: 'Test',
-      alternate_greetings: ['Hi'],
+      group_only_greetings: ['Group hello!'],
     });
     const assets = [createTestAsset()];
 
@@ -164,6 +166,21 @@ describe('preExportCheck', () => {
     if (check.suggestedFormats) {
       expect(check.suggestedFormats.includes('charx')).toBe(true);
     }
+  });
+
+  it('should report lossless for supported fields', () => {
+    // system_prompt, alternate_greetings ARE supported by Voxta
+    const card = createTestCard({
+      system_prompt: 'Test',
+      alternate_greetings: ['Hi'],
+    });
+    const assets = [createTestAsset()];
+
+    const check = preExportCheck(card, assets, 'voxta');
+
+    expect(check.canExport).toBe(true);
+    expect(check.lossReport.isLossless).toBe(true);
+    expect(check.suggestedFormats).toBeUndefined();
   });
 });
 

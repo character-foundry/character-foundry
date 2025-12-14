@@ -6,15 +6,17 @@
 
 import {
   type BinaryData,
-  type Unzipped,
   toString,
+  ParseError,
+  SizeLimitError,
+} from '@character-foundry/core';
+import {
+  type Unzipped,
   findZipStart,
   getZipOffset,
   streamingUnzipSync,
   ZipPreflightError,
-  ParseError,
-  SizeLimitError,
-} from '@character-foundry/core';
+} from '@character-foundry/core/zip';
 import type {
   VoxtaData,
   VoxtaReadOptions,

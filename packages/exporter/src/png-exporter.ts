@@ -10,7 +10,7 @@ import {
   injectTextChunk, 
   removeAllTextChunks 
 } from '@character-foundry/png';
-import { base64Encode, fromString } from '@character-foundry/core';
+import { base64Encode, fromString, ValidationError } from '@character-foundry/core';
 import type { ExportAsset, PngExportOptions, ExportResult } from './types.js';
 import { checkExportLoss } from './loss-checker.js';
 
@@ -79,7 +79,7 @@ export function exportToPng(
                    assets.find((a) => a.type === 'icon');
 
   if (!mainIcon) {
-    throw new Error('PNG export requires at least one icon asset');
+    throw new ValidationError('PNG export requires at least one icon asset', 'assets');
   }
 
   // Prepare card data

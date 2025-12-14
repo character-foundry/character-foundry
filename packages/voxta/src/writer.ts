@@ -128,6 +128,10 @@ export function writeVoxta(
     AlternativeFirstMessages: (cardData.alternate_greetings || []).map(standardToVoxta),
     MessageExamples: standardToVoxta(cardData.mes_example || ''),
 
+    // System prompts - Voxta supports these
+    SystemPrompt: cardData.system_prompt ? standardToVoxta(cardData.system_prompt) : undefined,
+    PostHistoryInstructions: cardData.post_history_instructions ? standardToVoxta(cardData.post_history_instructions) : undefined,
+
     // Metadata
     Creator: cardData.creator,
     CreatorNotes: cardData.creator_notes,

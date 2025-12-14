@@ -38,8 +38,9 @@ const PACKAGES_TO_TEST = [
 ];
 
 // Key exports to verify per package
+// NOTE: core/zip exports (streamingUnzipSync, etc.) are now in @character-foundry/core/zip subpath
 const PACKAGE_EXPORTS = {
-  core: ['base64Encode', 'FoundryError', 'isFoundryError', 'streamingUnzipSync'],
+  core: ['base64Encode', 'FoundryError', 'isFoundryError'],
   schemas: ['detectSpec', 'CardNormalizer', 'getV3Data'],
   png: ['extractFromPNG', 'embedIntoPNG', 'isPNG'],
   charx: ['readCharX', 'writeCharX', 'isCharX'],

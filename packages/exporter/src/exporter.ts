@@ -5,6 +5,7 @@
  */
 
 import type { CCv3Data } from '@character-foundry/schemas';
+import { FormatNotSupportedError } from '@character-foundry/core';
 import { exportToPng, exportToPngAsync } from './png-exporter.js';
 import { exportToCharx, exportToCharxAsync } from './charx-exporter.js';
 import { exportToVoxta, exportToVoxtaAsync } from './voxta-exporter.js';
@@ -53,7 +54,7 @@ export function exportCard(
       return exportToVoxta(card, assets, options.voxta);
 
     default:
-      throw new Error(`Unknown export format: ${options.format}`);
+      throw new FormatNotSupportedError(options.format as string);
   }
 }
 
@@ -76,7 +77,7 @@ export async function exportCardAsync(
       return exportToVoxtaAsync(card, assets, options.voxta);
 
     default:
-      throw new Error(`Unknown export format: ${options.format}`);
+      throw new FormatNotSupportedError(options.format as string);
   }
 }
 
@@ -99,7 +100,7 @@ export function getFormatExtension(format: ExportFormat): string {
     case 'voxta':
       return 'voxpkg';
     default:
-      throw new Error(`Unknown format: ${format}`);
+      throw new FormatNotSupportedError(format);
   }
 }
 
@@ -114,6 +115,6 @@ export function getFormatMimeType(format: ExportFormat): string {
     case 'voxta':
       return 'application/zip';
     default:
-      throw new Error(`Unknown format: ${format}`);
+      throw new FormatNotSupportedError(format);
   }
 }

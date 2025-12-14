@@ -5,6 +5,7 @@
  */
 
 import type { BinaryData } from '@character-foundry/core';
+import { getZipOffset } from '@character-foundry/core/zip';
 import { isPNG } from '@character-foundry/png';
 import { isCharX, isJpegCharX } from '@character-foundry/charx';
 import { isVoxta } from '@character-foundry/voxta';
@@ -128,7 +129,39 @@ export function detectFormat(data: BinaryData): DetectionResult {
     };
   }
 
-  // 4. Check for raw JSON
+  // 4. Check for SFX/hybrid archives (ZIP not at offset 0)
+  const zipOffset = getZipOffset(data);
+  if (zipOffset > 0) {
+    // ZIP found at non-zero offset - extract and check
+    const zipData = data.subarray(zipOffset);
+
+    // Check for Voxta first (more specific)
+    if (isVoxta(zipData)) {
+      return {
+        format: 'voxta',
+        confidence: 'high',
+        reason: 'SFX/hybrid archive with Voxta structure',
+      };
+    }
+
+    // Check for CharX
+    if (isCharX(zipData)) {
+      return {
+        format: 'charx',
+        confidence: 'high',
+        reason: 'SFX/hybrid archive with CharX structure',
+      };
+    }
+
+    // Unknown SFX ZIP format
+    return {
+      format: 'unknown',
+      confidence: 'medium',
+      reason: 'SFX/hybrid archive without recognized card structure',
+    };
+  }
+
+  // 5. Check for raw JSON
   if (looksLikeJson(data)) {
     return {
       format: 'json',

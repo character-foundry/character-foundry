@@ -6,13 +6,8 @@
  */
 
 import type { BinaryData } from './binary.js';
-import { encode as base64Encode, decode as base64Decode } from './base64.js';
-
-/**
- * Chunk size for encoding large buffers (1MB)
- * Using smaller chunks prevents stack overflow with String.fromCharCode.apply
- */
-const CHUNK_SIZE = 1024 * 1024;
+import { encodeChunked as base64Encode, decode as base64Decode } from './base64.js';
+import { ValidationError } from './errors.js';
 
 /**
  * Convert Uint8Array to data URL.
@@ -30,7 +25,7 @@ const CHUNK_SIZE = 1024 * 1024;
  * ```
  */
 export function toDataURL(buffer: BinaryData, mimeType: string): string {
-  // Use chunked encoding for large buffers
+  // Use chunked encoding to handle large buffers without stack overflow
   const base64 = base64Encode(buffer);
   return `data:${mimeType};base64,${base64}`;
 }
@@ -53,12 +48,12 @@ export function toDataURL(buffer: BinaryData, mimeType: string): string {
 export function fromDataURL(dataUrl: string): { buffer: Uint8Array; mimeType: string } {
   // Validate data URL format
   if (!dataUrl.startsWith('data:')) {
-    throw new Error('Invalid data URL: must start with "data:"');
+    throw new ValidationError('Invalid data URL: must start with "data:"', 'dataUrl');
   }
 
   const commaIndex = dataUrl.indexOf(',');
   if (commaIndex === -1) {
-    throw new Error('Invalid data URL: missing comma separator');
+    throw new ValidationError('Invalid data URL: missing comma separator', 'dataUrl');
   }
 
   const header = dataUrl.slice(5, commaIndex); // Skip 'data:'
@@ -80,7 +75,7 @@ export function fromDataURL(dataUrl: string): { buffer: Uint8Array; mimeType: st
 
   if (!isBase64) {
     // URL-encoded text data
-    throw new Error('Non-base64 data URLs are not supported');
+    throw new ValidationError('Non-base64 data URLs are not supported', 'dataUrl');
   }
 
   const buffer = base64Decode(data);

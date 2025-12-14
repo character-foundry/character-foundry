@@ -6,6 +6,7 @@
 
 import type { CCv3Data } from '@character-foundry/schemas';
 import { hasRisuExtensions, hasRisuScripts, hasDepthPrompt } from '@character-foundry/schemas';
+import { FormatNotSupportedError } from '@character-foundry/core';
 import type { ExportFormat, ExportLossReport, ExportAsset, PreExportCheck } from './types.js';
 
 /**
@@ -97,20 +98,9 @@ function checkVoxtaLoss(card: CCv3Data, assets: ExportAsset[]): ExportLossReport
   const cardData = card.data;
   const extensions = cardData.extensions as Record<string, unknown> | undefined;
 
-  // Voxta doesn't support system_prompt
-  if (cardData.system_prompt) {
-    lostFields.push('system_prompt');
-  }
-
-  // Voxta doesn't support post_history_instructions
-  if (cardData.post_history_instructions) {
-    lostFields.push('post_history_instructions');
-  }
-
-  // Voxta only supports one greeting
-  if (cardData.alternate_greetings && cardData.alternate_greetings.length > 0) {
-    lostFields.push(`alternate_greetings (${cardData.alternate_greetings.length} entries)`);
-  }
+  // Note: Voxta DOES support system_prompt (as SystemPrompt)
+  // Note: Voxta DOES support post_history_instructions (as PostHistoryInstructions)
+  // Note: Voxta DOES support alternate_greetings (as AlternativeFirstMessages)
 
   // Voxta doesn't support group greetings
   if (cardData.group_only_greetings && cardData.group_only_greetings.length > 0) {
@@ -192,7 +182,7 @@ export function checkExportLoss(
     case 'voxta':
       return checkVoxtaLoss(card, assets);
     default:
-      throw new Error(`Unknown export format: ${targetFormat}`);
+      throw new FormatNotSupportedError(targetFormat);
   }
 }
 

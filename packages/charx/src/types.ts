@@ -92,6 +92,8 @@ export interface CharxWriteOptions {
   emitXMeta?: boolean;
   /** Include readme.txt (default: false) */
   emitReadme?: boolean;
+  /** Risu module.risum binary to include (opaque, preserved from read) */
+  moduleRisum?: BinaryData;
 }
 
 /**

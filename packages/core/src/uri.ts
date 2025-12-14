@@ -70,11 +70,12 @@ export function parseURI(uri: string): ParsedURI {
   const trimmed = uri.trim();
   const normalized = normalizeURI(trimmed);
 
-  // PNG chunk references (__asset:, asset:, chara-ext-asset_)
+  // PNG chunk references (__asset:, asset:, chara-ext-asset_, pngchunk:)
   if (
     trimmed.startsWith('__asset:') ||
     trimmed.startsWith('asset:') ||
-    trimmed.startsWith('chara-ext-asset_')
+    trimmed.startsWith('chara-ext-asset_') ||
+    trimmed.startsWith('pngchunk:')
   ) {
     let assetId: string;
     if (trimmed.startsWith('__asset:')) {
@@ -83,6 +84,8 @@ export function parseURI(uri: string): ParsedURI {
       assetId = trimmed.substring('asset:'.length);
     } else if (trimmed.startsWith('chara-ext-asset_:')) {
       assetId = trimmed.substring('chara-ext-asset_:'.length);
+    } else if (trimmed.startsWith('pngchunk:')) {
+      assetId = trimmed.substring('pngchunk:'.length);
     } else {
       assetId = trimmed.substring('chara-ext-asset_'.length);
     }
@@ -96,6 +99,7 @@ export function parseURI(uri: string): ParsedURI {
       `__asset_${assetId}`,           // "__asset_0"
       `chara-ext-asset_${assetId}`,   // "chara-ext-asset_0"
       `chara-ext-asset_:${assetId}`,  // "chara-ext-asset_:0"
+      `pngchunk:${assetId}`,          // "pngchunk:0"
     ];
 
     return {

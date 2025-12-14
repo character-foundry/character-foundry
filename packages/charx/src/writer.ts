@@ -64,6 +64,7 @@ export function writeCharX(
     compressionLevel = 6,
     emitXMeta = spec === 'risu',
     emitReadme = false,
+    moduleRisum,
   } = options;
 
   // Transform card to use embeded:// URIs
@@ -108,6 +109,11 @@ Import this file into SillyTavern, RisuAI, or other compatible applications.
       });
       zipEntries[`x_meta/${i}.json`] = [fromString(metaJson), { level: compressionLevel as CompressionLevel }];
     }
+  }
+
+  // Add module.risum for Risu format (opaque preservation)
+  if (moduleRisum) {
+    zipEntries['module.risum'] = [moduleRisum, { level: compressionLevel as CompressionLevel }];
   }
 
   // Create ZIP

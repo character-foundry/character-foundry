@@ -7,18 +7,20 @@
 
 import {
   type BinaryData,
-  type Unzipped,
   toString,
   base64Decode,
-  findZipStart,
   parseURI,
+  ParseError,
+  SizeLimitError,
+} from '@character-foundry/core';
+import {
+  type Unzipped,
+  findZipStart,
   isJpegCharX,
   getZipOffset,
   streamingUnzipSync,
   ZipPreflightError,
-  ParseError,
-  SizeLimitError,
-} from '@character-foundry/core';
+} from '@character-foundry/core/zip';
 import type { CCv3Data, AssetDescriptor } from '@character-foundry/schemas';
 import { hasRisuExtensions } from '@character-foundry/schemas';
 import type {

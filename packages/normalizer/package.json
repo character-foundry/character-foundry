@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/normalizer",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Character card normalization - convert between CCv2, CCv3, and NormalizedCard formats",
   "type": "module",
   "main": "./dist/index.cjs",

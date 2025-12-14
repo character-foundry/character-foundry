@@ -39,11 +39,12 @@ The loader is the main entry point for reading character cards. It:
 ```typescript
 import { parseCard } from '@character-foundry/loader';
 
-const { card, assets, format, originalShape } = parseCard(buffer);
+const { card, assets, containerFormat, spec, sourceFormat } = parseCard(buffer);
 // card: Always CCv3Data
 // assets: Extracted images, audio, etc.
-// format: 'png' | 'charx' | 'voxta' | 'json'
-// originalShape: 'v2' | 'v3'
+// containerFormat: 'png' | 'charx' | 'voxta' | 'json'
+// spec: 'chara_card_v2' | 'chara_card_v3' (detected spec version)
+// sourceFormat: 'ccv2' | 'ccv3' | 'voxta' | ... (source format indicator)
 ```
 
 ---
@@ -111,10 +112,12 @@ interface ExtractedAsset {
 }
 
 interface ParseResult {
-  card: CCv3Data;              // Always normalized to CCv3
-  assets: ExtractedAsset[];    // Extracted binary assets
-  format: ContainerFormat;     // Source format
-  originalShape: 'v2' | 'v3';  // Original card version
+  card: CCv3Data;               // Always normalized to CCv3
+  assets: ExtractedAsset[];     // Extracted binary assets
+  containerFormat: ContainerFormat; // Source container format
+  spec: Spec;                   // 'chara_card_v2' | 'chara_card_v3'
+  sourceFormat: SourceFormat;   // Source format indicator
+  originalShape: unknown;       // Raw JSON before normalization
 }
 
 interface ParseOptions {
@@ -150,9 +153,12 @@ All input formats are converted to CCv3:
 | **CCv3** | Passed through as-is |
 | **Voxta** | Mapped to CCv3 fields, books merged to `character_book` |
 
-The `originalShape` field tells you what the source was:
-- `'v2'` - Was TavernCard V2
-- `'v3'` - Was CCv3 or Voxta
+The `spec` and `sourceFormat` fields tell you what the source was:
+- `spec: 'chara_card_v2'` - Was TavernCard V2
+- `spec: 'chara_card_v3'` - Was CCv3 or compatible
+- `sourceFormat` provides more detail (e.g., 'voxta', 'risuai')
+
+The `originalShape` contains the raw JSON object before normalization.
 
 ---
 
@@ -254,10 +260,10 @@ import { readFile } from 'fs/promises';
 
 async function loadCharacter(path: string) {
   const buffer = await readFile(path);
-  const { card, assets, format } = parseCard(buffer);
+  const { card, assets, containerFormat } = parseCard(buffer);
 
   console.log(`Loaded: ${card.data.name}`);
-  console.log(`Format: ${format}`);
+  console.log(`Format: ${containerFormat}`);
   console.log(`Assets: ${assets.length}`);
 
   return card;
@@ -281,7 +287,7 @@ function loadWithFormatInfo(buffer: Uint8Array) {
   const result = parseCard(buffer);
 
   // Format-specific handling
-  switch (result.format) {
+  switch (result.containerFormat) {
     case 'png':
       console.log('Loaded from PNG image');
       break;
@@ -343,9 +349,9 @@ async function loadAllCards(directory: string) {
         continue;
       }
 
-      const { card, format } = parseCard(buffer);
-      cards.push({ file, card, format });
-      console.log(`Loaded: ${card.data.name} (${format})`);
+      const { card, containerFormat } = parseCard(buffer);
+      cards.push({ file, card, containerFormat });
+      console.log(`Loaded: ${card.data.name} (${containerFormat})`);
     } catch (err) {
       console.error(`Failed to load ${file}:`, err);
     }
@@ -363,7 +369,7 @@ import { exportCard } from '@character-foundry/exporter';
 
 async function roundTrip(buffer: Uint8Array, newFormat: 'png' | 'charx') {
   // Load (normalizes to CCv3)
-  const { card, assets, originalShape } = parseCard(buffer);
+  const { card, assets, spec } = parseCard(buffer);
 
   // Modify
   card.data.description = 'Updated description';
@@ -372,7 +378,7 @@ async function roundTrip(buffer: Uint8Array, newFormat: 'png' | 'charx') {
   const output = exportCard(card, assets, { format: newFormat });
 
   // Or export back to original format
-  // (use originalShape to decide v2 vs v3 JSON structure)
+  // (use spec to decide v2 vs v3 JSON structure if needed)
 
   return output;
 }

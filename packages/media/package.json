@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/media",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Image processing utilities for character cards",
   "type": "module",
   "exports": {
@@ -24,6 +24,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@character-foundry/core": "workspace:^"
   },
   "optionalDependencies": {
     "sharp": "^0.33.0"

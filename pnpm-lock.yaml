@@ -263,6 +263,10 @@ importers:
         version: 2.1.9(@types/node@20.19.25)(happy-dom@15.11.7)
 
   packages/media:
+    dependencies:
+      '@character-foundry/core':
+        specifier: workspace:^
+        version: link:../core
     optionalDependencies:
       sharp:
         specifier: ^0.33.0

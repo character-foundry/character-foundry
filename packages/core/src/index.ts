@@ -46,28 +46,9 @@ export {
   isDataURL,
 } from './data-url.js';
 
-// ZIP utilities
-export {
-  ZIP_SIGNATURE,
-  JPEG_SIGNATURE,
-  type UnsafePathHandling,
-  type ZipSizeLimits,
-  type ZipCentralDirEntry,
-  type ZipPreflightResult,
-  type Unzipped,
-  ZipPreflightError,
-  DEFAULT_ZIP_LIMITS,
-  isZipBuffer,
-  startsWithZipSignature,
-  isJPEG,
-  isJpegCharX,
-  findZipStart,
-  getZipOffset,
-  isValidZip,
-  isPathSafe,
-  preflightZipSizes,
-  streamingUnzipSync,
-} from './zip.js';
+// ZIP utilities moved to @character-foundry/core/zip subpath
+// Import from '@character-foundry/core/zip' instead of '@character-foundry/core'
+// This keeps fflate out of the main bundle for consumers who don't need ZIP
 
 // URI utilities
 export {
