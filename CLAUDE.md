@@ -363,7 +363,7 @@ pnpm build && pnpm test
 
 | Package | Version |
 |---------|---------|
-| `@character-foundry/character-foundry` | 0.1.3 |
+| `@character-foundry/character-foundry` | 0.1.4 |
 | `@character-foundry/core` | 0.1.3 |
 | `@character-foundry/schemas` | 0.2.2 |
 | `@character-foundry/png` | 0.0.6 |
