@@ -46,6 +46,20 @@ export interface STCharacter {
 }
 
 /**
+ * Usage stats for a character in SillyTavern
+ */
+export interface STCharacterStats {
+  /** Number of chats with this character */
+  chatCount?: number;
+  /** Total messages exchanged */
+  messageCount?: number;
+  /** Last time this character was used */
+  lastUsed?: string;
+  /** When the character was first added */
+  installedAt?: string;
+}
+
+/**
  * Interface that SillyTavern plugin must implement
  */
 export interface SillyTavernBridge {
@@ -66,6 +80,26 @@ export interface SillyTavernBridge {
 
   /** Check if SillyTavern is available */
   isConnected(): Promise<boolean>;
+
+  /**
+   * Get usage stats for a character (optional)
+   * SillyTavern plugins can implement this to report usage data back to hub
+   */
+  getCharacterStats?(name: string): Promise<STCharacterStats | null>;
+
+  /**
+   * Get stats for all characters (optional)
+   * Returns a map of character name to stats
+   */
+  getAllStats?(): Promise<Map<string, STCharacterStats>>;
+
+  /**
+   * Notify hub that a card was installed (optional)
+   * Called when a new character is added from federation
+   * @param federatedId - The federated URI of the installed card
+   * @param hubInbox - The hub's inbox URL to notify
+   */
+  notifyInstall?(federatedId: string, hubInbox: string): Promise<void>;
 }
 
 /**
@@ -199,6 +233,37 @@ export class SillyTavernAdapter extends BasePlatformAdapter {
     const char = await this.bridge.getCharacter(localId);
     return char ? new Date().toISOString() : null;
   }
+
+  /**
+   * Get stats for a character (if bridge supports it)
+   */
+  async getStats(localId: string): Promise<STCharacterStats | null> {
+    if (!this.bridge.getCharacterStats) {
+      return null;
+    }
+    return this.bridge.getCharacterStats(localId);
+  }
+
+  /**
+   * Get stats for all characters (if bridge supports it)
+   */
+  async getAllStats(): Promise<Map<string, STCharacterStats> | null> {
+    if (!this.bridge.getAllStats) {
+      return null;
+    }
+    return this.bridge.getAllStats();
+  }
+
+  /**
+   * Notify hub about installation (if bridge supports it)
+   */
+  async notifyInstall(federatedId: string, hubInbox: string): Promise<boolean> {
+    if (!this.bridge.notifyInstall) {
+      return false;
+    }
+    await this.bridge.notifyInstall(federatedId, hubInbox);
+    return true;
+  }
 }
 
 /**
@@ -207,13 +272,19 @@ export class SillyTavernAdapter extends BasePlatformAdapter {
 export function createMockSTBridge(): SillyTavernBridge & {
   characters: Map<string, STCharacter>;
   avatars: Map<string, Uint8Array>;
+  stats: Map<string, STCharacterStats>;
+  installNotifications: Array<{ federatedId: string; hubInbox: string }>;
 } {
   const characters = new Map<string, STCharacter>();
   const avatars = new Map<string, Uint8Array>();
+  const stats = new Map<string, STCharacterStats>();
+  const installNotifications: Array<{ federatedId: string; hubInbox: string }> = [];
 
   return {
     characters,
     avatars,
+    stats,
+    installNotifications,
 
     async getCharacters() {
       return Array.from(characters.values());
@@ -225,6 +296,14 @@ export function createMockSTBridge(): SillyTavernBridge & {
 
     async saveCharacter(character) {
       characters.set(character.name, character);
+      // Auto-create initial stats on save
+      if (!stats.has(character.name)) {
+        stats.set(character.name, {
+          installedAt: new Date().toISOString(),
+          chatCount: 0,
+          messageCount: 0,
+        });
+      }
       return character.name;
     },
 
@@ -232,6 +311,7 @@ export function createMockSTBridge(): SillyTavernBridge & {
       const existed = characters.has(name);
       characters.delete(name);
       avatars.delete(name);
+      stats.delete(name);
       return existed;
     },
 
@@ -241,6 +321,18 @@ export function createMockSTBridge(): SillyTavernBridge & {
 
     async isConnected() {
       return true;
+    },
+
+    async getCharacterStats(name) {
+      return stats.get(name) || null;
+    },
+
+    async getAllStats() {
+      return new Map(stats);
+    },
+
+    async notifyInstall(federatedId, hubInbox) {
+      installNotifications.push({ federatedId, hubInbox });
     },
   };
 }

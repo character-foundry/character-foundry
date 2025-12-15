@@ -122,7 +122,90 @@ export type ActivityType =
   | 'Announce'  // Reshare/boost
   | 'Like'      // Favorite
   | 'Follow'    // Subscribe to creator
-  | 'Undo';     // Undo previous activity
+  | 'Undo'      // Undo previous activity
+  | 'Fork'      // Fork/derive from another card
+  | 'Install';  // Consumer installed a card (stats notification)
+
+/**
+ * Platform role in federation topology
+ */
+export type PlatformRole =
+  | 'publisher'   // Archive: sends Create/Update to Hub, Architect
+  | 'hub'         // Hub: bi-directional with Architect, distributes to consumers
+  | 'architect'   // Architect: bi-directional with Hub, sends to ST/Voxta
+  | 'consumer';   // ST/Voxta: receive-only, send install stats back
+
+/**
+ * Fork reference stored in card extensions
+ * Path: card.data.extensions['character-foundry'].forkedFrom
+ */
+export interface ForkReference {
+  /** Federated URI of the source card */
+  federatedId: string;
+  /** Source platform identifier */
+  platform: PlatformId;
+  /** Timestamp when forked */
+  forkedAt: string;
+  /** Source version hash at fork time */
+  sourceVersionHash?: string;
+}
+
+/**
+ * Fork notification received by source instance
+ */
+export interface ForkNotification {
+  /** Federated URI of the fork */
+  forkId: string;
+  /** Actor who created the fork */
+  actorId: string;
+  /** Platform where fork was created */
+  platform: PlatformId;
+  /** Timestamp of fork */
+  timestamp: string;
+}
+
+/**
+ * Install notification received by source instance
+ * Consumers (SillyTavern, Voxta) send these when a card is installed
+ */
+export interface InstallNotification {
+  /** Platform where card was installed */
+  platform: PlatformId;
+  /** Actor/user who installed (if known) */
+  actorId?: string;
+  /** Timestamp of installation */
+  timestamp: string;
+}
+
+/**
+ * Aggregated stats for a card
+ */
+export interface CardStats {
+  /** Total known installs across all platforms */
+  installCount: number;
+  /** Install counts per platform */
+  installsByPlatform: Partial<Record<PlatformId, number>>;
+  /** Fork count (separate from forkNotifications for efficiency) */
+  forkCount: number;
+  /** Like/favorite count */
+  likeCount: number;
+  /** Last time any stat was updated */
+  lastUpdated: string;
+}
+
+/**
+ * Install activity - consumer notifies hub about card installation
+ */
+export interface InstallActivity extends Omit<FederatedActivity, 'type' | 'object'> {
+  type: 'Install';
+  /** Card URI that was installed */
+  object: string;
+  /** Platform where installed */
+  target?: {
+    type: 'Application';
+    name: PlatformId;
+  };
+}
 
 /**
  * ActivityPub Activity
@@ -160,13 +243,21 @@ export interface CardSyncState {
     remoteVersion: string;
     remotePlatform: PlatformId;
   };
+  /** Fork reference if this card is a fork */
+  forkedFrom?: ForkReference;
+  /** Count of known forks of this card */
+  forksCount?: number;
+  /** References to known forks (capped at 100 to prevent unbounded growth) */
+  forkNotifications?: ForkNotification[];
+  /** Aggregated stats for this card */
+  stats?: CardStats;
 }
 
 /**
  * Sync operation
  */
 export interface SyncOperation {
-  type: 'push' | 'pull' | 'delete' | 'resolve';
+  type: 'push' | 'pull' | 'delete' | 'resolve' | 'fork';
   cardId: FederatedCardId;
   sourcePlatform: PlatformId;
   targetPlatform: PlatformId;
@@ -270,6 +361,10 @@ export type FederationEventType =
   | 'card:deleted'
   | 'card:synced'
   | 'card:conflict'
+  | 'card:forked'           // When we create a fork
+  | 'card:fork-received'    // When we receive fork notification
+  | 'card:installed'        // When we push to a consumer
+  | 'card:install-received' // When we receive install notification
   | 'sync:started'
   | 'sync:completed'
   | 'sync:failed'
@@ -290,3 +385,47 @@ export interface FederationEvent {
  * Event listener
  */
 export type FederationEventListener = (event: FederationEvent) => void | Promise<void>;
+
+/**
+ * Fork activity - custom ActivityPub extension
+ */
+export interface ForkActivity extends Omit<FederatedActivity, 'type' | 'object'> {
+  type: 'Fork';
+  /** Source card URI being forked */
+  object: string;
+  /** The newly created fork */
+  result: FederatedCard;
+}
+
+/**
+ * Fork operation result
+ */
+export interface ForkResult {
+  success: boolean;
+  operation: SyncOperation;
+  forkState?: CardSyncState;
+  sourceFederatedId?: string;
+  forkFederatedId?: string;
+  error?: string;
+}
+
+/**
+ * Inbox handler result
+ */
+export interface InboxResult {
+  accepted: boolean;
+  error?: string;
+  activityType?: ActivityType;
+}
+
+/**
+ * Inbox handler options
+ */
+export interface InboxHandlerOptions {
+  /** Fetch actor by ID for signature verification */
+  fetchActor: (actorId: string) => Promise<FederatedActor | null>;
+  /** Strict mode for signature validation */
+  strictMode?: boolean;
+  /** Maximum age for signatures in seconds (default 300) */
+  maxAge?: number;
+}

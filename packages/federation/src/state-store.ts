@@ -8,6 +8,7 @@ import type {
   SyncStateStore,
   CardSyncState,
   PlatformId,
+  ForkNotification,
 } from './types.js';
 
 /**
@@ -50,6 +51,47 @@ export class MemorySyncStateStore implements SyncStateStore {
    */
   clear(): void {
     this.states.clear();
+  }
+
+  /**
+   * Increment fork count and add notification
+   */
+  async incrementForkCount(
+    federatedId: string,
+    notification: ForkNotification
+  ): Promise<void> {
+    const state = this.states.get(federatedId);
+    if (!state) return;
+
+    // Cap notifications at 100
+    const notifications = state.forkNotifications || [];
+    if (notifications.length < 100) {
+      notifications.push(notification);
+    }
+
+    state.forksCount = (state.forksCount || 0) + 1;
+    state.forkNotifications = notifications;
+    this.states.set(federatedId, state);
+  }
+
+  /**
+   * Get fork count for a card
+   */
+  async getForkCount(federatedId: string): Promise<number> {
+    return this.states.get(federatedId)?.forksCount || 0;
+  }
+
+  /**
+   * Find all cards that are forks of a given source card
+   */
+  async findForks(sourceFederatedId: string): Promise<CardSyncState[]> {
+    const forks: CardSyncState[] = [];
+    for (const state of this.states.values()) {
+      if (state.forkedFrom?.federatedId === sourceFederatedId) {
+        forks.push(state);
+      }
+    }
+    return forks;
   }
 }
 
@@ -150,6 +192,48 @@ export class FileSyncStateStore implements SyncStateStore {
       }
     }
     return null;
+  }
+
+  /**
+   * Increment fork count and add notification
+   */
+  async incrementForkCount(
+    federatedId: string,
+    notification: ForkNotification
+  ): Promise<void> {
+    const state = this.states.get(federatedId);
+    if (!state) return;
+
+    // Cap notifications at 100
+    const notifications = state.forkNotifications || [];
+    if (notifications.length < 100) {
+      notifications.push(notification);
+    }
+
+    state.forksCount = (state.forksCount || 0) + 1;
+    state.forkNotifications = notifications;
+    this.states.set(federatedId, state);
+    this.scheduleSave();
+  }
+
+  /**
+   * Get fork count for a card
+   */
+  async getForkCount(federatedId: string): Promise<number> {
+    return this.states.get(federatedId)?.forksCount || 0;
+  }
+
+  /**
+   * Find all cards that are forks of a given source card
+   */
+  async findForks(sourceFederatedId: string): Promise<CardSyncState[]> {
+    const forks: CardSyncState[] = [];
+    for (const state of this.states.values()) {
+      if (state.forkedFrom?.federatedId === sourceFederatedId) {
+        forks.push(state);
+      }
+    }
+    return forks;
   }
 }
 

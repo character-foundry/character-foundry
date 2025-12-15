@@ -12,6 +12,8 @@ import type {
   FederatedActor,
   ActivityType,
   PlatformId,
+  ForkActivity,
+  InstallActivity,
 } from './types.js';
 
 /**
@@ -23,6 +25,33 @@ export const ACTIVITY_CONTEXT = [
     'character': 'https://character-foundry.dev/ns#',
     'character:version': { '@id': 'character:version' },
     'character:spec': { '@id': 'character:spec' },
+  },
+];
+
+/**
+ * Extended ActivityPub context for Fork activities
+ * Includes custom character-foundry namespace for fork semantics
+ */
+export const FORK_ACTIVITY_CONTEXT = [
+  'https://www.w3.org/ns/activitystreams',
+  {
+    'character': 'https://character-foundry.dev/ns#',
+    'character:version': { '@id': 'character:version' },
+    'character:spec': { '@id': 'character:spec' },
+    'Fork': 'character:Fork',
+    'forkedFrom': { '@id': 'character:forkedFrom', '@type': '@id' },
+  },
+];
+
+/**
+ * Extended ActivityPub context for Install activities
+ * Used by consumers (SillyTavern, Voxta) to notify hub about installations
+ */
+export const INSTALL_ACTIVITY_CONTEXT = [
+  'https://www.w3.org/ns/activitystreams',
+  {
+    'character': 'https://character-foundry.dev/ns#',
+    'Install': 'character:Install',
   },
 ];
 
@@ -238,6 +267,160 @@ export function createUndoActivity(
     actor: actorId,
     object: originalActivityId,
     published: new Date().toISOString(),
+  };
+}
+
+/**
+ * Create a Fork activity for card derivation
+ *
+ * Fork activities notify the source instance that a card was forked.
+ * The forked card contains a reference to the source in its extensions.
+ */
+export function createForkActivity(
+  sourceCardId: string,
+  forkedCard: FederatedCard,
+  actorId: string,
+  baseUrl: string,
+  recipients?: { to?: string[]; cc?: string[] }
+): ForkActivity {
+  return {
+    '@context': FORK_ACTIVITY_CONTEXT,
+    id: generateActivityId(baseUrl),
+    type: 'Fork',
+    actor: actorId,
+    object: sourceCardId,
+    result: forkedCard,
+    published: new Date().toISOString(),
+    to: recipients?.to || ['https://www.w3.org/ns/activitystreams#Public'],
+    cc: recipients?.cc,
+  };
+}
+
+/**
+ * Parse an incoming Fork activity
+ *
+ * @returns Parsed fork data or null if invalid
+ */
+export function parseForkActivity(activity: unknown): {
+  sourceCardId: string;
+  forkedCard: FederatedCard;
+  actor: string;
+  activityId: string;
+} | null {
+  if (!activity || typeof activity !== 'object') {
+    return null;
+  }
+
+  const act = activity as Record<string, unknown>;
+
+  // Verify it's a Fork activity
+  if (act.type !== 'Fork') {
+    return null;
+  }
+
+  // Validate required fields
+  if (
+    typeof act.actor !== 'string' ||
+    typeof act.object !== 'string' ||
+    typeof act.id !== 'string' ||
+    !act.result ||
+    typeof act.result !== 'object'
+  ) {
+    return null;
+  }
+
+  const result = act.result as Record<string, unknown>;
+
+  // Validate the forked card has required fields
+  if (
+    typeof result.id !== 'string' ||
+    typeof result.content !== 'string' ||
+    typeof result.attributedTo !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    sourceCardId: act.object,
+    forkedCard: result as unknown as FederatedCard,
+    actor: act.actor,
+    activityId: act.id,
+  };
+}
+
+/**
+ * Create an Install activity for notifying hub about card installation
+ *
+ * Consumers (SillyTavern, Voxta) send this when a card is installed/saved.
+ */
+export function createInstallActivity(
+  cardId: string,
+  actorId: string,
+  baseUrl: string,
+  platform: PlatformId,
+  recipients?: { to?: string[]; cc?: string[] }
+): InstallActivity {
+  return {
+    '@context': INSTALL_ACTIVITY_CONTEXT,
+    id: generateActivityId(baseUrl),
+    type: 'Install',
+    actor: actorId,
+    object: cardId,
+    target: {
+      type: 'Application',
+      name: platform,
+    },
+    published: new Date().toISOString(),
+    to: recipients?.to,
+    cc: recipients?.cc,
+  };
+}
+
+/**
+ * Parse an incoming Install activity
+ *
+ * @returns Parsed install data or null if invalid
+ */
+export function parseInstallActivity(activity: unknown): {
+  cardId: string;
+  actor: string;
+  platform: PlatformId | null;
+  activityId: string;
+} | null {
+  if (!activity || typeof activity !== 'object') {
+    return null;
+  }
+
+  const act = activity as Record<string, unknown>;
+
+  // Verify it's an Install activity
+  if (act.type !== 'Install') {
+    return null;
+  }
+
+  // Validate required fields
+  if (
+    typeof act.actor !== 'string' ||
+    typeof act.object !== 'string' ||
+    typeof act.id !== 'string'
+  ) {
+    return null;
+  }
+
+  // Extract platform from target if present
+  let platform: PlatformId | null = null;
+  if (act.target && typeof act.target === 'object') {
+    const target = act.target as Record<string, unknown>;
+    if (target.type === 'Application' && typeof target.name === 'string') {
+      platform = target.name as PlatformId;
+    }
+  }
+
+  return {
+    cardId: act.object,
+    actor: act.actor,
+    platform,
+    activityId: act.id,
   };
 }
 

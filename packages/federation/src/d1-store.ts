@@ -5,7 +5,7 @@
  * federation support on Cloudflare Workers.
  */
 
-import type { SyncStateStore, CardSyncState, PlatformId } from './types.js';
+import type { SyncStateStore, CardSyncState, PlatformId, ForkNotification } from './types.js';
 
 /**
  * Minimal D1Database interface
@@ -51,6 +51,9 @@ interface SyncStateRow {
   version_hash: string;
   status: 'synced' | 'pending' | 'conflict' | 'error';
   conflict: string | null;
+  forked_from: string | null;
+  forks_count: number;
+  fork_notifications: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -103,6 +106,9 @@ export class D1SyncStateStore implements SyncStateStore {
         version_hash TEXT NOT NULL,
         status TEXT NOT NULL CHECK (status IN ('synced', 'pending', 'conflict', 'error')),
         conflict TEXT,
+        forked_from TEXT,
+        forks_count INTEGER DEFAULT 0,
+        fork_notifications TEXT,
         created_at INTEGER DEFAULT (unixepoch()),
         updated_at INTEGER DEFAULT (unixepoch())
       )
@@ -111,6 +117,12 @@ export class D1SyncStateStore implements SyncStateStore {
     // Create index for platform ID lookups
     await this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_${this.tableName}_local_id ON ${this.tableName}(local_id)
+    `);
+
+    // Create index for finding forks of a source card
+    await this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_${this.tableName}_forked_from
+      ON ${this.tableName}(json_extract(forked_from, '$.federatedId'))
     `);
   }
 
@@ -133,11 +145,15 @@ export class D1SyncStateStore implements SyncStateStore {
     const platformIds = JSON.stringify(state.platformIds);
     const lastSync = JSON.stringify(state.lastSync);
     const conflict = state.conflict ? JSON.stringify(state.conflict) : null;
+    const forkedFrom = state.forkedFrom ? JSON.stringify(state.forkedFrom) : null;
+    const forkNotifications = state.forkNotifications
+      ? JSON.stringify(state.forkNotifications)
+      : null;
 
     await this.db
       .prepare(
-        `INSERT INTO ${this.tableName} (federated_id, local_id, platform_ids, last_sync, version_hash, status, conflict, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
+        `INSERT INTO ${this.tableName} (federated_id, local_id, platform_ids, last_sync, version_hash, status, conflict, forked_from, forks_count, fork_notifications, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
          ON CONFLICT(federated_id) DO UPDATE SET
            local_id = excluded.local_id,
            platform_ids = excluded.platform_ids,
@@ -145,6 +161,9 @@ export class D1SyncStateStore implements SyncStateStore {
            version_hash = excluded.version_hash,
            status = excluded.status,
            conflict = excluded.conflict,
+           forked_from = excluded.forked_from,
+           forks_count = excluded.forks_count,
+           fork_notifications = excluded.fork_notifications,
            updated_at = unixepoch()`
       )
       .bind(
@@ -154,7 +173,10 @@ export class D1SyncStateStore implements SyncStateStore {
         lastSync,
         state.versionHash,
         state.status,
-        conflict
+        conflict,
+        forkedFrom,
+        state.forksCount ?? 0,
+        forkNotifications
       )
       .run();
   }
@@ -258,10 +280,65 @@ export class D1SyncStateStore implements SyncStateStore {
   }
 
   /**
+   * Increment fork count and add notification for a source card
+   *
+   * Used when receiving a Fork activity to track that someone forked this card.
+   * Notifications are capped at 100 to prevent unbounded growth.
+   */
+  async incrementForkCount(
+    federatedId: string,
+    notification: ForkNotification
+  ): Promise<void> {
+    const state = await this.get(federatedId);
+    if (!state) {
+      return;
+    }
+
+    // Cap notifications at 100
+    const notifications = state.forkNotifications || [];
+    if (notifications.length < 100) {
+      notifications.push(notification);
+    }
+
+    state.forksCount = (state.forksCount || 0) + 1;
+    state.forkNotifications = notifications;
+
+    await this.set(state);
+  }
+
+  /**
+   * Get fork count for a card
+   */
+  async getForkCount(federatedId: string): Promise<number> {
+    const result = await this.db
+      .prepare(`SELECT forks_count FROM ${this.tableName} WHERE federated_id = ?`)
+      .bind(federatedId)
+      .first<{ forks_count: number }>();
+
+    return result?.forks_count ?? 0;
+  }
+
+  /**
+   * Find all cards that are forks of a given source card
+   */
+  async findForks(sourceFederatedId: string): Promise<CardSyncState[]> {
+    const result = await this.db
+      .prepare(
+        `SELECT * FROM ${this.tableName}
+         WHERE json_extract(forked_from, '$.federatedId') = ?
+         ORDER BY updated_at DESC`
+      )
+      .bind(sourceFederatedId)
+      .all<SyncStateRow>();
+
+    return result.results.map((row) => this.rowToState(row));
+  }
+
+  /**
    * Convert database row to CardSyncState
    */
   private rowToState(row: SyncStateRow): CardSyncState {
-    return {
+    const state: CardSyncState = {
       federatedId: row.federated_id,
       localId: row.local_id,
       platformIds: JSON.parse(row.platform_ids) as Partial<Record<PlatformId, string>>,
@@ -272,5 +349,18 @@ export class D1SyncStateStore implements SyncStateStore {
         ? (JSON.parse(row.conflict) as CardSyncState['conflict'])
         : undefined,
     };
+
+    // Add fork fields if present
+    if (row.forked_from) {
+      state.forkedFrom = JSON.parse(row.forked_from) as CardSyncState['forkedFrom'];
+    }
+    if (row.forks_count > 0) {
+      state.forksCount = row.forks_count;
+    }
+    if (row.fork_notifications) {
+      state.forkNotifications = JSON.parse(row.fork_notifications) as ForkNotification[];
+    }
+
+    return state;
   }
 }

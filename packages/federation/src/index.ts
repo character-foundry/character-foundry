@@ -77,6 +77,7 @@ export function assertFederationEnabled(feature: string): void {
 export type {
   FederatedCardId,
   PlatformId,
+  PlatformRole,
   FederatedActor,
   FederatedCard,
   ActivityType,
@@ -90,11 +91,24 @@ export type {
   FederationEventType,
   FederationEvent,
   FederationEventListener,
+  // Fork types
+  ForkReference,
+  ForkNotification,
+  ForkActivity,
+  ForkResult,
+  InboxResult,
+  InboxHandlerOptions,
+  // Install/stats types
+  InstallNotification,
+  InstallActivity,
+  CardStats,
 } from './types.js';
 
 // ActivityPub utilities
 export {
   ACTIVITY_CONTEXT,
+  FORK_ACTIVITY_CONTEXT,
+  INSTALL_ACTIVITY_CONTEXT,
   generateCardId,
   generateActivityId,
   cardToActivityPub,
@@ -105,6 +119,10 @@ export {
   createAnnounceActivity,
   createLikeActivity,
   createUndoActivity,
+  createForkActivity,
+  parseForkActivity,
+  createInstallActivity,
+  parseInstallActivity,
   createActor,
   parseActivity,
   validateActivitySignature,
@@ -149,6 +167,7 @@ export {
   type FetchFn,
   type SillyTavernBridge,
   type STCharacter,
+  type STCharacterStats,
 } from './adapters/index.js';
 
 // Routes
@@ -161,6 +180,9 @@ export {
   type NodeInfoDiscoveryResponse,
   type NodeInfoResponse,
   handleActor,
+  handleInbox,
+  validateForkActivity,
+  validateInstallActivity,
 } from './routes/index.js';
 
 // HTTP Signatures

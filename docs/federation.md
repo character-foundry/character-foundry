@@ -1,7 +1,7 @@
 # Federation Package Documentation
 
 **Package:** `@character-foundry/federation`
-**Version:** 0.1.6
+**Version:** 0.3.1
 **Environment:** Node.js, Browser, and Cloudflare Workers
 
 The `@character-foundry/federation` package provides experimental ActivityPub-based federation for syncing character cards across platforms.
@@ -9,10 +9,13 @@ The `@character-foundry/federation` package provides experimental ActivityPub-ba
 ## Features
 
 - **ActivityPub** - Object creation, activity types, WebFinger, NodeInfo
+- **Fork Support** - Cross-instance fork tracking and notifications
+- **Install Stats** - Track installations from consumers (SillyTavern, Voxta)
 - **SyncEngine** - Manages card synchronization across platforms
 - **State stores** - `MemorySyncStateStore`, `FileSyncStateStore`, `D1SyncStateStore` (Cloudflare D1)
 - **HTTP Signatures** - Full signing/verification using Web Crypto API
 - **Platform adapters** - Memory, HTTP, SillyTavern, Archive, Hub
+- **Inbox Handler** - Process incoming ActivityPub activities
 
 ## Table of Contents
 
@@ -21,6 +24,9 @@ The `@character-foundry/federation` package provides experimental ActivityPub-ba
 - [Enabling Federation](#enabling-federation)
 - [Core Concepts](#core-concepts)
 - [ActivityPub](#activitypub)
+- [Fork Support](#fork-support)
+- [Install Stats](#install-stats)
+- [Inbox Handler](#inbox-handler)
 - [Sync Engine](#sync-engine)
 - [Platform Adapters](#platform-adapters)
 - [Routes](#routes)
@@ -119,7 +125,7 @@ interface FederatedActor {
 Changes are communicated via activities:
 
 ```typescript
-type ActivityType = 'Create' | 'Update' | 'Delete' | 'Announce' | 'Like' | 'Undo';
+type ActivityType = 'Create' | 'Update' | 'Delete' | 'Announce' | 'Like' | 'Undo' | 'Fork' | 'Follow' | 'Install';
 
 interface FederatedActivity {
   '@context': string;
@@ -131,6 +137,18 @@ interface FederatedActivity {
   to?: string[];
   cc?: string[];
 }
+```
+
+### Platform Roles
+
+Platforms have different roles in the federation topology:
+
+```typescript
+type PlatformRole =
+  | 'publisher'   // Archive: sends Create/Update to Hub, Architect
+  | 'hub'         // Hub: bi-directional with Architect, distributes to consumers
+  | 'architect'   // Architect: bi-directional with Hub, sends to ST/Voxta
+  | 'consumer';   // ST/Voxta: receive-only, send install stats back
 ```
 
 ---
@@ -182,6 +200,360 @@ const cardId = generateCardId('example.com', 'abc123');
 
 const activityId = generateActivityId('example.com');
 // 'https://example.com/activities/550e8400-...'
+```
+
+---
+
+## Fork Support
+
+The federation package supports tracking card forks across instances.
+
+### Fork Types
+
+```typescript
+// Reference to the source card stored in the fork
+interface ForkReference {
+  federatedId: string;      // Source card URI
+  platform: PlatformId;     // Source platform
+  forkedAt: string;         // ISO timestamp
+  sourceVersionHash?: string;
+}
+
+// Notification received when someone forks your card
+interface ForkNotification {
+  forkId: string;           // Federated URI of the fork
+  actorId: string;          // Actor who created the fork
+  platform: PlatformId;     // Platform where fork was created
+  timestamp: string;
+}
+
+// Fork activity (custom ActivityPub extension)
+interface ForkActivity extends FederatedActivity {
+  type: 'Fork';
+  object: string;           // Source card URI being forked
+  result: FederatedCard;    // The newly created fork
+}
+```
+
+### Creating Fork Activities
+
+```typescript
+import {
+  createForkActivity,
+  parseForkActivity,
+  cardToActivityPub,
+  FORK_ACTIVITY_CONTEXT,
+} from '@character-foundry/federation';
+
+// Create a fork activity to notify the source instance
+const forkedCard = cardToActivityPub(newCard, {
+  id: 'https://hub.example.com/cards/fork-123',
+  actorId: 'https://hub.example.com/actor',
+});
+
+const forkActivity = createForkActivity(
+  'https://archive.example.com/cards/source-456', // Source card URI
+  forkedCard,
+  'https://hub.example.com/actor',
+  'https://hub.example.com'
+);
+
+// Parse incoming fork activity
+const parsed = parseForkActivity(incomingActivity);
+if (parsed) {
+  console.log(`Fork of ${parsed.sourceCardId} by ${parsed.actor}`);
+}
+```
+
+### Forking Cards with SyncEngine
+
+```typescript
+import { SyncEngine, MemorySyncStateStore } from '@character-foundry/federation';
+
+const engine = new SyncEngine({
+  baseUrl: 'https://hub.example.com',
+  actorId: 'https://hub.example.com/actor',
+  stateStore: new MemorySyncStateStore(),
+});
+
+// Fork a card from archive to hub
+const result = await engine.forkCard(
+  'https://archive.example.com/cards/source-123',
+  'archive',
+  'hub',
+  {
+    modifications: { name: 'My Fork of Character' },
+  }
+);
+
+if (result.success) {
+  console.log(`Created fork: ${result.forkFederatedId}`);
+  console.log(`Fork metadata stored: ${result.forkState?.forkedFrom?.federatedId}`);
+}
+
+// Get fork count for a card
+const forkCount = await engine.getForkCount('https://hub.example.com/cards/my-card');
+
+// Find all forks of a card
+const forks = await engine.findForks('https://archive.example.com/cards/source-123');
+```
+
+### Fork Metadata in Cards
+
+Fork metadata is stored in the card's extensions:
+
+```typescript
+// Path: card.data.extensions['character-foundry'].forkedFrom
+{
+  spec: 'chara_card_v3',
+  data: {
+    name: 'My Forked Character',
+    // ... other fields ...
+    extensions: {
+      'character-foundry': {
+        forkedFrom: {
+          federatedId: 'https://archive.example.com/cards/source-123',
+          platform: 'archive',
+          forkedAt: '2024-01-15T10:30:00Z',
+          sourceVersionHash: 'abc123',
+        },
+      },
+    },
+  },
+}
+```
+
+### Fork Events
+
+```typescript
+// Listen for fork events
+engine.on('card:forked', (event) => {
+  console.log(`Created fork: ${event.data.forkFederatedId}`);
+});
+
+engine.on('card:fork-received', (event) => {
+  console.log(`Received fork notification from ${event.data.notification.actorId}`);
+  console.log(`New fork count: ${event.data.newForkCount}`);
+});
+```
+
+---
+
+## Install Stats
+
+Track card installations from consumer platforms (SillyTavern, Voxta).
+
+### Install Types
+
+```typescript
+// Notification received when a consumer installs a card
+interface InstallNotification {
+  platform: PlatformId;      // Where card was installed
+  actorId?: string;          // User who installed (if known)
+  timestamp: string;         // ISO timestamp
+}
+
+// Aggregated stats for a card
+interface CardStats {
+  installCount: number;                            // Total installs
+  installsByPlatform: Partial<Record<PlatformId, number>>;
+  forkCount: number;
+  likeCount: number;
+  lastUpdated: string;
+}
+
+// Install activity (custom ActivityPub extension)
+interface InstallActivity extends FederatedActivity {
+  type: 'Install';
+  object: string;            // Card URI that was installed
+  target?: {
+    type: 'Application';
+    name: PlatformId;        // Platform where installed
+  };
+}
+```
+
+### Creating Install Activities
+
+Consumers (SillyTavern, Voxta) send Install activities when a user adds a card:
+
+```typescript
+import {
+  createInstallActivity,
+  parseInstallActivity,
+  INSTALL_ACTIVITY_CONTEXT,
+} from '@character-foundry/federation';
+
+// Create install activity to notify hub
+const installActivity = createInstallActivity(
+  'https://hub.example.com/cards/card-123', // Card federated ID
+  'https://sillytavern.local/actor',         // Consumer actor
+  'https://sillytavern.local',               // Consumer base URL
+  'sillytavern'                              // Platform ID
+);
+
+// Parse incoming install activity
+const parsed = parseInstallActivity(incomingActivity);
+if (parsed) {
+  console.log(`Card ${parsed.cardId} installed on ${parsed.platform}`);
+}
+```
+
+### Handling Install Notifications
+
+```typescript
+import { SyncEngine, handleInbox } from '@character-foundry/federation';
+
+const engine = new SyncEngine({ /* config */ });
+
+// In your inbox handler
+app.post('/inbox', async (req) => {
+  const result = await handleInbox(await req.json(), req.headers, {
+    fetchActor,
+    onInstall: async (activity) => {
+      // This updates install count in sync state
+      await engine.handleInstallNotification(activity);
+    },
+  });
+
+  return result.accepted
+    ? new Response(null, { status: 202 })
+    : new Response(result.error, { status: 400 });
+});
+```
+
+### Getting Stats
+
+```typescript
+// Get full stats for a card
+const stats = await engine.getCardStats('https://hub.example.com/cards/card-123');
+console.log(`Total installs: ${stats.installCount}`);
+console.log(`SillyTavern installs: ${stats.installsByPlatform.sillytavern}`);
+
+// Get just install count
+const installCount = await engine.getInstallCount('https://hub.example.com/cards/card-123');
+```
+
+### Install Events
+
+```typescript
+// Listen for install events
+engine.on('card:installed', (event) => {
+  console.log(`Pushed card to ${event.data.platform}`);
+});
+
+engine.on('card:install-received', (event) => {
+  console.log(`Install notification from ${event.data.platform}`);
+  console.log(`New install count: ${event.data.newInstallCount}`);
+});
+```
+
+### SillyTavern Bridge Extensions
+
+The SillyTavern bridge interface includes optional methods for stats:
+
+```typescript
+interface SillyTavernBridge {
+  // ... base methods ...
+
+  // Optional: Get usage stats for a character
+  getCharacterStats?(name: string): Promise<STCharacterStats | null>;
+
+  // Optional: Get stats for all characters
+  getAllStats?(): Promise<Map<string, STCharacterStats>>;
+
+  // Optional: Notify hub about installation
+  notifyInstall?(federatedId: string, hubInbox: string): Promise<void>;
+}
+
+interface STCharacterStats {
+  chatCount?: number;
+  messageCount?: number;
+  lastUsed?: string;
+  installedAt?: string;
+}
+```
+
+---
+
+## Inbox Handler
+
+Process incoming ActivityPub activities with the inbox handler.
+
+### Basic Usage
+
+```typescript
+import { handleInbox, validateForkActivity } from '@character-foundry/federation';
+
+// In your web framework (Express, Hono, etc.)
+app.post('/inbox', async (req) => {
+  const result = await handleInbox(await req.json(), req.headers, {
+    fetchActor: async (actorId) => {
+      // Fetch actor from network for signature verification
+      return await fetchActorFromRemote(actorId);
+    },
+    strictMode: true, // Enforce HTTP signature validation
+
+    // Activity handlers
+    onFork: async (activity) => {
+      await syncEngine.handleForkNotification(activity);
+    },
+    onCreate: async (activity) => {
+      console.log(`New card created: ${activity.object.name}`);
+    },
+    onUpdate: async (activity) => {
+      console.log(`Card updated: ${activity.object.id}`);
+    },
+    onDelete: async (activity) => {
+      console.log(`Card deleted: ${activity.object}`);
+    },
+    onLike: async (activity) => {
+      console.log(`Card liked: ${activity.object}`);
+    },
+  });
+
+  if (result.accepted) {
+    return new Response(null, { status: 202 });
+  } else {
+    return new Response(result.error, { status: 400 });
+  }
+});
+```
+
+### Handling Fork Notifications
+
+```typescript
+import { SyncEngine, handleInbox } from '@character-foundry/federation';
+
+const engine = new SyncEngine({ /* config */ });
+
+app.post('/inbox', async (req) => {
+  const result = await handleInbox(await req.json(), req.headers, {
+    fetchActor,
+    onFork: async (activity) => {
+      // This updates the fork count and stores notification
+      await engine.handleForkNotification(activity);
+    },
+  });
+
+  return result.accepted
+    ? new Response(null, { status: 202 })
+    : new Response(result.error, { status: 400 });
+});
+```
+
+### Validating Fork Activities
+
+```typescript
+import { validateForkActivity } from '@character-foundry/federation';
+
+const validation = validateForkActivity(incomingActivity);
+
+if (validation.valid) {
+  // Process the fork
+} else {
+  console.error(`Invalid fork activity: ${validation.error}`);
+}
 ```
 
 ---
@@ -745,7 +1117,12 @@ const engine = new SyncEngine({
 | Memory State Store | Implemented |
 | File State Store | Implemented |
 | LocalStorage State Store | Implemented |
-| Inbox handling | Stub only |
+| Fork Activities | Implemented |
+| Fork Tracking | Implemented |
+| Fork Notifications | Implemented |
+| Install Activities | Implemented |
+| Install Stats Tracking | Implemented |
+| Inbox Handler | Implemented |
 | Following/Followers | Not implemented |
 | Boost/Like | Activity creation only |
 
@@ -897,7 +1274,7 @@ export default {
 
 ## Future Work
 
-1. **Inbox processing** - Handle incoming activities
-2. **Following** - Subscribe to remote actors
-3. **Discovery** - Find characters on other instances
-4. **Conflict resolution** - Handle concurrent edits
+1. **Following** - Subscribe to remote actors
+2. **Discovery** - Find characters on other instances
+3. **Conflict resolution** - Handle concurrent edits
+4. **Cross-instance fork notification delivery** - POST Fork activities to source inbox

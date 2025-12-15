@@ -10,16 +10,26 @@ import {
   createCreateActivity,
   createUpdateActivity,
   createDeleteActivity,
+  createForkActivity,
+  parseForkActivity,
+  createInstallActivity,
+  parseInstallActivity,
   createActor,
   generateCardId,
   validateActivitySignature,
+  FORK_ACTIVITY_CONTEXT,
+  INSTALL_ACTIVITY_CONTEXT,
 } from './activitypub.js';
 import {
   enableFederation,
   SyncEngine,
   MemorySyncStateStore,
   MemoryPlatformAdapter,
+  handleInbox,
+  validateForkActivity,
+  validateInstallActivity,
 } from './index.js';
+import type { ForkActivity, InstallActivity, FederatedCard, ForkNotification } from './types.js';
 
 // Enable federation for tests (dual opt-in: env var + code)
 beforeAll(() => {
@@ -448,5 +458,546 @@ describe('MemoryPlatformAdapter', () => {
     const lastMod = await adapter.getLastModified(id);
 
     expect(lastMod).not.toBeNull();
+  });
+});
+
+describe('Fork Support', () => {
+  const baseUrl = 'https://example.com';
+  const actorId = 'https://example.com/users/test';
+
+  describe('Fork Activity', () => {
+    it('should create fork activity', () => {
+      const sourceCardId = 'https://original.com/cards/source-123';
+      const forkedCard = cardToActivityPub(testCard, {
+        id: 'https://example.com/cards/fork-456',
+        actorId,
+      });
+
+      const activity = createForkActivity(sourceCardId, forkedCard, actorId, baseUrl);
+
+      expect(activity.type).toBe('Fork');
+      expect(activity.actor).toBe(actorId);
+      expect(activity.object).toBe(sourceCardId);
+      expect(activity.result).toBe(forkedCard);
+      expect(activity['@context']).toBe(FORK_ACTIVITY_CONTEXT);
+    });
+
+    it('should parse fork activity', () => {
+      const sourceCardId = 'https://original.com/cards/source-123';
+      const forkedCard = cardToActivityPub(testCard, {
+        id: 'https://example.com/cards/fork-456',
+        actorId,
+      });
+
+      const activity = createForkActivity(sourceCardId, forkedCard, actorId, baseUrl);
+      const parsed = parseForkActivity(activity);
+
+      expect(parsed).not.toBeNull();
+      expect(parsed!.sourceCardId).toBe(sourceCardId);
+      expect(parsed!.forkedCard.id).toBe(forkedCard.id);
+      expect(parsed!.actor).toBe(actorId);
+    });
+
+    it('should return null for invalid fork activity', () => {
+      expect(parseForkActivity(null)).toBeNull();
+      expect(parseForkActivity({})).toBeNull();
+      expect(parseForkActivity({ type: 'Create' })).toBeNull();
+      expect(parseForkActivity({ type: 'Fork' })).toBeNull();
+    });
+
+    it('should validate fork activity', () => {
+      const sourceCardId = 'https://original.com/cards/source-123';
+      const forkedCard = cardToActivityPub(testCard, {
+        id: 'https://example.com/cards/fork-456',
+        actorId,
+      });
+
+      const activity = createForkActivity(sourceCardId, forkedCard, actorId, baseUrl);
+      const result = validateForkActivity(activity);
+
+      expect(result.valid).toBe(true);
+    });
+  });
+
+  describe('SyncEngine Fork Operations', () => {
+    let engine: SyncEngine;
+    let stateStore: MemorySyncStateStore;
+    let platform1: MemoryPlatformAdapter;
+    let platform2: MemoryPlatformAdapter;
+
+    beforeEach(() => {
+      stateStore = new MemorySyncStateStore();
+      platform1 = new MemoryPlatformAdapter('archive', 'Archive');
+      platform2 = new MemoryPlatformAdapter('hub', 'Hub');
+
+      engine = new SyncEngine({
+        baseUrl: 'https://example.com',
+        actorId: 'https://example.com/users/test',
+        stateStore,
+      });
+
+      engine.registerPlatform(platform1);
+      engine.registerPlatform(platform2);
+    });
+
+    it('should fork card from one platform to another', async () => {
+      // Add card to platform1 and create sync state
+      const cardId = await platform1.saveCard(testCard);
+      const sourceFederatedId = generateCardId(baseUrl, `archive-${cardId}`);
+
+      // Create initial sync state for the source
+      await stateStore.set({
+        localId: cardId,
+        federatedId: sourceFederatedId,
+        platformIds: { archive: cardId },
+        lastSync: { archive: new Date().toISOString() },
+        versionHash: 'abc123',
+        status: 'synced',
+      });
+
+      // Fork to platform2
+      const result = await engine.forkCard(sourceFederatedId, 'archive', 'hub');
+
+      expect(result.success).toBe(true);
+      expect(result.forkState).toBeDefined();
+      expect(result.forkState!.forkedFrom).toBeDefined();
+      expect(result.forkState!.forkedFrom!.federatedId).toBe(sourceFederatedId);
+      expect(result.forkState!.forkedFrom!.platform).toBe('archive');
+
+      // Verify fork exists in platform2
+      const forkedId = result.forkState!.platformIds.hub;
+      const forked = await platform2.getCard(forkedId!);
+      expect(forked).not.toBeNull();
+      expect(forked!.data.name).toBe('Test Character');
+
+      // Check extensions
+      const ext = forked!.data.extensions?.['character-foundry'] as Record<string, unknown>;
+      expect(ext?.forkedFrom).toBeDefined();
+    });
+
+    it('should track fork count', async () => {
+      const federatedId = 'https://example.com/cards/test-123';
+
+      await stateStore.set({
+        localId: 'test-123',
+        federatedId,
+        platformIds: { archive: 'test-123' },
+        lastSync: {},
+        versionHash: 'abc',
+        status: 'synced',
+        forksCount: 5,
+      });
+
+      const count = await engine.getForkCount(federatedId);
+      expect(count).toBe(5);
+    });
+
+    it('should emit fork events', async () => {
+      const events: string[] = [];
+
+      engine.on('card:forked', () => events.push('forked'));
+
+      const cardId = await platform1.saveCard(testCard);
+      const sourceFederatedId = generateCardId(baseUrl, `archive-${cardId}`);
+
+      await stateStore.set({
+        localId: cardId,
+        federatedId: sourceFederatedId,
+        platformIds: { archive: cardId },
+        lastSync: {},
+        versionHash: 'abc',
+        status: 'synced',
+      });
+
+      await engine.forkCard(sourceFederatedId, 'archive', 'hub');
+
+      expect(events).toContain('forked');
+    });
+  });
+
+  describe('MemorySyncStateStore Fork Methods', () => {
+    let store: MemorySyncStateStore;
+
+    beforeEach(() => {
+      store = new MemorySyncStateStore();
+    });
+
+    it('should increment fork count', async () => {
+      const federatedId = 'fed:123';
+
+      await store.set({
+        localId: '123',
+        federatedId,
+        platformIds: {},
+        lastSync: {},
+        versionHash: 'abc',
+        status: 'synced',
+      });
+
+      const notification: ForkNotification = {
+        forkId: 'fed:fork-1',
+        actorId: 'https://other.com/users/alice',
+        platform: 'hub',
+        timestamp: new Date().toISOString(),
+      };
+
+      await store.incrementForkCount(federatedId, notification);
+
+      const count = await store.getForkCount(federatedId);
+      expect(count).toBe(1);
+
+      const state = await store.get(federatedId);
+      expect(state!.forkNotifications).toHaveLength(1);
+      expect(state!.forkNotifications![0]!.forkId).toBe('fed:fork-1');
+    });
+
+    it('should cap fork notifications at 100', async () => {
+      const federatedId = 'fed:123';
+
+      await store.set({
+        localId: '123',
+        federatedId,
+        platformIds: {},
+        lastSync: {},
+        versionHash: 'abc',
+        status: 'synced',
+        forksCount: 99,
+        forkNotifications: Array.from({ length: 99 }, (_, i) => ({
+          forkId: `fed:fork-${i}`,
+          actorId: 'https://other.com/users/alice',
+          platform: 'hub' as const,
+          timestamp: new Date().toISOString(),
+        })),
+      });
+
+      // Add 5 more notifications
+      for (let i = 0; i < 5; i++) {
+        await store.incrementForkCount(federatedId, {
+          forkId: `fed:fork-new-${i}`,
+          actorId: 'https://other.com/users/bob',
+          platform: 'hub',
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const state = await store.get(federatedId);
+      expect(state!.forkNotifications).toHaveLength(100); // Capped at 100
+      expect(state!.forksCount).toBe(104); // Count still increments
+    });
+
+    it('should find forks by source', async () => {
+      const sourceFederatedId = 'fed:source';
+
+      // Create two forks
+      await store.set({
+        localId: 'fork-1',
+        federatedId: 'fed:fork-1',
+        platformIds: {},
+        lastSync: {},
+        versionHash: 'a',
+        status: 'synced',
+        forkedFrom: {
+          federatedId: sourceFederatedId,
+          platform: 'archive',
+          forkedAt: new Date().toISOString(),
+        },
+      });
+
+      await store.set({
+        localId: 'fork-2',
+        federatedId: 'fed:fork-2',
+        platformIds: {},
+        lastSync: {},
+        versionHash: 'b',
+        status: 'synced',
+        forkedFrom: {
+          federatedId: sourceFederatedId,
+          platform: 'archive',
+          forkedAt: new Date().toISOString(),
+        },
+      });
+
+      // Create unrelated card
+      await store.set({
+        localId: 'other',
+        federatedId: 'fed:other',
+        platformIds: {},
+        lastSync: {},
+        versionHash: 'c',
+        status: 'synced',
+      });
+
+      const forks = await store.findForks(sourceFederatedId);
+      expect(forks).toHaveLength(2);
+      expect(forks.map((f) => f.federatedId)).toContain('fed:fork-1');
+      expect(forks.map((f) => f.federatedId)).toContain('fed:fork-2');
+    });
+  });
+
+  describe('Inbox Handler', () => {
+    it('should handle fork activity', async () => {
+      let receivedFork: ForkActivity | undefined;
+
+      const forkedCard = cardToActivityPub(testCard, {
+        id: 'https://example.com/cards/fork-456',
+        actorId,
+      });
+
+      const activity = createForkActivity(
+        'https://original.com/cards/source-123',
+        forkedCard,
+        actorId,
+        baseUrl
+      );
+
+      const result = await handleInbox(activity, new Headers(), {
+        fetchActor: async () => null,
+        onFork: async (act) => {
+          receivedFork = act;
+        },
+      });
+
+      expect(result.accepted).toBe(true);
+      expect(result.activityType).toBe('Fork');
+      expect(receivedFork).toBeDefined();
+    });
+
+    it('should reject invalid activities', async () => {
+      const result = await handleInbox({ invalid: true }, new Headers(), {
+        fetchActor: async () => null,
+      });
+
+      expect(result.accepted).toBe(false);
+      expect(result.error).toContain('Invalid activity');
+    });
+  });
+});
+
+describe('Install Stats Support', () => {
+  const baseUrl = 'https://example.com';
+  const actorId = 'https://example.com/users/test';
+
+  describe('Install Activity', () => {
+    it('should create install activity', () => {
+      const cardId = 'https://hub.example.com/cards/card-123';
+      const activity = createInstallActivity(cardId, actorId, baseUrl, 'sillytavern');
+
+      expect(activity.type).toBe('Install');
+      expect(activity.actor).toBe(actorId);
+      expect(activity.object).toBe(cardId);
+      expect(activity.target?.type).toBe('Application');
+      expect(activity.target?.name).toBe('sillytavern');
+      expect(activity['@context']).toBe(INSTALL_ACTIVITY_CONTEXT);
+    });
+
+    it('should parse install activity', () => {
+      const cardId = 'https://hub.example.com/cards/card-123';
+      const activity = createInstallActivity(cardId, actorId, baseUrl, 'sillytavern');
+      const parsed = parseInstallActivity(activity);
+
+      expect(parsed).not.toBeNull();
+      expect(parsed!.cardId).toBe(cardId);
+      expect(parsed!.actor).toBe(actorId);
+      expect(parsed!.platform).toBe('sillytavern');
+    });
+
+    it('should return null for invalid install activity', () => {
+      expect(parseInstallActivity(null)).toBeNull();
+      expect(parseInstallActivity({})).toBeNull();
+      expect(parseInstallActivity({ type: 'Create' })).toBeNull();
+      expect(parseInstallActivity({ type: 'Install' })).toBeNull();
+    });
+
+    it('should validate install activity', () => {
+      const cardId = 'https://hub.example.com/cards/card-123';
+      const activity = createInstallActivity(cardId, actorId, baseUrl, 'sillytavern');
+      const result = validateInstallActivity(activity);
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should reject install activity with invalid URI', () => {
+      const activity = {
+        '@context': INSTALL_ACTIVITY_CONTEXT,
+        id: 'https://example.com/activities/123',
+        type: 'Install',
+        actor: actorId,
+        object: 'not-a-valid-uri', // Invalid
+        published: new Date().toISOString(),
+      };
+
+      const result = validateInstallActivity(activity);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('not a valid URI');
+    });
+  });
+
+  describe('SyncEngine Install Operations', () => {
+    let engine: SyncEngine;
+    let stateStore: MemorySyncStateStore;
+    let platform1: MemoryPlatformAdapter;
+
+    beforeEach(() => {
+      stateStore = new MemorySyncStateStore();
+      platform1 = new MemoryPlatformAdapter('hub', 'Hub');
+
+      engine = new SyncEngine({
+        baseUrl: 'https://hub.example.com',
+        actorId: 'https://hub.example.com/users/test',
+        stateStore,
+      });
+
+      engine.registerPlatform(platform1);
+    });
+
+    it('should handle install notification', async () => {
+      const cardId = await platform1.saveCard(testCard);
+      const federatedId = generateCardId(baseUrl, `hub-${cardId}`);
+
+      // Create sync state for the card
+      await stateStore.set({
+        localId: cardId,
+        federatedId,
+        platformIds: { hub: cardId },
+        lastSync: { hub: new Date().toISOString() },
+        versionHash: 'abc123',
+        status: 'synced',
+      });
+
+      // Create install activity from SillyTavern
+      const installActivity = createInstallActivity(
+        federatedId,
+        'https://sillytavern.local/users/alice',
+        'https://sillytavern.local',
+        'sillytavern'
+      ) as InstallActivity;
+
+      // Handle the install notification
+      await engine.handleInstallNotification(installActivity);
+
+      // Check stats were updated
+      const stats = await engine.getCardStats(federatedId);
+      expect(stats).not.toBeNull();
+      expect(stats!.installCount).toBe(1);
+      expect(stats!.installsByPlatform.sillytavern).toBe(1);
+    });
+
+    it('should track multiple installs', async () => {
+      const cardId = await platform1.saveCard(testCard);
+      const federatedId = generateCardId(baseUrl, `hub-${cardId}`);
+
+      await stateStore.set({
+        localId: cardId,
+        federatedId,
+        platformIds: { hub: cardId },
+        lastSync: {},
+        versionHash: 'abc',
+        status: 'synced',
+      });
+
+      // Multiple installs from different platforms
+      await engine.handleInstallNotification(
+        createInstallActivity(federatedId, 'actor1', 'base1', 'sillytavern') as InstallActivity
+      );
+      await engine.handleInstallNotification(
+        createInstallActivity(federatedId, 'actor2', 'base2', 'sillytavern') as InstallActivity
+      );
+      await engine.handleInstallNotification(
+        createInstallActivity(federatedId, 'actor3', 'base3', 'custom') as InstallActivity
+      );
+
+      const stats = await engine.getCardStats(federatedId);
+      expect(stats!.installCount).toBe(3);
+      expect(stats!.installsByPlatform.sillytavern).toBe(2);
+      expect(stats!.installsByPlatform.custom).toBe(1);
+    });
+
+    it('should emit install events', async () => {
+      const events: string[] = [];
+
+      engine.on('card:install-received', () => events.push('install-received'));
+
+      const cardId = await platform1.saveCard(testCard);
+      const federatedId = generateCardId(baseUrl, `hub-${cardId}`);
+
+      await stateStore.set({
+        localId: cardId,
+        federatedId,
+        platformIds: { hub: cardId },
+        lastSync: {},
+        versionHash: 'abc',
+        status: 'synced',
+      });
+
+      await engine.handleInstallNotification(
+        createInstallActivity(federatedId, 'actor', 'base', 'sillytavern') as InstallActivity
+      );
+
+      expect(events).toContain('install-received');
+    });
+
+    it('should return install count', async () => {
+      const federatedId = 'https://example.com/cards/test-123';
+
+      await stateStore.set({
+        localId: 'test-123',
+        federatedId,
+        platformIds: { hub: 'test-123' },
+        lastSync: {},
+        versionHash: 'abc',
+        status: 'synced',
+        stats: {
+          installCount: 42,
+          installsByPlatform: { sillytavern: 30, custom: 12 },
+          forkCount: 5,
+          likeCount: 0,
+          lastUpdated: new Date().toISOString(),
+        },
+      });
+
+      const count = await engine.getInstallCount(federatedId);
+      expect(count).toBe(42);
+    });
+
+    it('should ignore install for unknown card', async () => {
+      // This should not throw
+      await engine.handleInstallNotification(
+        createInstallActivity(
+          'https://unknown.com/cards/nonexistent',
+          'actor',
+          'base',
+          'sillytavern'
+        ) as InstallActivity
+      );
+
+      // No state should be created
+      const state = await stateStore.get('https://unknown.com/cards/nonexistent');
+      expect(state).toBeNull();
+    });
+  });
+
+  describe('Inbox Handler Install Routing', () => {
+    it('should handle install activity', async () => {
+      let receivedInstall: InstallActivity | undefined;
+
+      const activity = createInstallActivity(
+        'https://hub.example.com/cards/card-123',
+        actorId,
+        baseUrl,
+        'sillytavern'
+      );
+
+      const result = await handleInbox(activity, new Headers(), {
+        fetchActor: async () => null,
+        onInstall: async (act) => {
+          receivedInstall = act;
+        },
+      });
+
+      expect(result.accepted).toBe(true);
+      expect(result.activityType).toBe('Install');
+      expect(receivedInstall).toBeDefined();
+      expect(receivedInstall!.type).toBe('Install');
+    });
   });
 });

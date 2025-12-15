@@ -5,6 +5,7 @@
  */
 
 import type { CCv3Data } from '@character-foundry/schemas';
+import { generateUUID } from '@character-foundry/core';
 import type {
   PlatformId,
   PlatformAdapter,
@@ -15,8 +16,16 @@ import type {
   FederationEvent,
   FederationEventListener,
   FederationEventType,
+  ForkReference,
+  ForkResult,
+  ForkActivity,
+  ForkNotification,
+  FederatedCard,
+  InstallActivity,
+  InstallNotification,
+  CardStats,
 } from './types.js';
-import { cardToActivityPub, generateCardId } from './activitypub.js';
+import { cardToActivityPub, generateCardId, createForkActivity, parseForkActivity, parseInstallActivity } from './activitypub.js';
 import { assertFederationEnabled } from './index.js';
 
 /**
@@ -512,6 +521,306 @@ export class SyncEngine {
         error: err instanceof Error ? err.message : String(err),
       };
     }
+  }
+
+  /**
+   * Fork a card from a remote source
+   *
+   * Creates a local copy of a remote card with fork metadata stored in
+   * the card's extensions and sync state. Optionally notifies the source
+   * instance about the fork.
+   *
+   * @param sourceFederatedId - Federated URI of the source card
+   * @param sourcePlatform - Platform where the source card resides
+   * @param targetPlatform - Platform to save the fork to
+   * @param options - Fork options
+   */
+  async forkCard(
+    sourceFederatedId: string,
+    sourcePlatform: PlatformId,
+    targetPlatform: PlatformId,
+    options?: {
+      modifications?: Partial<CCv3Data['data']>;
+      notifySource?: boolean;
+      sourceInbox?: string;
+    }
+  ): Promise<ForkResult> {
+    const operation: SyncOperation = {
+      type: 'fork',
+      cardId: sourceFederatedId,
+      sourcePlatform,
+      targetPlatform,
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      // Get source adapter
+      const sourceAdapter = this.platforms.get(sourcePlatform);
+      if (!sourceAdapter) {
+        throw new Error(`Platform not registered: ${sourcePlatform}`);
+      }
+
+      // Get target adapter
+      const targetAdapter = this.platforms.get(targetPlatform);
+      if (!targetAdapter) {
+        throw new Error(`Platform not registered: ${targetPlatform}`);
+      }
+
+      // Find source card by looking up sync state or trying to get directly
+      let sourceState = await this.stateStore.get(sourceFederatedId);
+      const sourceLocalId = sourceState?.platformIds[sourcePlatform];
+
+      if (!sourceLocalId) {
+        throw new Error(`Cannot find source card: ${sourceFederatedId}`);
+      }
+
+      const sourceCard = await sourceAdapter.getCard(sourceLocalId);
+      if (!sourceCard) {
+        throw new Error(`Source card not found: ${sourceLocalId}`);
+      }
+
+      // Create forked card with modifications and metadata
+      const forkedCard = this.createForkedCard(
+        sourceCard,
+        sourceFederatedId,
+        sourcePlatform,
+        sourceState?.versionHash,
+        options?.modifications
+      );
+
+      // Save fork to target platform
+      const forkLocalId = await targetAdapter.saveCard(forkedCard);
+
+      // Create sync state for the fork
+      const forkFederatedId = generateCardId(this.baseUrl, `${targetPlatform}-${forkLocalId}`);
+      const forkHash = await this.hashCard(forkedCard);
+      const now = new Date().toISOString();
+
+      const forkReference: ForkReference = {
+        federatedId: sourceFederatedId,
+        platform: sourcePlatform,
+        forkedAt: now,
+        sourceVersionHash: sourceState?.versionHash,
+      };
+
+      const forkState: CardSyncState = {
+        localId: forkLocalId,
+        federatedId: forkFederatedId,
+        platformIds: { [targetPlatform]: forkLocalId },
+        lastSync: { [targetPlatform]: now },
+        versionHash: forkHash,
+        status: 'synced',
+        forkedFrom: forkReference,
+      };
+
+      await this.stateStore.set(forkState);
+
+      this.emit('card:forked', {
+        forkState,
+        sourceFederatedId,
+        sourcePlatform,
+        targetPlatform,
+      });
+
+      return {
+        success: true,
+        operation,
+        forkState,
+        sourceFederatedId,
+        forkFederatedId,
+      };
+    } catch (err) {
+      this.emit('sync:failed', { operation, error: err });
+
+      return {
+        success: false,
+        operation,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /**
+   * Create a forked card with fork metadata in extensions
+   */
+  private createForkedCard(
+    source: CCv3Data,
+    sourceFederatedId: string,
+    sourcePlatform: PlatformId,
+    sourceVersionHash?: string,
+    modifications?: Partial<CCv3Data['data']>
+  ): CCv3Data {
+    const now = new Date().toISOString();
+
+    // Deep clone the source card
+    const forked: CCv3Data = JSON.parse(JSON.stringify(source));
+
+    // Apply modifications if provided
+    if (modifications) {
+      Object.assign(forked.data, modifications);
+    }
+
+    // Ensure extensions object exists
+    if (!forked.data.extensions) {
+      forked.data.extensions = {};
+    }
+
+    // Add fork metadata to character-foundry extension
+    const cfExtension = (forked.data.extensions['character-foundry'] as Record<string, unknown>) || {};
+    cfExtension.forkedFrom = {
+      federatedId: sourceFederatedId,
+      platform: sourcePlatform,
+      forkedAt: now,
+      sourceVersionHash,
+    };
+    forked.data.extensions['character-foundry'] = cfExtension;
+
+    // Update version info
+    forked.data.character_version = generateUUID();
+
+    return forked;
+  }
+
+  /**
+   * Handle incoming fork notification
+   *
+   * Called when another instance notifies us that they forked one of our cards.
+   * Increments the fork count and stores the notification.
+   */
+  async handleForkNotification(activity: ForkActivity): Promise<void> {
+    const parsed = parseForkActivity(activity);
+    if (!parsed) {
+      throw new Error('Invalid fork activity');
+    }
+
+    const { sourceCardId, actor } = parsed;
+
+    // Find our sync state for the source card
+    const sourceState = await this.stateStore.get(sourceCardId);
+    if (!sourceState) {
+      // We don't have this card tracked - might be from before federation
+      // or the card was deleted. Just ignore.
+      return;
+    }
+
+    // Determine the forking platform from the actor URL
+    // Actor URLs are typically like: https://hub.example.com/users/alice
+    let forkPlatform: PlatformId = 'custom';
+    if (actor.includes('archive')) forkPlatform = 'archive';
+    else if (actor.includes('hub')) forkPlatform = 'hub';
+    else if (actor.includes('editor')) forkPlatform = 'editor';
+    else if (actor.includes('chub')) forkPlatform = 'chub';
+    else if (actor.includes('risu')) forkPlatform = 'risu';
+
+    const notification: ForkNotification = {
+      forkId: parsed.forkedCard.id,
+      actorId: actor,
+      platform: forkPlatform,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Update state (increment count, add notification)
+    const notifications = sourceState.forkNotifications || [];
+    if (notifications.length < 100) {
+      notifications.push(notification);
+    }
+
+    sourceState.forksCount = (sourceState.forksCount || 0) + 1;
+    sourceState.forkNotifications = notifications;
+
+    await this.stateStore.set(sourceState);
+
+    this.emit('card:fork-received', {
+      sourceCardId,
+      notification,
+      newForkCount: sourceState.forksCount,
+    });
+  }
+
+  /**
+   * Handle incoming install notification
+   *
+   * Called when a consumer (SillyTavern, Voxta) notifies us that they installed one of our cards.
+   * Increments the install count and stores the notification.
+   */
+  async handleInstallNotification(activity: InstallActivity): Promise<void> {
+    const parsed = parseInstallActivity(activity);
+    if (!parsed) {
+      throw new Error('Invalid install activity');
+    }
+
+    const { cardId, actor, platform } = parsed;
+
+    // Find our sync state for the card
+    const cardState = await this.stateStore.get(cardId);
+    if (!cardState) {
+      // We don't have this card tracked - might be from before federation
+      // or the card was deleted. Just ignore.
+      return;
+    }
+
+    // Determine the installing platform
+    const installPlatform: PlatformId = platform || 'custom';
+
+    // Initialize stats if needed
+    if (!cardState.stats) {
+      cardState.stats = {
+        installCount: 0,
+        installsByPlatform: {},
+        forkCount: cardState.forksCount || 0,
+        likeCount: 0,
+        lastUpdated: new Date().toISOString(),
+      };
+    }
+
+    // Increment counts
+    cardState.stats.installCount++;
+    cardState.stats.installsByPlatform[installPlatform] =
+      (cardState.stats.installsByPlatform[installPlatform] || 0) + 1;
+    cardState.stats.lastUpdated = new Date().toISOString();
+
+    await this.stateStore.set(cardState);
+
+    this.emit('card:install-received', {
+      cardId,
+      platform: installPlatform,
+      actorId: actor,
+      newInstallCount: cardState.stats.installCount,
+    });
+  }
+
+  /**
+   * Get stats for a card
+   */
+  async getCardStats(federatedId: string): Promise<CardStats | null> {
+    const state = await this.stateStore.get(federatedId);
+    return state?.stats || null;
+  }
+
+  /**
+   * Get fork count for a card
+   */
+  async getForkCount(federatedId: string): Promise<number> {
+    const state = await this.stateStore.get(federatedId);
+    return state?.forksCount || 0;
+  }
+
+  /**
+   * Get install count for a card
+   */
+  async getInstallCount(federatedId: string): Promise<number> {
+    const state = await this.stateStore.get(federatedId);
+    return state?.stats?.installCount || 0;
+  }
+
+  /**
+   * Find all local forks of a source card
+   */
+  async findForks(sourceFederatedId: string): Promise<CardSyncState[]> {
+    const allStates = await this.stateStore.list();
+    return allStates.filter(
+      (state) => state.forkedFrom?.federatedId === sourceFederatedId
+    );
   }
 
   /**

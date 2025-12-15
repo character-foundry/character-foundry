@@ -28,4 +28,5 @@ export {
   createMockSTBridge,
   type SillyTavernBridge,
   type STCharacter,
+  type STCharacterStats,
 } from './sillytavern.js';
