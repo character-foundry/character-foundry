@@ -21,7 +21,7 @@ import type {
 import { parseActivity, parseForkActivity, parseInstallActivity } from '../activitypub.js';
 import { parseFlagActivity, parseBlockActivity } from '../moderation/activities.js';
 import { assertFederationEnabled } from '../index.js';
-import { parseSignatureHeader, verifyHttpSignature, calculateDigest } from '../http-signatures.js';
+import { parseSignatureHeader, verifyHttpSignature, calculateDigest, REQUIRED_SIGNED_HEADERS } from '../http-signatures.js';
 
 /**
  * Extract host from an actor ID URL
@@ -164,6 +164,40 @@ export async function handleInbox(
         };
       }
 
+      // STRICT MODE: Enforce required headers in signature
+      // This matches validateActivitySignature behavior for consistency
+      const missingSignedHeaders = REQUIRED_SIGNED_HEADERS.filter(
+        (h) => !parsedSig.headers.includes(h)
+      );
+      if (missingSignedHeaders.length > 0) {
+        return {
+          accepted: false,
+          error: `Strict mode: signature missing required headers: ${missingSignedHeaders.join(', ')}`,
+        };
+      }
+
+      // STRICT MODE: Require Date header to be present (not just signed)
+      const dateHeader = headers instanceof Headers
+        ? headers.get('date')
+        : headers['date'] || headers['Date'];
+      if (!dateHeader) {
+        return {
+          accepted: false,
+          error: 'Strict mode: Date header required',
+        };
+      }
+
+      // STRICT MODE: Require host header to be present
+      const hostHeader = headers instanceof Headers
+        ? headers.get('host')
+        : headers['host'] || headers['Host'];
+      if (!hostHeader) {
+        return {
+          accepted: false,
+          error: 'Strict mode: host header required',
+        };
+      }
+
       // Fetch the actor to get their public key
       const actor = await options.fetchActor(activity.actor);
       if (!actor) {
@@ -284,24 +318,26 @@ export async function handleInbox(
         };
       }
 
-      // Check date header for replay protection (if maxAge specified)
-      if (options.maxAge) {
-        const dateHeader = headers instanceof Headers
-          ? headers.get('date')
-          : headers['date'] || headers['Date'];
+      // Check date header for replay protection
+      // In strict mode, Date header is required (checked above), so always verify freshness
+      // Default maxAge: 300 seconds (5 minutes) matches validateActivitySignature behavior
+      const effectiveMaxAge = options.maxAge ?? 300;
+      const requestDate = new Date(dateHeader);
+      const now = new Date();
+      const ageMs = Math.abs(now.getTime() - requestDate.getTime());
 
-        if (dateHeader) {
-          const requestDate = new Date(dateHeader);
-          const now = new Date();
-          const ageMs = Math.abs(now.getTime() - requestDate.getTime());
+      if (isNaN(requestDate.getTime())) {
+        return {
+          accepted: false,
+          error: 'Invalid Date header format',
+        };
+      }
 
-          if (ageMs > options.maxAge * 1000) {
-            return {
-              accepted: false,
-              error: `Request too old (${Math.round(ageMs / 1000)}s, max ${options.maxAge}s)`,
-            };
-          }
-        }
+      if (ageMs > effectiveMaxAge * 1000) {
+        return {
+          accepted: false,
+          error: `Request too old or in future (${Math.round(ageMs / 1000)}s, max ${effectiveMaxAge}s)`,
+        };
       }
     }
 

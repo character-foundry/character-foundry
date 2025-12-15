@@ -61,21 +61,36 @@ Federation is disabled by default. You must explicitly enable it.
 
 ## Enabling Federation
 
-Federation features require explicit opt-in:
+Federation features require explicit opt-in. The requirements depend on your environment:
+
+### Node.js (Dual Opt-In Required)
+
+In Node.js, BOTH steps are required as a safety mechanism:
 
 ```typescript
 import { enableFederation, isFederationEnabled } from '@character-foundry/federation';
 
-// Option 1: Call enableFederation()
-enableFederation();
-
-// Option 2: Set environment variable
+// Step 1: Set environment variable
 process.env.FEDERATION_ENABLED = 'true';
+
+// Step 2: Call enableFederation()
+enableFederation();
 
 // Check if enabled
 if (isFederationEnabled()) {
   // Safe to use federation features
 }
+```
+
+### Browser / Cloudflare Workers
+
+In environments without `process.env`, use `skipEnvCheck`:
+
+```typescript
+import { enableFederation } from '@character-foundry/federation';
+
+// Single opt-in with skipEnvCheck
+enableFederation({ skipEnvCheck: true });
 ```
 
 If you try to use federation features without enabling:

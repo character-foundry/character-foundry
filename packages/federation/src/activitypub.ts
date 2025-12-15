@@ -57,9 +57,15 @@ export const INSTALL_ACTIVITY_CONTEXT = [
 
 /**
  * Generate a unique ID for a federated card
+ *
+ * @security localId is URI-encoded to prevent path traversal and query injection.
+ * Characters like '/', '?', '#', and spaces are safely escaped.
  */
 export function generateCardId(baseUrl: string, localId: string): string {
-  return `${baseUrl}/cards/${localId}`;
+  // Encode localId to prevent path confusion and injection attacks
+  // e.g., "foo/bar" → "foo%2Fbar", "foo?x=1" → "foo%3Fx%3D1"
+  const encodedId = encodeURIComponent(localId);
+  return `${baseUrl}/cards/${encodedId}`;
 }
 
 /**

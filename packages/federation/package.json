@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/federation",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Federation layer for syncing character cards across platforms via ActivityPub",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -29,8 +29,6 @@
   },
   "dependencies": {
     "@character-foundry/core": "workspace:^",
-    "@character-foundry/exporter": "workspace:^",
-    "@character-foundry/loader": "workspace:^",
     "@character-foundry/schemas": "workspace:^"
   },
   "devDependencies": {

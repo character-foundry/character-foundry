@@ -54,5 +54,5 @@ export { MemoryModerationStore } from './store.js';
 export { D1ModerationStore } from './d1-store.js';
 
 // ============ Engines ============
-export { PolicyEngine } from './policy-engine.js';
+export { PolicyEngine, checkRegexSafety } from './policy-engine.js';
 export { RateLimiter, type RateLimiterConfig } from './rate-limiter.js';

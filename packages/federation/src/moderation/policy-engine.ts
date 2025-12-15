@@ -20,6 +20,49 @@ import type {
 const DEFAULT_TARGET_FIELDS = ['name', 'description', 'personality', 'scenario', 'first_mes'];
 
 /**
+ * Maximum input length for regex matching (prevents ReDoS on large inputs)
+ */
+const MAX_REGEX_INPUT_LENGTH = 100_000;
+
+/**
+ * Maximum regex pattern length
+ */
+const MAX_REGEX_PATTERN_LENGTH = 1000;
+
+/**
+ * Common ReDoS-prone patterns to detect and warn about
+ * These patterns can cause catastrophic backtracking
+ */
+const REDOS_WARNING_PATTERNS = [
+  /\(\.\*\)\+/,           // (.*)+
+  /\(\.\+\)\+/,           // (.+)+
+  /\([^)]*\+[^)]*\)\+/,   // (a+)+ style nested quantifiers
+  /\([^)]*\*[^)]*\)\*/,   // (a*)* style nested quantifiers
+  /\(\[.*?\]\+\)\+/,      // ([a-z]+)+ character class with nested quantifiers
+];
+
+/**
+ * Check if a regex pattern might be vulnerable to ReDoS
+ * Returns a warning message if the pattern looks dangerous, null if safe
+ *
+ * @security This is a heuristic check, not a guarantee.
+ * Admin-only patterns should still be audited manually.
+ */
+export function checkRegexSafety(pattern: string): string | null {
+  if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+    return `Pattern too long (${pattern.length} chars, max ${MAX_REGEX_PATTERN_LENGTH})`;
+  }
+
+  for (const dangerousPattern of REDOS_WARNING_PATTERNS) {
+    if (dangerousPattern.test(pattern)) {
+      return `Pattern may be vulnerable to ReDoS (catastrophic backtracking): matches ${dangerousPattern}`;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Content Policy Engine
  *
  * Evaluates cards against configured policies and returns the appropriate action.
@@ -186,6 +229,9 @@ export class PolicyEngine {
 
   /**
    * Regex rule - pattern matching with compiled cache
+   *
+   * @security Input is truncated to MAX_REGEX_INPUT_LENGTH to prevent ReDoS.
+   * Patterns should be admin-audited. Use checkRegexSafety() when creating rules.
    */
   private evaluateRegexRule(
     card: CCv3Data,
@@ -193,6 +239,12 @@ export class PolicyEngine {
   ): { field?: string; value?: string } | null {
     let regex = this.compiledRegexCache.get(rule.id);
     if (!regex) {
+      // Check pattern safety
+      const safetyWarning = checkRegexSafety(rule.pattern);
+      if (safetyWarning) {
+        console.warn(`[moderation] Rule "${rule.name}": ${safetyWarning}`);
+      }
+
       try {
         regex = new RegExp(rule.pattern, 'i');
         this.compiledRegexCache.set(rule.id, regex);
@@ -207,7 +259,12 @@ export class PolicyEngine {
     for (const field of fields) {
       const value = this.getCardField(card, field);
       if (typeof value === 'string') {
-        const match = value.match(regex);
+        // Truncate input to prevent ReDoS on very large fields
+        const truncatedValue = value.length > MAX_REGEX_INPUT_LENGTH
+          ? value.slice(0, MAX_REGEX_INPUT_LENGTH)
+          : value;
+
+        const match = truncatedValue.match(regex);
         if (match) {
           return { field, value: match[0] };
         }
@@ -302,12 +359,21 @@ export class PolicyEngine {
 
   /**
    * Pre-compile regexes for a policy (optimization)
+   *
+   * @returns errors for invalid patterns, warnings for potentially unsafe patterns
    */
-  precompilePolicy(policy: ContentPolicy): { errors: string[] } {
+  precompilePolicy(policy: ContentPolicy): { errors: string[]; warnings: string[] } {
     const errors: string[] = [];
+    const warnings: string[] = [];
 
     for (const rule of policy.rules) {
       if (rule.type === 'regex' && rule.enabled) {
+        // Check for ReDoS-prone patterns
+        const safetyWarning = checkRegexSafety(rule.pattern);
+        if (safetyWarning) {
+          warnings.push(`Rule "${rule.name}": ${safetyWarning}`);
+        }
+
         try {
           const regex = new RegExp(rule.pattern, 'i');
           this.compiledRegexCache.set(rule.id, regex);
@@ -317,6 +383,6 @@ export class PolicyEngine {
       }
     }
 
-    return { errors };
+    return { errors, warnings };
   }
 }

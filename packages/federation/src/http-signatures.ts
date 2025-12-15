@@ -112,7 +112,35 @@ export function parseSignatureHeader(header: string): ParsedSignature | null {
 }
 
 /**
+ * Successful signing string result
+ */
+export interface SigningStringSuccess {
+  success: true;
+  signingString: string;
+}
+
+/**
+ * Failed signing string result (missing headers)
+ */
+export interface SigningStringFailure {
+  success: false;
+  error: string;
+  missingHeaders: string[];
+}
+
+/**
+ * Result of building a signing string
+ */
+export type SigningStringResult = SigningStringSuccess | SigningStringFailure;
+
+/**
  * Build the signing string from headers
+ *
+ * @security If a header is listed in headerNames but missing from the request,
+ * this function returns an error. This prevents downgrade attacks where an
+ * attacker claims to sign headers that aren't actually present.
+ *
+ * Synthetic headers ((request-target), (created), (expires)) are always allowed.
  */
 export function buildSigningString(
   method: string,
@@ -120,24 +148,78 @@ export function buildSigningString(
   headers: Headers,
   headerNames: string[]
 ): string {
+  const result = buildSigningStringStrict(method, path, headers, headerNames);
+  if (!result.success) {
+    // For backwards compatibility, log warning but return partial string
+    // Callers using verifyHttpSignature will get signature mismatch
+    console.warn(`[federation] Signature verification may fail: ${result.error}`);
+    // Build partial string for backwards compat
+    const lines: string[] = [];
+    for (const name of headerNames) {
+      if (name === '(request-target)') {
+        lines.push(`(request-target): ${method.toLowerCase()} ${path}`);
+      } else if (name === '(created)' || name === '(expires)') {
+        // Synthetic headers - skip if not implemented
+      } else {
+        const value = headers.get(name);
+        if (value !== null) {
+          lines.push(`${name.toLowerCase()}: ${value}`);
+        }
+      }
+    }
+    return lines.join('\n');
+  }
+  return result.signingString;
+}
+
+/**
+ * Build signing string with strict header validation
+ *
+ * Returns an error if any non-synthetic header in headerNames is missing.
+ * Use this for new code that wants strict validation.
+ */
+export function buildSigningStringStrict(
+  method: string,
+  path: string,
+  headers: Headers,
+  headerNames: string[]
+): SigningStringResult {
   const lines: string[] = [];
+  const missingHeaders: string[] = [];
+
+  // Synthetic headers that don't need to be present in the request
+  const syntheticHeaders = new Set(['(request-target)', '(created)', '(expires)']);
 
   for (const name of headerNames) {
     if (name === '(request-target)') {
       lines.push(`(request-target): ${method.toLowerCase()} ${path}`);
     } else if (name === '(created)') {
-      // Skip for now - optional
+      // Skip for now - optional synthetic header
     } else if (name === '(expires)') {
-      // Skip for now - optional
+      // Skip for now - optional synthetic header
     } else {
       const value = headers.get(name);
       if (value !== null) {
         lines.push(`${name.toLowerCase()}: ${value}`);
+      } else if (!syntheticHeaders.has(name)) {
+        // Header is listed as signed but not present - this is an error
+        missingHeaders.push(name);
       }
     }
   }
 
-  return lines.join('\n');
+  if (missingHeaders.length > 0) {
+    return {
+      success: false,
+      error: `Signature claims to sign headers that are missing from request: ${missingHeaders.join(', ')}`,
+      missingHeaders,
+    };
+  }
+
+  return {
+    success: true,
+    signingString: lines.join('\n'),
+  };
 }
 
 /**

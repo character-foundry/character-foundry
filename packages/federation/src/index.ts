@@ -227,8 +227,10 @@ export {
   type SignatureValidationOptions,
   type SignatureValidationResult,
   type SigningOptions,
+  type SigningStringResult,
   parseSignatureHeader,
   buildSigningString,
+  buildSigningStringStrict,
   verifyHttpSignature,
   validateActivitySignature as validateHttpSignature,
   signRequest,
@@ -278,6 +280,7 @@ export {
   D1ModerationStore,
   // Engines
   PolicyEngine,
+  checkRegexSafety,
   RateLimiter,
   type RateLimiterConfig,
 } from './moderation/index.js';
