@@ -1,7 +1,7 @@
 # Federation Package Documentation
 
 **Package:** `@character-foundry/federation`
-**Version:** 0.3.3
+**Version:** 0.3.4
 **Environment:** Node.js (>=18), Browser, and Cloudflare Workers
 
 The `@character-foundry/federation` package provides experimental ActivityPub-based federation for syncing character cards across platforms.
@@ -1017,6 +1017,44 @@ const result = await validateHttpSignature(activity, headers, {
 **Security implications:**
 - Without `date` in signature: replay attacks possible
 - Without `host` in signature: cross-host request reuse possible
+
+### Digest Verification (Body Integrity)
+
+HTTP signatures only cover headers, not the request body. Without Digest verification, an attacker could intercept a signed request, modify the JSON body, and the signature would still pass.
+
+The `handleInbox` function verifies the `Digest` header when present:
+
+```typescript
+// CRITICAL: Capture raw body BEFORE JSON parsing
+const rawBody = await req.text();
+const body = JSON.parse(rawBody);
+
+const result = await handleInbox(body, req.headers, {
+  rawBody, // Required for body integrity verification
+  strictMode: true,
+  method: 'POST',
+  path: '/api/federation/inbox',
+  fetchActor,
+});
+```
+
+**Verification order (fail-fast):**
+1. **Digest verification** (SHA-256 hash, cheap) - Reject tampered bodies early
+2. **Signature verification** (RSA crypto, expensive) - Verify header integrity
+
+**What gets verified:**
+- If `Digest` header present → MUST provide `rawBody`, hash MUST match
+- If signature includes `digest` in signed headers → `Digest` header MUST be present
+- Supported format: `SHA-256=<base64-hash>` (RFC 3230)
+
+**Without `rawBody`:**
+```typescript
+// ❌ If Digest header present, this will fail
+handleInbox(body, headers, { strictMode: true, ... });
+
+// ✅ Always pass rawBody for full security
+handleInbox(body, headers, { rawBody, strictMode: true, ... });
+```
 
 ### Secure Hashing
 

@@ -15,7 +15,7 @@ import type {
 } from '../types.js';
 import { parseActivity, parseForkActivity, parseInstallActivity } from '../activitypub.js';
 import { assertFederationEnabled } from '../index.js';
-import { parseSignatureHeader, verifyHttpSignature } from '../http-signatures.js';
+import { parseSignatureHeader, verifyHttpSignature, calculateDigest } from '../http-signatures.js';
 
 /**
  * Handle incoming ActivityPub activities
@@ -27,7 +27,15 @@ import { parseSignatureHeader, verifyHttpSignature } from '../http-signatures.js
  * ```typescript
  * // In your web framework (e.g., Hono, Express)
  * app.post('/inbox', async (req) => {
- *   const result = await handleInbox(await req.json(), req.headers, {
+ *   // IMPORTANT: Capture raw body BEFORE parsing for Digest verification
+ *   const rawBody = await req.text();
+ *   const body = JSON.parse(rawBody);
+ *
+ *   const result = await handleInbox(body, req.headers, {
+ *     rawBody, // Required for body integrity verification
+ *     method: 'POST',
+ *     path: '/inbox', // Must match your actual route path
+ *     strictMode: true,
  *     fetchActor: async (id) => fetchActorFromNetwork(id),
  *     onFork: async (activity) => {
  *       await syncEngine.handleForkNotification(activity);
@@ -50,6 +58,21 @@ export async function handleInbox(
     method?: string;
     /** Request path (required for signature verification in strictMode) */
     path?: string;
+    /**
+     * Raw request body for Digest header verification.
+     *
+     * @security REQUIRED in strictMode when Digest header is present.
+     * Without this, an attacker could modify the JSON body while keeping a valid signature
+     * (since signatures only cover headers, not the body).
+     *
+     * Pass the raw bytes before JSON parsing:
+     * ```typescript
+     * const rawBody = await req.text();
+     * const body = JSON.parse(rawBody);
+     * handleInbox(body, headers, { rawBody, ... });
+     * ```
+     */
+    rawBody?: string | ArrayBuffer;
     onFork?: (activity: ForkActivity) => Promise<void>;
     onInstall?: (activity: InstallActivity) => Promise<void>;
     onCreate?: (activity: FederatedActivity) => Promise<void>;
@@ -149,7 +172,51 @@ export async function handleInbox(
         };
       }
 
-      // Verify the signature
+      // Verify Digest header BEFORE signature verification
+      // @security This prevents body tampering even if signature is valid (signatures only cover headers)
+      // Order: Digest (body integrity, cheap hash) → Signature (header integrity, crypto)
+      const digestHeader = headers instanceof Headers
+        ? headers.get('digest')
+        : headers['digest'] || headers['Digest'];
+
+      if (digestHeader) {
+        // Digest header present - MUST verify
+        if (!options.rawBody) {
+          return {
+            accepted: false,
+            error: 'Digest header present but rawBody not provided for verification',
+          };
+        }
+
+        // Parse digest format: "SHA-256=base64hash" or "sha-256=base64hash"
+        const digestMatch = digestHeader.match(/^(SHA-256|sha-256)=(.+)$/i);
+        if (!digestMatch) {
+          return {
+            accepted: false,
+            error: 'Invalid Digest header format (expected SHA-256=...)',
+          };
+        }
+
+        // Calculate actual digest
+        const expectedDigest = await calculateDigest(options.rawBody);
+        const actualDigest = `SHA-256=${digestMatch[2]}`;
+
+        // Compare (case-insensitive for algorithm, exact for hash)
+        if (expectedDigest !== actualDigest) {
+          return {
+            accepted: false,
+            error: 'Digest mismatch - body may have been tampered with',
+          };
+        }
+      } else if (parsedSig.headers.includes('digest')) {
+        // Signature claims to have signed a digest, but no Digest header present
+        return {
+          accepted: false,
+          error: 'Signature includes digest but no Digest header present',
+        };
+      }
+
+      // Verify the signature (covers headers including Digest)
       const method = options.method || 'POST';
       const path = options.path || '/inbox';
 

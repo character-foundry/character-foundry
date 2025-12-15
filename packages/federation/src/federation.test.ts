@@ -28,6 +28,7 @@ import {
   handleInbox,
   validateForkActivity,
   validateInstallActivity,
+  calculateDigest,
 } from './index.js';
 import type { ForkActivity, InstallActivity, FederatedCard, ForkNotification } from './types.js';
 
@@ -769,6 +770,140 @@ describe('Fork Support', () => {
 
       expect(result.accepted).toBe(false);
       expect(result.error).toContain('Invalid activity');
+    });
+
+    describe('Digest Verification', () => {
+      const mockActor = {
+        id: 'https://example.com/users/test',
+        type: 'Person' as const,
+        preferredUsername: 'test',
+        inbox: 'https://example.com/users/test/inbox',
+        outbox: 'https://example.com/users/test/outbox',
+        publicKey: {
+          id: 'https://example.com/users/test#main-key',
+          owner: 'https://example.com/users/test',
+          publicKeyPem: 'mock-key',
+        },
+      };
+
+      it('should reject when Digest header present but rawBody not provided', async () => {
+        const forkedCard = cardToActivityPub(testCard, {
+          id: 'https://example.com/cards/fork-456',
+          actorId: 'https://example.com/users/test',
+        });
+        const activity = createForkActivity(
+          'https://original.com/cards/source-123',
+          forkedCard,
+          'https://example.com/users/test',
+          'https://example.com'
+        );
+
+        const headers = new Headers({
+          'signature': 'keyId="https://example.com/users/test#main-key",headers="(request-target) host date digest",signature="abc"',
+          'digest': 'SHA-256=somehash',
+          'date': new Date().toUTCString(),
+          'host': 'example.com',
+        });
+
+        const result = await handleInbox(activity, headers, {
+          strictMode: true,
+          fetchActor: async () => mockActor,
+        });
+
+        expect(result.accepted).toBe(false);
+        expect(result.error).toContain('rawBody not provided');
+      });
+
+      it('should reject when Digest does not match body', async () => {
+        const forkedCard = cardToActivityPub(testCard, {
+          id: 'https://example.com/cards/fork-456',
+          actorId: 'https://example.com/users/test',
+        });
+        const activity = createForkActivity(
+          'https://original.com/cards/source-123',
+          forkedCard,
+          'https://example.com/users/test',
+          'https://example.com'
+        );
+
+        const rawBody = JSON.stringify(activity);
+        const wrongDigest = 'SHA-256=wronghashvalue';
+
+        const headers = new Headers({
+          'signature': 'keyId="https://example.com/users/test#main-key",headers="(request-target) host date digest",signature="abc"',
+          'digest': wrongDigest,
+          'date': new Date().toUTCString(),
+          'host': 'example.com',
+        });
+
+        const result = await handleInbox(activity, headers, {
+          strictMode: true,
+          rawBody,
+          fetchActor: async () => mockActor,
+        });
+
+        expect(result.accepted).toBe(false);
+        expect(result.error).toContain('Digest mismatch');
+      });
+
+      it('should reject invalid Digest header format', async () => {
+        const forkedCard = cardToActivityPub(testCard, {
+          id: 'https://example.com/cards/fork-456',
+          actorId: 'https://example.com/users/test',
+        });
+        const activity = createForkActivity(
+          'https://original.com/cards/source-123',
+          forkedCard,
+          'https://example.com/users/test',
+          'https://example.com'
+        );
+
+        const rawBody = JSON.stringify(activity);
+
+        const headers = new Headers({
+          'signature': 'keyId="https://example.com/users/test#main-key",headers="(request-target) host date digest",signature="abc"',
+          'digest': 'MD5=invalidformat', // Wrong algorithm
+          'date': new Date().toUTCString(),
+          'host': 'example.com',
+        });
+
+        const result = await handleInbox(activity, headers, {
+          strictMode: true,
+          rawBody,
+          fetchActor: async () => mockActor,
+        });
+
+        expect(result.accepted).toBe(false);
+        expect(result.error).toContain('Invalid Digest header format');
+      });
+
+      it('should reject when signature includes digest but header missing', async () => {
+        const forkedCard = cardToActivityPub(testCard, {
+          id: 'https://example.com/cards/fork-456',
+          actorId: 'https://example.com/users/test',
+        });
+        const activity = createForkActivity(
+          'https://original.com/cards/source-123',
+          forkedCard,
+          'https://example.com/users/test',
+          'https://example.com'
+        );
+
+        const headers = new Headers({
+          // Signature claims to include digest, but no Digest header present
+          'signature': 'keyId="https://example.com/users/test#main-key",headers="(request-target) host date digest",signature="abc"',
+          'date': new Date().toUTCString(),
+          'host': 'example.com',
+        });
+
+        const result = await handleInbox(activity, headers, {
+          strictMode: true,
+          fetchActor: async () => mockActor,
+        });
+
+        expect(result.accepted).toBe(false);
+        expect(result.error).toContain('Signature includes digest but no Digest header present');
+      });
     });
   });
 });
