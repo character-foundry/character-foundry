@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CLI tool for inspecting, validating, and converting AI character cards",
   "type": "module",
   "main": "./dist/index.cjs",
