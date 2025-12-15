@@ -1,7 +1,7 @@
 # Core Package Documentation
 
 **Package:** `@character-foundry/core`
-**Version:** 0.1.2
+**Version:** 0.1.3
 **Environment:** Node.js and Browser
 
 The `@character-foundry/core` package provides foundational utilities used across all Character Foundry packages. It works in both Node.js and browser environments.

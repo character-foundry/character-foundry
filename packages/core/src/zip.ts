@@ -53,8 +53,8 @@ export interface ZipSizeLimits {
 
 export const DEFAULT_ZIP_LIMITS: ZipSizeLimits = {
   maxFileSize: 50 * 1024 * 1024,   // 50MB per file (Risu standard)
-  maxTotalSize: 200 * 1024 * 1024, // 200MB total
-  maxFiles: 1000,
+  maxTotalSize: 500 * 1024 * 1024, // 500MB total (CharX can have many expression assets)
+  maxFiles: 10000,                 // CharX cards can have 2k+ expression assets
   unsafePathHandling: 'skip',      // Backwards compatible default
 };
 
