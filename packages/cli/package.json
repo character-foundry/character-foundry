@@ -33,11 +33,15 @@
   },
   "dependencies": {
     "commander": "^12.1.0",
+    "fflate": "^0.8.2",
     "@character-foundry/core": "workspace:^",
     "@character-foundry/loader": "workspace:^",
     "@character-foundry/exporter": "workspace:^",
     "@character-foundry/schemas": "workspace:^",
     "@character-foundry/tokenizers": "workspace:^"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.33.0"
   },
   "devDependencies": {
     "tsup": "^8.3.5",

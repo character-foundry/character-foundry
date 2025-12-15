@@ -12,6 +12,7 @@ import {
   createLossCommand,
   createExportCommand,
   createExtractAssetsCommand,
+  createOptimizeCommand,
 } from './commands/index.js';
 
 // Read version from package.json
@@ -32,6 +33,7 @@ export function createCLI(): Command {
   program.addCommand(createLossCommand());
   program.addCommand(createExportCommand());
   program.addCommand(createExtractAssetsCommand());
+  program.addCommand(createOptimizeCommand());
 
   return program;
 }

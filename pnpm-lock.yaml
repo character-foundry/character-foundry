@@ -155,6 +155,13 @@ importers:
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
+    optionalDependencies:
+      sharp:
+        specifier: ^0.33.0
+        version: 0.33.5
     devDependencies:
       tsup:
         specifier: ^8.3.5

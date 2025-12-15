@@ -8,7 +8,8 @@ export default defineConfig({
   sourcemap: true,
   splitting: false,
   // Keep deps with browser/node conditional exports external
-  external: ['fflate'],
+  // sharp is optional - users install it manually for better image processing
+  external: ['fflate', 'sharp'],
   banner: {
     js: '#!/usr/bin/env node',
   },
