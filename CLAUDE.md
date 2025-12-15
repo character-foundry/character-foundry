@@ -375,7 +375,7 @@ pnpm build && pnpm test
 | `@character-foundry/federation` | 0.5.0 |
 | `@character-foundry/media` | 0.1.2 |
 | `@character-foundry/tokenizers` | 0.1.1 |
-| `@character-foundry/cli` | 0.2.1 |
+| `@character-foundry/cli` | 0.2.2 |
 | `@character-foundry/app-framework` | 0.2.1 |
 
 ### Publishing Troubleshooting
