@@ -70,7 +70,7 @@ export function createValidateCommand(): Command {
         // Also validate original shape if available
         if (result.originalShape && opts.strict) {
           // Check if it's a v2 card
-          if (result.spec === 'v2' || result.spec === 'v2-tavern') {
+          if (result.spec === 'v2') {
             const v2Result = safeParse(CCv2DataSchema, result.originalShape);
             if (!v2Result.success) {
               errors.push(`Original v2 validation: ${v2Result.error}`);

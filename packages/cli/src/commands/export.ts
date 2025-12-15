@@ -8,7 +8,7 @@ import { Command } from 'commander';
 import { basename, dirname, join } from 'node:path';
 import { parseCard } from '@character-foundry/loader';
 import { exportCard } from '@character-foundry/exporter';
-import type { ExportFormat } from '@character-foundry/exporter';
+import type { ExportFormat, ExportCardOptions } from '@character-foundry/exporter';
 import { output, readFileBytes, writeFileBytes, handleError, EXIT_SUCCESS, EXIT_UNSUPPORTED, formatSize } from '../utils/index.js';
 
 interface ExportOptions {
@@ -69,13 +69,15 @@ export function createExportCommand(): Command {
         }));
 
         // Build export options
-        const exportOptions: Record<string, unknown> = {};
+        const exportOptions: ExportCardOptions = {
+          format: targetFormat,
+        };
         if (targetFormat === 'png' && opts.v2) {
-          exportOptions.exportAsV2 = true;
+          exportOptions.png = { exportAsV2: true };
         }
 
         // Export
-        const exportResult = exportCard(result.card, exportAssets, targetFormat, exportOptions);
+        const exportResult = exportCard(result.card, exportAssets, exportOptions);
 
         // Determine output path
         let outputPath: string;
