@@ -145,6 +145,7 @@ cf validate <file>            # Schema validation with exit codes
 cf loss <file> --to <format>  # Preview data loss before conversion
 cf export <file> --to <fmt>   # Export to png/charx/voxta
 cf extract-assets <file>      # Extract all assets with manifest
+cf optimize <file>            # Compress images/audio/video in packages
 ```
 
 **Exit Codes:**
@@ -374,7 +375,7 @@ pnpm build && pnpm test
 | `@character-foundry/federation` | 0.4.0 |
 | `@character-foundry/media` | 0.1.2 |
 | `@character-foundry/tokenizers` | 0.1.1 |
-| `@character-foundry/cli` | 0.1.0 |
+| `@character-foundry/cli` | 0.2.1 |
 | `@character-foundry/app-framework` | 0.2.1 |
 
 ### Publishing Troubleshooting
