@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/lorebook",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Lorebook parsing, extraction, and insertion utilities",
   "type": "module",
   "exports": {

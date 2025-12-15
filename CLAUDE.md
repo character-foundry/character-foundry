@@ -368,11 +368,11 @@ pnpm build && pnpm test
 | `@character-foundry/schemas` | 0.2.2 |
 | `@character-foundry/png` | 0.0.6 |
 | `@character-foundry/charx` | 0.0.7 |
-| `@character-foundry/exporter` | 0.1.3 |
+| `@character-foundry/exporter` | 0.1.4 |
 | `@character-foundry/normalizer` | 0.1.5 |
-| `@character-foundry/lorebook` | 0.0.2 |
+| `@character-foundry/lorebook` | 0.0.3 |
 | `@character-foundry/voxta` | 0.1.13 |
-| `@character-foundry/loader` | 0.1.9 |
+| `@character-foundry/loader` | 0.1.10 |
 | `@character-foundry/federation` | 0.5.2 |
 | `@character-foundry/media` | 0.1.2 |
 | `@character-foundry/tokenizers` | 0.1.3 |
