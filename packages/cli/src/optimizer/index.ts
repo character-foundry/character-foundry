@@ -212,8 +212,16 @@ export async function optimize(
       const asset = images[i]!;
       printProgress('image', i + 1, images.length, basename(asset.path), options.verbose);
 
+      // Voxta hardcodes "thumbnail.png" - must stay PNG format
+      const isThumbnailPng =
+        extracted.format === 'voxpkg' && basename(asset.path).toLowerCase() === 'thumbnail.png';
+
+      const effectiveImageOptions: ImageOptions = isThumbnailPng
+        ? { ...imageOptions, format: 'png' }
+        : imageOptions;
+
       try {
-        const result = await optimizeImage(asset.absolutePath, imageOptions);
+        const result = await optimizeImage(asset.absolutePath, effectiveImageOptions);
 
         if (result.remap) {
           pathRemaps.push({
