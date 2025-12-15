@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@character-foundry/schemas': workspace:^
+
 importers:
 
   .:
@@ -174,10 +177,11 @@ importers:
         version: 2.1.9(@types/node@20.19.25)(happy-dom@15.11.7)
 
   packages/core:
-    devDependencies:
+    dependencies:
       fflate:
         specifier: ^0.8.1
         version: 0.8.2
+    devDependencies:
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(postcss@8.5.6)(typescript@5.9.3)
