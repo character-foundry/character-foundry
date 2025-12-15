@@ -1,8 +1,8 @@
 # Federation Package Documentation
 
 **Package:** `@character-foundry/federation`
-**Version:** 0.3.1
-**Environment:** Node.js, Browser, and Cloudflare Workers
+**Version:** 0.3.2
+**Environment:** Node.js (>=18), Browser, and Cloudflare Workers
 
 The `@character-foundry/federation` package provides experimental ActivityPub-based federation for syncing character cards across platforms.
 
@@ -1272,9 +1272,419 @@ export default {
 
 ---
 
+## Deployment Security Guide
+
+When deploying federation endpoints in production, implement these security measures at the application layer.
+
+### Node.js Version
+
+The federation package requires Node.js 18+ for:
+- Global `fetch` API
+- `Headers` / `Request` / `Response` classes
+- `crypto.subtle` (Web Crypto API)
+- `atob` / `btoa` globals
+
+```json
+{
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+```
+
+### Request Limits
+
+Enforce inbound limits to prevent resource exhaustion:
+
+```typescript
+// Express
+import express from 'express';
+
+app.use('/api/federation', express.json({
+  limit: '1mb',           // Max body size
+  strict: true,           // Only accept objects/arrays
+  type: ['application/json', 'application/activity+json'],
+}));
+
+// Hono
+import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+
+app.use('/federation/*', bodyLimit({
+  maxSize: 1024 * 1024, // 1MB
+}));
+```
+
+### Raw Body for Digest Verification
+
+To verify HTTP Digest headers, you need the raw request body (JSON parsers may alter whitespace):
+
+```typescript
+// Express - capture raw body
+app.use('/federation/inbox', express.json({
+  verify: (req, res, buf) => {
+    (req as any).rawBody = buf;
+  },
+}));
+
+// Then verify
+import { calculateDigest } from '@character-foundry/federation';
+
+const expectedDigest = await calculateDigest((req as any).rawBody);
+const actualDigest = req.headers['digest'];
+if (actualDigest !== expectedDigest) {
+  return res.status(400).json({ error: 'Digest mismatch' });
+}
+```
+
+### Fetch Timeouts
+
+The `HttpPlatformAdapter` supports configurable timeouts (default: 30 seconds):
+
+```typescript
+import { HttpPlatformAdapter } from '@character-foundry/federation';
+
+const adapter = new HttpPlatformAdapter({
+  platform: 'external',
+  displayName: 'External API',
+  baseUrl: 'https://api.example.com',
+  endpoints: { /* ... */ },
+  timeout: 10000, // 10 second timeout
+});
+```
+
+For custom `fetchActor` implementations, add timeouts:
+
+```typescript
+async function fetchActor(actorId: string): Promise<FederatedActor | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(actorId, {
+      headers: { 'Accept': 'application/activity+json' },
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+```
+
+### Replay Protection
+
+Implement activity deduplication to prevent replay attacks:
+
+```typescript
+import { LRUCache } from 'lru-cache';
+
+// In-memory cache of seen activity IDs (5 minute TTL)
+const seenActivities = new LRUCache<string, boolean>({
+  max: 10000,
+  ttl: 5 * 60 * 1000, // 5 minutes
+});
+
+app.post('/federation/inbox', async (req, res) => {
+  const activity = req.body;
+
+  // Check for replay
+  if (seenActivities.has(activity.id)) {
+    return res.status(200).json({ status: 'duplicate' });
+  }
+
+  // Mark as seen BEFORE processing
+  seenActivities.set(activity.id, true);
+
+  // Process activity...
+});
+```
+
+### SSRF Protection for fetchActor
+
+When fetching remote actors, prevent SSRF attacks:
+
+```typescript
+import { URL } from 'url';
+
+function isAllowedUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+
+    // HTTPS only
+    if (url.protocol !== 'https:') return false;
+
+    // Block private IP ranges
+    const hostname = url.hostname;
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('172.16.') ||
+      hostname.endsWith('.local')
+    ) {
+      return false;
+    }
+
+    // Block internal ports (optional)
+    const port = url.port || '443';
+    if (!['443', '8443'].includes(port)) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchActor(actorId: string): Promise<FederatedActor | null> {
+  if (!isAllowedUrl(actorId)) {
+    console.warn(`Blocked SSRF attempt: ${actorId}`);
+    return null;
+  }
+
+  // ... fetch with timeout
+}
+```
+
+### Actor Key Caching
+
+Cache fetched actor public keys to reduce latency and external requests:
+
+```typescript
+import { LRUCache } from 'lru-cache';
+
+const actorCache = new LRUCache<string, FederatedActor>({
+  max: 1000,
+  ttl: 60 * 60 * 1000, // 1 hour
+});
+
+async function fetchActorCached(actorId: string): Promise<FederatedActor | null> {
+  const cached = actorCache.get(actorId);
+  if (cached) return cached;
+
+  const actor = await fetchActorFromRemote(actorId);
+  if (actor) {
+    actorCache.set(actorId, actor);
+  }
+  return actor;
+}
+```
+
+### Structured Logging
+
+Log federation activity safely (redact sensitive data):
+
+```typescript
+import { handleInbox } from '@character-foundry/federation';
+
+app.post('/federation/inbox', async (req, res) => {
+  const requestId = crypto.randomUUID();
+
+  const result = await handleInbox(req.body, req.headers, {
+    fetchActor,
+    strictMode: true,
+    // ... handlers
+  });
+
+  // Structured log (safe)
+  console.log(JSON.stringify({
+    requestId,
+    timestamp: new Date().toISOString(),
+    activityId: req.body?.id,
+    activityType: req.body?.type,
+    actor: req.body?.actor,
+    accepted: result.accepted,
+    error: result.error,
+    // DO NOT log: req.headers (contains Signature)
+    // DO NOT log: req.body.object.content (may be large)
+  }));
+
+  return res.status(result.accepted ? 202 : 400).json(result);
+});
+```
+
+### Reverse Proxy Auth (Internal Testing)
+
+For internal federation testing, add an auth layer:
+
+```typescript
+// Middleware for internal auth
+function internalAuth(req, res, next) {
+  const authHeader = req.headers['x-internal-auth'];
+  const expectedToken = process.env.INTERNAL_AUTH_TOKEN;
+
+  if (!authHeader || authHeader !== expectedToken) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  next();
+}
+
+// Apply to federation routes during testing
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/federation', internalAuth);
+}
+```
+
+Or use nginx:
+
+```nginx
+location /api/federation/ {
+    # Allow internal network only
+    allow 10.0.0.0/8;
+    allow 172.16.0.0/12;
+    allow 192.168.0.0/16;
+    deny all;
+
+    proxy_pass http://backend:3000;
+}
+```
+
+### Key Management
+
+Never log or expose private keys:
+
+```typescript
+// Load from environment or secrets manager
+const PRIVATE_KEY = process.env.FEDERATION_PRIVATE_KEY;
+
+// Validate key exists at startup
+if (!PRIVATE_KEY && process.env.NODE_ENV === 'production') {
+  throw new Error('FEDERATION_PRIVATE_KEY required in production');
+}
+
+// Never log keys
+process.on('uncaughtException', (err) => {
+  // Sanitize error - don't dump env
+  console.error('Uncaught exception:', err.message);
+  process.exit(1);
+});
+```
+
+### Content-Type Handling
+
+Accept ActivityPub content types:
+
+```typescript
+app.post('/federation/inbox', (req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+
+  const validTypes = [
+    'application/json',
+    'application/activity+json',
+    'application/ld+json',
+  ];
+
+  if (!validTypes.some(t => contentType.includes(t))) {
+    return res.status(415).json({
+      error: 'Unsupported Media Type',
+      expected: validTypes,
+    });
+  }
+
+  next();
+});
+```
+
+### Complete Example
+
+```typescript
+import express from 'express';
+import { LRUCache } from 'lru-cache';
+import {
+  enableFederation,
+  handleInbox,
+  signRequest,
+  calculateDigest,
+} from '@character-foundry/federation';
+
+// Require Node 18+
+const nodeVersion = parseInt(process.version.slice(1).split('.')[0]);
+if (nodeVersion < 18) {
+  throw new Error('Node.js 18+ required for federation');
+}
+
+enableFederation({ skipEnvCheck: false }); // Require env var in Node.js
+
+const app = express();
+
+// Replay protection
+const seenActivities = new LRUCache<string, boolean>({
+  max: 10000,
+  ttl: 5 * 60 * 1000,
+});
+
+// Actor cache
+const actorCache = new LRUCache<string, FederatedActor>({
+  max: 1000,
+  ttl: 60 * 60 * 1000,
+});
+
+// Parse JSON with raw body capture
+app.use('/federation/inbox', express.json({
+  limit: '1mb',
+  type: ['application/json', 'application/activity+json', 'application/ld+json'],
+  verify: (req, res, buf) => { (req as any).rawBody = buf; },
+}));
+
+app.post('/federation/inbox', async (req, res) => {
+  const requestId = crypto.randomUUID();
+  const activity = req.body;
+
+  // Replay check
+  if (seenActivities.has(activity.id)) {
+    return res.status(200).json({ status: 'duplicate' });
+  }
+  seenActivities.set(activity.id, true);
+
+  // Verify digest if present
+  const digestHeader = req.headers['digest'];
+  if (digestHeader) {
+    const expected = await calculateDigest((req as any).rawBody);
+    if (digestHeader !== expected) {
+      console.warn({ requestId, error: 'digest_mismatch' });
+      return res.status(400).json({ error: 'Digest mismatch' });
+    }
+  }
+
+  // Handle activity with strict signature verification
+  const result = await handleInbox(activity, new Headers(req.headers as any), {
+    method: 'POST',
+    path: '/federation/inbox',
+    fetchActor: async (id) => {
+      if (!isAllowedUrl(id)) return null;
+      return actorCache.get(id) ?? await fetchActorFromRemote(id);
+    },
+    strictMode: true,
+    maxAge: 300,
+    onFork: async (activity) => { /* ... */ },
+    onInstall: async (activity) => { /* ... */ },
+  });
+
+  console.log(JSON.stringify({
+    requestId,
+    activityId: activity.id,
+    activityType: activity.type,
+    actor: activity.actor,
+    accepted: result.accepted,
+  }));
+
+  return res.status(result.accepted ? 202 : 400).json(result);
+});
+
+app.listen(3000);
+```
+
+---
+
 ## Future Work
 
 1. **Following** - Subscribe to remote actors
 2. **Discovery** - Find characters on other instances
 3. **Conflict resolution** - Handle concurrent edits
 4. **Cross-instance fork notification delivery** - POST Fork activities to source inbox
+5. **Digest header verification** - Automatic body integrity checking in handleInbox

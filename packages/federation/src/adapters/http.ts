@@ -48,6 +48,13 @@ export interface HttpAdapterConfig {
   };
   /** Custom fetch function (for Node.js or testing) */
   fetch?: FetchFn;
+  /**
+   * Request timeout in milliseconds.
+   * Default: 30000 (30 seconds)
+   *
+   * @security Prevents hanging connections that could cause resource exhaustion.
+   */
+  timeout?: number;
   /** Response transformers */
   transformers?: {
     /** Transform list response to AdapterCard[] */
@@ -123,6 +130,9 @@ function validateAndEncodeId(id: string): string {
   return encodeURIComponent(id);
 }
 
+/** Default timeout for HTTP requests (30 seconds) */
+const DEFAULT_TIMEOUT_MS = 30000;
+
 /**
  * HTTP-based platform adapter
  */
@@ -132,6 +142,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
 
   private config: HttpAdapterConfig;
   private fetchFn: FetchFn;
+  private timeoutMs: number;
 
   constructor(config: HttpAdapterConfig) {
     super();
@@ -139,6 +150,27 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
     this.displayName = config.displayName;
     this.config = config;
     this.fetchFn = config.fetch || globalThis.fetch.bind(globalThis);
+    this.timeoutMs = config.timeout ?? DEFAULT_TIMEOUT_MS;
+  }
+
+  /**
+   * Execute fetch with timeout using AbortController
+   *
+   * @security Prevents hanging connections that could cause resource exhaustion
+   */
+  private async fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    try {
+      const response = await this.fetchFn(url, {
+        ...init,
+        signal: controller.signal,
+      });
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
@@ -187,7 +219,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
   async isAvailable(): Promise<boolean> {
     try {
       const endpoint = this.config.endpoints.health || this.config.endpoints.list;
-      const response = await this.fetchFn(
+      const response = await this.fetchWithTimeout(
         this.buildUrl(endpoint),
         {
           method: 'GET',
@@ -202,7 +234,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
 
   async getCard(localId: string): Promise<CCv3Data | null> {
     try {
-      const response = await this.fetchFn(
+      const response = await this.fetchWithTimeout(
         this.buildUrl(this.config.endpoints.get, localId),
         {
           method: 'GET',
@@ -242,7 +274,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
       url.searchParams.set('since', options.since);
     }
 
-    const response = await this.fetchFn(
+    const response = await this.fetchWithTimeout(
       url.toString(),
       {
         method: 'GET',
@@ -267,7 +299,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
         ? this.config.transformers.update(card)
         : card;
 
-      const response = await this.fetchFn(
+      const response = await this.fetchWithTimeout(
         this.buildUrl(this.config.endpoints.update, localId),
         {
           method: 'PUT',
@@ -287,7 +319,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
         ? this.config.transformers.create(card)
         : card;
 
-      const response = await this.fetchFn(
+      const response = await this.fetchWithTimeout(
         this.buildUrl(this.config.endpoints.create),
         {
           method: 'POST',
@@ -308,7 +340,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
   }
 
   async deleteCard(localId: string): Promise<boolean> {
-    const response = await this.fetchFn(
+    const response = await this.fetchWithTimeout(
       this.buildUrl(this.config.endpoints.delete, localId),
       {
         method: 'DELETE',
@@ -325,7 +357,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
     }
 
     try {
-      const response = await this.fetchFn(
+      const response = await this.fetchWithTimeout(
         this.buildUrl(this.config.endpoints.assets, localId),
         {
           method: 'GET',
@@ -345,7 +377,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
 
   async getLastModified(localId: string): Promise<string | null> {
     try {
-      const response = await this.fetchFn(
+      const response = await this.fetchWithTimeout(
         this.buildUrl(this.config.endpoints.get, localId),
         {
           method: 'HEAD',
