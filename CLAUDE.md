@@ -366,7 +366,7 @@ pnpm build && pnpm test
 | `@character-foundry/character-foundry` | 0.1.3 |
 | `@character-foundry/core` | 0.1.3 |
 | `@character-foundry/schemas` | 0.2.2 |
-| `@character-foundry/png` | 0.0.5 |
+| `@character-foundry/png` | 0.0.6 |
 | `@character-foundry/charx` | 0.0.7 |
 | `@character-foundry/exporter` | 0.1.3 |
 | `@character-foundry/normalizer` | 0.1.5 |
@@ -377,7 +377,7 @@ pnpm build && pnpm test
 | `@character-foundry/media` | 0.1.2 |
 | `@character-foundry/tokenizers` | 0.1.3 |
 | `@character-foundry/cli` | 0.3.1 |
-| `@character-foundry/app-framework` | 0.2.1 |
+| `@character-foundry/app-framework` | 0.2.2 |
 
 ### Publishing Troubleshooting
 
