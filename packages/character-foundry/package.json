@@ -89,5 +89,10 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/character-foundry/character-foundry",
+    "directory": "packages/character-foundry"
   }
 }
