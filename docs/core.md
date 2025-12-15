@@ -1,10 +1,24 @@
 # Core Package Documentation
 
 **Package:** `@character-foundry/core`
-**Version:** 0.0.3
-**Environment:** Node.js and Browser (zero dependencies)
+**Version:** 0.1.2
+**Environment:** Node.js and Browser
 
-The `@character-foundry/core` package provides foundational utilities used across all Character Foundry packages. It works in both Node.js and browser environments with zero dependencies.
+The `@character-foundry/core` package provides foundational utilities used across all Character Foundry packages. It works in both Node.js and browser environments.
+
+## Breaking Changes
+
+### v0.1.0: ZIP utilities moved to subpath
+
+ZIP utilities are now imported from `@character-foundry/core/zip` to keep `fflate` out of the main bundle:
+
+```typescript
+// Before (v0.0.x)
+import { isZipBuffer, preflightZipSizes, isPathSafe } from '@character-foundry/core';
+
+// After (v0.1.0+)
+import { isZipBuffer, preflightZipSizes, isPathSafe } from '@character-foundry/core/zip';
+```
 
 ## Table of Contents
 
@@ -29,7 +43,7 @@ The core package includes several security features to protect against common at
 Validates ZIP archives before extraction by reading central directory metadata:
 
 ```typescript
-import { preflightZipSizes, ZipPreflightError, DEFAULT_ZIP_LIMITS } from '@character-foundry/core';
+import { preflightZipSizes, ZipPreflightError, DEFAULT_ZIP_LIMITS } from '@character-foundry/core/zip';
 
 try {
   const result = preflightZipSizes(zipData, {
@@ -55,7 +69,8 @@ try {
 Validates file paths before extraction:
 
 ```typescript
-import { isPathSafe, PathTraversalError } from '@character-foundry/core';
+import { isPathSafe } from '@character-foundry/core/zip';
+import { PathTraversalError } from '@character-foundry/core';
 
 // Safe paths
 isPathSafe('Characters/abc/data.json');  // true
@@ -252,7 +267,7 @@ ZIP file detection, validation, path safety, and preflight checks.
 ### Constants
 
 ```typescript
-import { ZIP_SIGNATURE, JPEG_SIGNATURE, DEFAULT_ZIP_LIMITS } from '@character-foundry/core';
+import { ZIP_SIGNATURE, JPEG_SIGNATURE, DEFAULT_ZIP_LIMITS } from '@character-foundry/core/zip';
 
 // ZIP_SIGNATURE = [0x50, 0x4b, 0x03, 0x04] (PK..)
 // JPEG_SIGNATURE = [0xff, 0xd8, 0xff]
@@ -276,7 +291,7 @@ import {
   findZipStart,
   getZipOffset,
   isValidZip,
-} from '@character-foundry/core';
+} from '@character-foundry/core/zip';
 
 // Check if buffer is a ZIP file
 if (isZipBuffer(data)) { ... }
@@ -303,7 +318,7 @@ if (isValidZip(data)) { ... }
 ### Path Safety
 
 ```typescript
-import { isPathSafe } from '@character-foundry/core';
+import { isPathSafe } from '@character-foundry/core/zip';
 
 // Prevent path traversal attacks
 if (isPathSafe(filename)) {
@@ -316,7 +331,7 @@ if (isPathSafe(filename)) {
 ### Size Limits
 
 ```typescript
-import { type ZipSizeLimits, type UnsafePathHandling, DEFAULT_ZIP_LIMITS } from '@character-foundry/core';
+import { type ZipSizeLimits, type UnsafePathHandling, DEFAULT_ZIP_LIMITS } from '@character-foundry/core/zip';
 
 interface ZipSizeLimits {
   maxTotalSize: number;  // Max total uncompressed size
@@ -353,7 +368,7 @@ import {
   DEFAULT_ZIP_LIMITS,
   type ZipPreflightResult,
   type ZipCentralDirEntry,
-} from '@character-foundry/core';
+} from '@character-foundry/core/zip';
 
 try {
   const result = preflightZipSizes(zipData, DEFAULT_ZIP_LIMITS);
@@ -383,7 +398,7 @@ try {
 Extract ZIP with real-time byte limiting and path traversal protection:
 
 ```typescript
-import { streamingUnzipSync, ZipPreflightError, type Unzipped } from '@character-foundry/core';
+import { streamingUnzipSync, ZipPreflightError, type Unzipped } from '@character-foundry/core/zip';
 
 // Default: Skip unsafe paths silently (backwards compatible)
 const files: Unzipped = streamingUnzipSync(zipData);

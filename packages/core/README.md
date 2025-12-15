@@ -8,6 +8,20 @@ Binary utilities, base64, ZIP handling, URI parsing, UUID generation, and securi
 npm install @character-foundry/core
 ```
 
+## Breaking Changes
+
+### v0.1.0: ZIP utilities moved to subpath
+
+ZIP utilities are now in `@character-foundry/core/zip` to keep `fflate` out of the main bundle:
+
+```typescript
+// Before (v0.0.x)
+import { isZipBuffer, preflightZipSizes, isPathSafe } from '@character-foundry/core';
+
+// After (v0.1.0+)
+import { isZipBuffer, preflightZipSizes, isPathSafe } from '@character-foundry/core/zip';
+```
+
 ## Features
 
 - **ZIP bomb protection** - Preflight validation and streaming size limits
