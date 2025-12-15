@@ -33,10 +33,10 @@ export interface CardForCounting {
   data?: {
     name?: string;
     description?: string;
-    personality?: string;
+    personality?: string | null;
     scenario?: string;
     first_mes?: string;
-    mes_example?: string;
+    mes_example?: string | null;
     system_prompt?: string;
     post_history_instructions?: string;
     alternate_greetings?: string[];
@@ -51,10 +51,10 @@ export interface CardForCounting {
   // Support for unwrapped cards
   name?: string;
   description?: string;
-  personality?: string;
+  personality?: string | null;
   scenario?: string;
   first_mes?: string;
-  mes_example?: string;
+  mes_example?: string | null;
   system_prompt?: string;
   post_history_instructions?: string;
   alternate_greetings?: string[];
