@@ -5,8 +5,9 @@
  */
 
 import { Command } from 'commander';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve, relative } from 'node:path';
 import { parseCard } from '@character-foundry/loader';
+import { isPathSafe } from '@character-foundry/core/zip';
 import { output, readFileBytes, writeFileBytes, writeJsonFile, handleError, EXIT_SUCCESS, formatSize } from '../utils/index.js';
 
 interface ExtractOptions {
@@ -32,6 +33,31 @@ interface AssetManifest {
   extractedAt: string;
   assets: AssetManifestEntry[];
   totalSize: number;
+}
+
+/**
+ * Validate that a path stays within the output directory (Zip Slip protection).
+ * Returns the safe absolute path or throws if traversal is detected.
+ *
+ * @security This prevents path traversal attacks where malicious asset paths
+ * like "../../etc/passwd" could write files outside the intended directory.
+ */
+function validateExtractPath(baseDir: string, entryPath: string): string {
+  // First check using the core isPathSafe function
+  if (!isPathSafe(entryPath)) {
+    throw new Error(`Unsafe path detected: "${entryPath}" - potential path traversal attack`);
+  }
+
+  // Additional check: resolve and verify the path stays within baseDir
+  const absolutePath = resolve(baseDir, entryPath);
+  const relativePath = relative(baseDir, absolutePath);
+
+  // If the relative path starts with '..' or is absolute, it's a traversal attempt
+  if (relativePath.startsWith('..') || resolve(relativePath) === relativePath) {
+    throw new Error(`Path traversal detected: "${entryPath}" resolves outside output directory`);
+  }
+
+  return absolutePath;
 }
 
 export function createExtractAssetsCommand(): Command {
@@ -77,12 +103,13 @@ export function createExtractAssetsCommand(): Command {
           }
 
           // Handle paths (preserve directory structure if present)
+          // SECURITY: Validate paths to prevent Zip-Slip attacks
           let assetPath: string;
           if (asset.path && !asset.path.startsWith('pngchunk:')) {
-            // Use original path structure
-            assetPath = join(outputDir, asset.path);
+            // Use original path structure with security validation
+            assetPath = validateExtractPath(outputDir, asset.path);
           } else {
-            assetPath = join(outputDir, filename);
+            assetPath = validateExtractPath(outputDir, filename);
           }
 
           // Write asset

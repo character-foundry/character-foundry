@@ -10,6 +10,11 @@
   "workspaces": [
     "packages/*"
   ],
+  "pnpm": {
+    "overrides": {
+      "@character-foundry/schemas": "workspace:^"
+    }
+  },
   "scripts": {
     "build": "turbo build",
     "test": "turbo test",

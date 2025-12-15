@@ -228,6 +228,7 @@ export {
   type SignatureValidationResult,
   type SigningOptions,
   type SigningStringResult,
+  type VerifyHttpSignatureOptions,
   parseSignatureHeader,
   buildSigningString,
   buildSigningStringStrict,

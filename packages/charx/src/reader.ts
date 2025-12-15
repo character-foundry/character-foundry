@@ -209,19 +209,28 @@ export function readCharX(
 
 /**
  * Match extracted asset files to their descriptors from card.json
+ *
+ * @performance Uses O(1) Map lookup instead of O(n) linear search per descriptor.
+ * This reduces complexity from O(n*m) to O(n+m) for large asset packs.
  */
 function matchAssetsToDescriptors(
   extractedAssets: CharxAssetInfo[],
   descriptors: AssetDescriptor[]
 ): CharxAssetInfo[] {
+  // Build O(1) lookup map for extracted assets by path
+  const assetsByPath = new Map<string, CharxAssetInfo>();
+  for (const asset of extractedAssets) {
+    assetsByPath.set(asset.path, asset);
+  }
+
   const matched: CharxAssetInfo[] = [];
 
   for (const descriptor of descriptors) {
     const parsed = parseURI(descriptor.uri);
 
     if (parsed.scheme === 'embeded' && parsed.path) {
-      // Find the matching asset file
-      const asset = extractedAssets.find((a) => a.path === parsed.path);
+      // O(1) lookup instead of O(n) find
+      const asset = assetsByPath.get(parsed.path);
 
       if (asset) {
         matched.push({

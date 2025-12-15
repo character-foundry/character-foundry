@@ -223,16 +223,43 @@ export function buildSigningStringStrict(
 }
 
 /**
+ * Options for HTTP signature verification
+ */
+export interface VerifyHttpSignatureOptions {
+  /**
+   * If true, verification fails when any claimed signed header is missing.
+   * This prevents downgrade attacks where signatures claim to cover headers
+   * that aren't actually present in the request.
+   *
+   * @security Enable this for production deployments to ensure signatures
+   * actually cover all claimed headers.
+   */
+  strictHeaders?: boolean;
+}
+
+/**
  * Verify an HTTP signature using Web Crypto API
+ *
+ * @param options.strictHeaders - If true, fails when claimed headers are missing
  */
 export async function verifyHttpSignature(
   parsed: ParsedSignature,
   publicKeyPem: string,
   method: string,
   path: string,
-  headers: Headers
+  headers: Headers,
+  options: VerifyHttpSignatureOptions = {}
 ): Promise<boolean> {
   try {
+    // In strict mode, fail if any claimed header is missing from the request
+    if (options.strictHeaders) {
+      const strictResult = buildSigningStringStrict(method, path, headers, parsed.headers);
+      if (!strictResult.success) {
+        console.warn(`[federation] Strict header verification failed: ${strictResult.error}`);
+        return false;
+      }
+    }
+
     // Build the signing string
     const signingString = buildSigningString(method, path, headers, parsed.headers);
 
@@ -369,12 +396,14 @@ export async function validateActivitySignature(
   }
 
   // Verify the signature
+  // In strict mode, also enforce that claimed headers are actually present
   const valid = await verifyHttpSignature(
     parsed,
     actor.publicKey.publicKeyPem,
     options.method,
     options.path,
-    headers
+    headers,
+    { strictHeaders: options.strictMode }
   );
 
   if (!valid) {

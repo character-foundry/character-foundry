@@ -146,6 +146,7 @@ cf loss <file> --to <format>  # Preview data loss before conversion
 cf export <file> --to <fmt>   # Export to png/charx/voxta
 cf extract-assets <file>      # Extract all assets with manifest
 cf optimize <file>            # Compress images/audio/video in packages
+cf scan <directory>           # Scan directory, categorize cards by format/issues
 ```
 
 **Exit Codes:**
@@ -366,16 +367,16 @@ pnpm build && pnpm test
 | `@character-foundry/core` | 0.1.3 |
 | `@character-foundry/schemas` | 0.2.2 |
 | `@character-foundry/png` | 0.0.5 |
-| `@character-foundry/charx` | 0.0.6 |
+| `@character-foundry/charx` | 0.0.7 |
 | `@character-foundry/exporter` | 0.1.3 |
 | `@character-foundry/normalizer` | 0.1.5 |
 | `@character-foundry/lorebook` | 0.0.2 |
 | `@character-foundry/voxta` | 0.1.13 |
 | `@character-foundry/loader` | 0.1.9 |
-| `@character-foundry/federation` | 0.5.1 |
+| `@character-foundry/federation` | 0.5.2 |
 | `@character-foundry/media` | 0.1.2 |
 | `@character-foundry/tokenizers` | 0.1.3 |
-| `@character-foundry/cli` | 0.2.3 |
+| `@character-foundry/cli` | 0.3.1 |
 | `@character-foundry/app-framework` | 0.2.1 |
 
 ### Publishing Troubleshooting
