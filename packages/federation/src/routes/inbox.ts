@@ -15,6 +15,7 @@ import type {
 } from '../types.js';
 import { parseActivity, parseForkActivity, parseInstallActivity } from '../activitypub.js';
 import { assertFederationEnabled } from '../index.js';
+import { parseSignatureHeader, verifyHttpSignature } from '../http-signatures.js';
 
 /**
  * Handle incoming ActivityPub activities
@@ -45,6 +46,10 @@ export async function handleInbox(
   body: unknown,
   headers: Headers | Record<string, string>,
   options: InboxHandlerOptions & {
+    /** HTTP method (required for signature verification in strictMode) */
+    method?: string;
+    /** Request path (required for signature verification in strictMode) */
+    path?: string;
     onFork?: (activity: ForkActivity) => Promise<void>;
     onInstall?: (activity: InstallActivity) => Promise<void>;
     onCreate?: (activity: FederatedActivity) => Promise<void>;
@@ -69,8 +74,30 @@ export async function handleInbox(
       };
     }
 
-    // Fetch the actor for signature verification (if strict mode)
+    // Verify HTTP signature in strict mode
     if (options.strictMode) {
+      // Get signature header
+      const signatureHeader = headers instanceof Headers
+        ? headers.get('signature')
+        : headers['signature'] || headers['Signature'];
+
+      if (!signatureHeader) {
+        return {
+          accepted: false,
+          error: 'Missing Signature header (required in strict mode)',
+        };
+      }
+
+      // Parse the signature
+      const parsedSig = parseSignatureHeader(signatureHeader);
+      if (!parsedSig) {
+        return {
+          accepted: false,
+          error: 'Invalid Signature header format',
+        };
+      }
+
+      // Fetch the actor to get their public key
       const actor = await options.fetchActor(activity.actor);
       if (!actor) {
         return {
@@ -79,9 +106,92 @@ export async function handleInbox(
         };
       }
 
-      // Note: Full HTTP signature verification would happen here
-      // For now, we just verify the actor exists
-      // TODO: Implement full HTTP signature verification when ready
+      // Verify the key belongs to the actor (strict equality on URL origin + path)
+      if (!actor.publicKey?.publicKeyPem) {
+        return {
+          accepted: false,
+          error: `Actor ${activity.actor} has no public key`,
+        };
+      }
+
+      // Verify key ID matches actor (strict equality on base URL)
+      // Key ID format: "https://example.com/actors/alice#main-key"
+      // Actor format: "https://example.com/actors/alice"
+      try {
+        const keyIdUrl = new URL(parsedSig.keyId);
+        const actorUrl = new URL(activity.actor);
+
+        // Extract base (origin + pathname) - key ID has fragment, actor doesn't
+        const keyIdBase = `${keyIdUrl.origin}${keyIdUrl.pathname}`;
+        const actorBase = `${actorUrl.origin}${actorUrl.pathname}`;
+
+        // Strict equality required - no startsWith which could allow:
+        // - actor: https://evil.com/victim
+        // - keyId: https://evil.com/victim-fake#main-key (would match with startsWith)
+        if (keyIdBase !== actorBase) {
+          return {
+            accepted: false,
+            error: `Key ID ${parsedSig.keyId} does not match actor ${activity.actor}`,
+          };
+        }
+
+        // Also verify the fetched actor's key ID matches the signature's key ID
+        if (actor.publicKey.id !== parsedSig.keyId) {
+          return {
+            accepted: false,
+            error: `Actor's key ID ${actor.publicKey.id} does not match signature key ID ${parsedSig.keyId}`,
+          };
+        }
+      } catch {
+        return {
+          accepted: false,
+          error: `Invalid key ID or actor URL`,
+        };
+      }
+
+      // Verify the signature
+      const method = options.method || 'POST';
+      const path = options.path || '/inbox';
+
+      // Normalize headers to Headers object for signature verification
+      const normalizedHeaders = headers instanceof Headers
+        ? headers
+        : new Headers(headers);
+
+      const isValid = await verifyHttpSignature(
+        parsedSig,
+        actor.publicKey.publicKeyPem,
+        method,
+        path,
+        normalizedHeaders
+      );
+
+      if (!isValid) {
+        return {
+          accepted: false,
+          error: 'Invalid HTTP signature',
+        };
+      }
+
+      // Check date header for replay protection (if maxAge specified)
+      if (options.maxAge) {
+        const dateHeader = headers instanceof Headers
+          ? headers.get('date')
+          : headers['date'] || headers['Date'];
+
+        if (dateHeader) {
+          const requestDate = new Date(dateHeader);
+          const now = new Date();
+          const ageMs = Math.abs(now.getTime() - requestDate.getTime());
+
+          if (ageMs > options.maxAge * 1000) {
+            return {
+              accepted: false,
+              error: `Request too old (${Math.round(ageMs / 1000)}s, max ${options.maxAge}s)`,
+            };
+          }
+        }
+      }
     }
 
     // Route to appropriate handler

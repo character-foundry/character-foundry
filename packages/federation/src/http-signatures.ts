@@ -287,10 +287,18 @@ export async function validateActivitySignature(
 
 /**
  * Sign an outgoing HTTP request
+ *
+ * @param options.host - Required. The target host for the request.
+ * @throws If host is not provided (required for valid signatures)
  */
 export async function signRequest(
   options: SigningOptions
-): Promise<{ signature: string; date: string }> {
+): Promise<{ signature: string; date: string; host: string }> {
+  // Host is required for valid signatures
+  if (!options.host) {
+    throw new Error('signRequest requires options.host - cannot generate valid signature without it');
+  }
+
   const now = new Date();
   const dateString = now.toUTCString();
 
@@ -298,10 +306,7 @@ export async function signRequest(
   const headersToSign = ['(request-target)', 'host', 'date'];
   const headerValues = new Headers();
   headerValues.set('date', dateString);
-
-  if (options.host) {
-    headerValues.set('host', options.host);
-  }
+  headerValues.set('host', options.host);
 
   if (options.digest) {
     headersToSign.push('digest');
@@ -345,7 +350,7 @@ export async function signRequest(
     `headers="${headersToSign.join(' ')}",` +
     `signature="${signatureBase64}"`;
 
-  return { signature: signatureHeader, date: dateString };
+  return { signature: signatureHeader, date: dateString, host: options.host };
 }
 
 /**

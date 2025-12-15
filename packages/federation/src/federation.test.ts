@@ -189,12 +189,12 @@ describe('ActivityPub', () => {
   });
 
   describe('Signature validation', () => {
-    it('should throw because signature verification is not implemented', () => {
+    it('should throw deprecation error for legacy validateActivitySignature', () => {
       const fedCard = cardToActivityPub(testCard, { id: 'test:123', actorId });
       const activity = createCreateActivity(fedCard, actorId, baseUrl);
 
       expect(() => validateActivitySignature(activity, 'sig', 'key')).toThrow(
-        'validateActivitySignature is not implemented'
+        'validateActivitySignature is deprecated'
       );
     });
   });

@@ -9,38 +9,69 @@
  * Do NOT use in production without explicit opt-in.
  *
  * To enable federation features, you MUST:
- * 1. Set FEDERATION_ENABLED=true in your environment
+ * 1. Set FEDERATION_ENABLED=true in your environment (Node.js) or call enableFederation({ skipEnvCheck: true }) in browser/Workers
  * 2. Call enableFederation() before using SyncEngine or route handlers
  *
- * Both steps are required as a dual opt-in safety mechanism.
+ * Both steps are required as a dual opt-in safety mechanism (except in environments without process.env).
  */
 
 let explicitlyEnabled = false;
+let envCheckSkipped = false;
+
+/**
+ * Safe check for environment variable - works in Node.js, browser, and Workers
+ */
+function getEnvVar(name: string): string | undefined {
+  // Check if process exists and has env (Node.js)
+  if (typeof process !== 'undefined' && process?.env) {
+    return process.env[name];
+  }
+  // In browser/Workers, return undefined (env var check will be skipped)
+  return undefined;
+}
 
 /**
  * Enable federation features. Must be called before using SyncEngine or route handlers.
  * This is a safety gate - federation is experimental and has incomplete security.
  *
- * Note: Both this call AND FEDERATION_ENABLED=true are required (dual opt-in).
+ * @param options.skipEnvCheck - Skip FEDERATION_ENABLED env var check (required for browser/Workers)
+ *
+ * Note: In Node.js, both this call AND FEDERATION_ENABLED=true are required (dual opt-in).
+ * In browser/Workers, use skipEnvCheck: true since env vars aren't available.
  */
-export function enableFederation(): void {
+export function enableFederation(options?: { skipEnvCheck?: boolean }): void {
   explicitlyEnabled = true;
-  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+  envCheckSkipped = options?.skipEnvCheck ?? false;
+
+  const nodeEnv = getEnvVar('NODE_ENV');
+  if (nodeEnv === 'development' || nodeEnv === 'test') {
     console.warn(
       '[character-foundry/federation] Federation enabled. ' +
-      'WARNING: HTTP signature validation is NOT implemented. ' +
-      'Do NOT use in production with untrusted inputs.'
+      'WARNING: Verify HTTP signatures in production. ' +
+      'Do NOT use in production with untrusted inputs without signature validation.'
     );
   }
 }
 
 /**
- * Check if federation is enabled (requires BOTH env var AND enableFederation() call)
+ * Check if federation is enabled
+ *
+ * In Node.js: requires BOTH env var AND enableFederation() call
+ * In browser/Workers with skipEnvCheck: requires only enableFederation() call
  */
 export function isFederationEnabled(): boolean {
-  const envEnabled = process.env.FEDERATION_ENABLED === 'true';
-  // Require BOTH explicit enableFederation() call AND env var
-  return explicitlyEnabled && envEnabled;
+  if (!explicitlyEnabled) {
+    return false;
+  }
+
+  // If env check was skipped (browser/Workers), only check explicit enable
+  if (envCheckSkipped) {
+    return true;
+  }
+
+  // In Node.js, also require env var
+  const envEnabled = getEnvVar('FEDERATION_ENABLED') === 'true';
+  return envEnabled;
 }
 
 /**
@@ -48,27 +79,31 @@ export function isFederationEnabled(): boolean {
  * @internal
  */
 export function assertFederationEnabled(feature: string): void {
-  const envEnabled = process.env.FEDERATION_ENABLED === 'true';
+  if (!explicitlyEnabled) {
+    const hasProcess = typeof process !== 'undefined' && process?.env;
+    const envHint = hasProcess
+      ? 'You must BOTH call enableFederation() AND set FEDERATION_ENABLED=true.'
+      : 'You must call enableFederation({ skipEnvCheck: true }) in browser/Workers environments.';
 
-  if (!explicitlyEnabled && !envEnabled) {
     throw new Error(
       `Federation is not enabled. ${feature} requires federation to be explicitly enabled. ` +
-      `You must BOTH call enableFederation() AND set FEDERATION_ENABLED=true. ` +
+      `${envHint} ` +
       `WARNING: Federation security features are incomplete.`
     );
   }
 
-  if (!explicitlyEnabled) {
-    throw new Error(
-      `Federation not explicitly enabled. ${feature} requires enableFederation() to be called. ` +
-      `Environment variable alone is not sufficient (dual opt-in required).`
-    );
+  // If env check was skipped, we're done
+  if (envCheckSkipped) {
+    return;
   }
 
+  // In Node.js, also check env var
+  const envEnabled = getEnvVar('FEDERATION_ENABLED') === 'true';
   if (!envEnabled) {
     throw new Error(
       `FEDERATION_ENABLED environment variable not set. ${feature} requires FEDERATION_ENABLED=true. ` +
-      `Code opt-in alone is not sufficient (dual opt-in required).`
+      `Code opt-in alone is not sufficient (dual opt-in required). ` +
+      `In browser/Workers, use enableFederation({ skipEnvCheck: true }) instead.`
     );
   }
 }
@@ -125,7 +160,7 @@ export {
   parseInstallActivity,
   createActor,
   parseActivity,
-  validateActivitySignature,
+  // validateActivitySignature is deprecated - use validateHttpSignature instead
 } from './activitypub.js';
 
 // Sync engine

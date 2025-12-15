@@ -5,7 +5,7 @@
  * federation support on Cloudflare Workers.
  */
 
-import type { SyncStateStore, CardSyncState, PlatformId, ForkNotification } from './types.js';
+import type { SyncStateStore, CardSyncState, PlatformId, ForkNotification, CardStats } from './types.js';
 
 /**
  * Minimal D1Database interface
@@ -54,8 +54,29 @@ interface SyncStateRow {
   forked_from: string | null;
   forks_count: number;
   fork_notifications: string | null;
+  stats: string | null;
   created_at: number;
   updated_at: number;
+}
+
+/**
+ * Validate table name to prevent SQL injection
+ *
+ * Table names must be alphanumeric with underscores only.
+ * This is critical since table names cannot be parameterized in SQL.
+ */
+function validateTableName(name: string): void {
+  // Only allow alphanumeric and underscores, must start with letter
+  const validPattern = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+  if (!validPattern.test(name)) {
+    throw new Error(
+      `Invalid table name "${name}": must start with a letter and contain only alphanumeric characters and underscores`
+    );
+  }
+  // Reasonable length limit
+  if (name.length > 64) {
+    throw new Error(`Invalid table name "${name}": must be 64 characters or less`);
+  }
 }
 
 /**
@@ -84,8 +105,10 @@ export class D1SyncStateStore implements SyncStateStore {
    *
    * @param db - D1Database instance (from env.DB in Workers)
    * @param tableName - Table name for storing sync state (default: 'federation_sync_state')
+   * @throws If tableName contains invalid characters (SQL injection prevention)
    */
   constructor(db: D1Database, tableName = 'federation_sync_state') {
+    validateTableName(tableName);
     this.db = db;
     this.tableName = tableName;
   }
@@ -109,6 +132,7 @@ export class D1SyncStateStore implements SyncStateStore {
         forked_from TEXT,
         forks_count INTEGER DEFAULT 0,
         fork_notifications TEXT,
+        stats TEXT,
         created_at INTEGER DEFAULT (unixepoch()),
         updated_at INTEGER DEFAULT (unixepoch())
       )
@@ -149,11 +173,12 @@ export class D1SyncStateStore implements SyncStateStore {
     const forkNotifications = state.forkNotifications
       ? JSON.stringify(state.forkNotifications)
       : null;
+    const stats = state.stats ? JSON.stringify(state.stats) : null;
 
     await this.db
       .prepare(
-        `INSERT INTO ${this.tableName} (federated_id, local_id, platform_ids, last_sync, version_hash, status, conflict, forked_from, forks_count, fork_notifications, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+        `INSERT INTO ${this.tableName} (federated_id, local_id, platform_ids, last_sync, version_hash, status, conflict, forked_from, forks_count, fork_notifications, stats, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
          ON CONFLICT(federated_id) DO UPDATE SET
            local_id = excluded.local_id,
            platform_ids = excluded.platform_ids,
@@ -164,6 +189,7 @@ export class D1SyncStateStore implements SyncStateStore {
            forked_from = excluded.forked_from,
            forks_count = excluded.forks_count,
            fork_notifications = excluded.fork_notifications,
+           stats = excluded.stats,
            updated_at = unixepoch()`
       )
       .bind(
@@ -176,7 +202,8 @@ export class D1SyncStateStore implements SyncStateStore {
         conflict,
         forkedFrom,
         state.forksCount ?? 0,
-        forkNotifications
+        forkNotifications,
+        stats
       )
       .run();
   }
@@ -359,6 +386,10 @@ export class D1SyncStateStore implements SyncStateStore {
     }
     if (row.fork_notifications) {
       state.forkNotifications = JSON.parse(row.fork_notifications) as ForkNotification[];
+    }
+    // Add stats if present
+    if (row.stats) {
+      state.stats = JSON.parse(row.stats) as CardStats;
     }
 
     return state;

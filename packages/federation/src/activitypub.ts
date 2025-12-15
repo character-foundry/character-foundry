@@ -478,18 +478,25 @@ export function parseActivity(data: unknown): FederatedActivity {
 }
 
 /**
- * Validate that an activity is properly signed
+ * @deprecated Use validateHttpSignature from http-signatures.ts instead.
  *
- * ⚠️  NOT IMPLEMENTED - Always throws until HTTP signature verification is complete.
+ * This stub exists only for backwards compatibility and always throws.
+ * For actual HTTP signature verification, use:
+ *
+ * ```typescript
+ * import { validateHttpSignature } from '@character-foundry/federation';
+ * ```
+ *
+ * Or use handleInbox() with strictMode: true for automatic verification.
  */
 export function validateActivitySignature(
   _activity: FederatedActivity,
   _signature: string,
   _publicKey: string
-): boolean {
+): never {
   throw new Error(
-    'validateActivitySignature is not implemented. ' +
-    'HTTP signature verification is required for secure federation. ' +
-    'Do NOT bypass this check in production.'
+    'validateActivitySignature is deprecated and does not work. ' +
+    'Use validateHttpSignature from http-signatures.ts instead, or use handleInbox() with strictMode: true. ' +
+    'See: https://github.com/character-foundry/character-foundry/blob/master/docs/federation.md#http-signatures'
   );
 }
