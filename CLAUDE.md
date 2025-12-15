@@ -231,171 +231,67 @@ All TypeScript types are inferred from Zod schemas using `z.infer<>`, ensuring t
 
 ## Publishing
 
-Packages publish to **npm** (https://www.npmjs.com/org/character-foundry) on push to master. Bump version in package.json to trigger publish.
+**SIMPLIFIED ARCHITECTURE**: Only TWO packages are published to npm:
+- `@character-foundry/character-foundry` - Bundled library with all functionality via subpath exports
+- `@character-foundry/cli` - Command-line tool
 
-**Authentication:**
-- GitHub Actions uses `NPM_PUBLISH_TOKEN` secret (npm automation token)
-- Token generated at: https://www.npmjs.com/settings/YOUR_USERNAME/tokens
-- If publish fails with 403, check that `NPM_PUBLISH_TOKEN` secret exists and has correct permissions
+All other packages (core, schemas, png, etc.) are **private workspace packages** - they exist for internal organization but are NOT published. The `character-foundry` package bundles everything into a single distributable.
 
-### When to Bump Versions - FOOLPROOF GUIDE
+### Usage for Consumers
 
-**BEFORE making ANY changes to a package, determine what version bump is needed:**
-
-#### Step 1: What kind of change are you making?
-
-**Bug fix / security fix / internal refactor (NO public API changes):**
-- Bump PATCH version (0.0.X)
-- Example: `0.0.3` → `0.0.4`
-- Dependents automatically pick this up via `^0.0.3` range
-
-**New export / new function / new feature (backwards compatible):**
-- Bump MINOR version (0.X.0)
-- Example: `0.0.3` → `0.1.0`
-- Dependents automatically pick this up via `^0.0.3` range
-- **IF dependent packages use the new feature, bump them too**
-
-**Breaking change / removed export / changed signature:**
-- Bump MAJOR version (X.0.0)
-- Example: `0.0.3` → `1.0.0` (or `0.3.0` if using 0.x convention)
-- **MUST bump ALL dependent packages** - they will break with the old version
-
-#### Step 2: Did you add a NEW export to core or schemas?
-
-**Example: Adding `streamingUnzipSync` to `@character-foundry/core`**
-
-1. **Check if any packages already import it** (common mistake):
-   ```bash
-   grep -r "streamingUnzipSync" packages/*/src --include="*.ts"
-   ```
-
-2. **If packages already import it but it doesn't exist in published version:**
-   - This is a version drift bug - the code imports something unpublished
-   - Bump core IMMEDIATELY (MINOR version: `0.0.3` → `0.1.0`)
-   - Update version tables in CLAUDE.md and README.md
-   - Commit and push to publish
-
-3. **If no one imports it yet:**
-   - Safe to bump MINOR version when you're ready
-   - Bump core when you add the export, not when dependents use it
-
-#### Step 3: Verify version consistency
-
-**Run this check BEFORE committing:**
 ```bash
-# Check that all imports exist in published versions
-pnpm build && pnpm test
+# Install the main library
+npm install @character-foundry/character-foundry
+
+# Or install the CLI
+npm install -g @character-foundry/cli
 ```
 
-**If tests pass but you get "cannot find module" in production:**
-- You have version drift - an import exists in local code but not in published version
-- Find the missing export: `git log -p -- packages/PACKAGE/src/index.ts`
-- Bump the package that should export it
+```typescript
+// Import from subpaths - all functionality is bundled
+import { parseCard } from '@character-foundry/character-foundry/loader';
+import { exportCard } from '@character-foundry/character-foundry/exporter';
+import { CCv3Data } from '@character-foundry/character-foundry/schemas';
+```
 
-#### Common Mistakes
+### Version Bumping
 
-❌ **Adding a function to `core` without bumping version**
-- Dependents import it locally (works)
-- Published version doesn't have it (breaks)
-- **Fix:** Bump core IMMEDIATELY when adding exports
+**Simple rule**: Only bump `character-foundry` and/or `cli` when making changes.
 
-❌ **Forgetting that `workspace:^` only works for PUBLISHED versions**
-- Local dev uses workspace code (latest)
-- Production uses `^0.0.3` semver range (published only)
-- **Fix:** Always bump before pushing if you added exports
+1. Make your changes to any package(s)
+2. Bump version in `packages/character-foundry/package.json` (or `packages/cli/package.json`)
+3. Run `pnpm build && pnpm test`
+4. Commit and push
 
-❌ **Bumping dependents but not the provider**
-- `voxta@0.1.8` imports from `core@^0.0.3`
-- But `streamingUnzipSync` was never in published `core@0.0.3`
-- **Fix:** Bump core FIRST, then push
-
-### Version Bump Workflow
-
-**When you add/change exports in a package:**
-
-1. Immediately bump the package version:
-   - New export/feature: bump MINOR (`0.0.3` → `0.1.0`)
-   - Bug fix: bump PATCH (`0.0.3` → `0.0.4`)
-   - Breaking change: bump MAJOR (`0.0.3` → `1.0.0`)
-
-2. Update version tables:
-   - CLAUDE.md "Published Versions" table
-   - README.md "Packages" table
-
-3. Run verification:
-   ```bash
-   pnpm build
-   pnpm test
-   pnpm verify-build
-   ```
-
-4. Commit and push:
-   ```bash
-   git add packages/PACKAGE/package.json CLAUDE.md README.md
-   git commit -m "chore(PACKAGE): bump to X.Y.Z"
-   git push origin master
-   ```
-
-5. Wait for GitHub Actions to publish
-
-6. **ONLY THEN** can dependents safely import the new exports
+No more cascading version bumps across 10+ packages!
 
 ### Release Checklist
 
-**FOLLOW THIS EVERY TIME before pushing version bumps:**
-
-1. [ ] `pnpm build` - Ensure all packages build with tsup (ESM + CJS)
-2. [ ] `pnpm test` - Ensure all tests pass
-3. [ ] `pnpm verify-build` - Automated ESM/CJS import verification for all packages
-4. [ ] Bump version ONLY for the changed package (workspace:^ handles deps automatically)
-   - Patch bump (0.0.x): Bug fixes, no API changes - dependents auto-accept via `^`
-   - Minor bump (0.x.0): New features, backwards compatible - dependents need bump if using new features
-   - Major bump (x.0.0): Breaking changes - ALL dependents MUST be bumped
-5. [ ] Verify package.json has BOTH `import` AND `require` exports (see Build Requirements)
-6. [ ] Update version table below
-7. [ ] Update README.md package versions table
-8. [ ] `git push origin master` - Triggers publish workflow
-9. [ ] Verify workflow succeeds in GitHub Actions (includes verify-build step)
-10. [ ] If workflow fails, check `NPM_TOKEN` secret and fix WITHOUT changing to `GITHUB_TOKEN`
-11. [ ] **NEW PACKAGES ONLY**: Verify visibility=public and repo linked (see Troubleshooting below)
+1. [ ] `pnpm build` - Build all packages
+2. [ ] `pnpm test` - Run all tests
+3. [ ] Bump version in `packages/character-foundry/package.json` and/or `packages/cli/package.json`
+4. [ ] Update version table below
+5. [ ] `git push origin master` - Triggers publish workflow
 
 ### Published Versions
 
 | Package | Version |
 |---------|---------|
-| `@character-foundry/character-foundry` | 0.1.4 |
-| `@character-foundry/core` | 0.1.3 |
-| `@character-foundry/schemas` | 0.2.2 |
-| `@character-foundry/png` | 0.0.6 |
-| `@character-foundry/charx` | 0.0.7 |
-| `@character-foundry/exporter` | 0.1.4 |
-| `@character-foundry/normalizer` | 0.1.5 |
-| `@character-foundry/lorebook` | 0.0.3 |
-| `@character-foundry/voxta` | 0.1.13 |
-| `@character-foundry/loader` | 0.1.10 |
-| `@character-foundry/federation` | 0.5.2 |
-| `@character-foundry/media` | 0.1.3 |
-| `@character-foundry/tokenizers` | 0.1.3 |
+| `@character-foundry/character-foundry` | 0.1.5 |
 | `@character-foundry/cli` | 0.3.1 |
-| `@character-foundry/app-framework` | 0.2.2 |
 
-### Publishing Troubleshooting
+### Authentication
 
-#### Verify Package on npm
+- GitHub Actions uses `NPM_PUBLISH_TOKEN` secret (npm automation token)
+- Token generated at: https://www.npmjs.com/settings/YOUR_USERNAME/tokens
 
-Check a package exists on npm:
-```bash
-npm info @character-foundry/core
-```
-
-#### Common Issues
+### Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | 403 on publish | NPM_PUBLISH_TOKEN missing/expired | Regenerate token, update GitHub secret |
 | 404 on install | Package not yet published | Push to master to trigger publish |
 | Version conflict | Version already exists on npm | Bump version in package.json |
-| Scope not found | @character-foundry org not set up | Create org at npmjs.com/org/create |
 
 ## Docs
 

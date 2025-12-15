@@ -35,10 +35,6 @@
     "typescript": "^5.3.0",
     "vitest": "^2.0.0"
   },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org",
-    "access": "public"
-  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -46,5 +42,6 @@
     "type": "git",
     "url": "https://github.com/character-foundry/character-foundry",
     "directory": "packages/charx"
-  }
+  },
+  "private": true
 }

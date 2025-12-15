@@ -31,8 +31,10 @@ jobs:
       - name: Build All
         run: pnpm build
 
-      - name: Publish to npm with provenance
-        run: pnpm publish -r --no-git-checks --provenance
+      - name: Publish character-foundry and cli only
+        run: |
+          cd packages/character-foundry && pnpm publish --no-git-checks --provenance || true
+          cd ../cli && pnpm publish --no-git-checks --provenance || true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
           NPM_CONFIG_PROVENANCE: true

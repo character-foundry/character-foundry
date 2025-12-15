@@ -1,74 +1,191 @@
 {
   "name": "@character-foundry/character-foundry",
-  "version": "0.1.4",
-  "description": "Universal TypeScript library for AI character card formats - meta package",
+  "version": "0.1.5",
+  "description": "Universal TypeScript library for AI character card formats",
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./core": {
-      "types": "./dist/core.d.ts",
-      "import": "./dist/core.js"
+      "import": {
+        "types": "./dist/core.d.ts",
+        "default": "./dist/core.js"
+      },
+      "require": {
+        "types": "./dist/core.d.cts",
+        "default": "./dist/core.cjs"
+      }
     },
     "./schemas": {
-      "types": "./dist/schemas.d.ts",
-      "import": "./dist/schemas.js"
+      "import": {
+        "types": "./dist/schemas.d.ts",
+        "default": "./dist/schemas.js"
+      },
+      "require": {
+        "types": "./dist/schemas.d.cts",
+        "default": "./dist/schemas.cjs"
+      }
     },
     "./png": {
-      "types": "./dist/png.d.ts",
-      "import": "./dist/png.js"
+      "import": {
+        "types": "./dist/png.d.ts",
+        "default": "./dist/png.js"
+      },
+      "require": {
+        "types": "./dist/png.d.cts",
+        "default": "./dist/png.cjs"
+      }
     },
     "./charx": {
-      "types": "./dist/charx.d.ts",
-      "import": "./dist/charx.js"
+      "import": {
+        "types": "./dist/charx.d.ts",
+        "default": "./dist/charx.js"
+      },
+      "require": {
+        "types": "./dist/charx.d.cts",
+        "default": "./dist/charx.cjs"
+      }
     },
     "./voxta": {
-      "types": "./dist/voxta.d.ts",
-      "import": "./dist/voxta.js"
+      "import": {
+        "types": "./dist/voxta.d.ts",
+        "default": "./dist/voxta.js"
+      },
+      "require": {
+        "types": "./dist/voxta.d.cts",
+        "default": "./dist/voxta.cjs"
+      }
     },
     "./lorebook": {
-      "types": "./dist/lorebook.d.ts",
-      "import": "./dist/lorebook.js"
+      "import": {
+        "types": "./dist/lorebook.d.ts",
+        "default": "./dist/lorebook.js"
+      },
+      "require": {
+        "types": "./dist/lorebook.d.cts",
+        "default": "./dist/lorebook.cjs"
+      }
     },
     "./loader": {
-      "types": "./dist/loader.d.ts",
-      "import": "./dist/loader.js"
+      "import": {
+        "types": "./dist/loader.d.ts",
+        "default": "./dist/loader.js"
+      },
+      "require": {
+        "types": "./dist/loader.d.cts",
+        "default": "./dist/loader.cjs"
+      }
     },
     "./exporter": {
-      "types": "./dist/exporter.d.ts",
-      "import": "./dist/exporter.js"
+      "import": {
+        "types": "./dist/exporter.d.ts",
+        "default": "./dist/exporter.js"
+      },
+      "require": {
+        "types": "./dist/exporter.d.cts",
+        "default": "./dist/exporter.cjs"
+      }
     },
     "./normalizer": {
-      "types": "./dist/normalizer.d.ts",
-      "import": "./dist/normalizer.js"
+      "import": {
+        "types": "./dist/normalizer.d.ts",
+        "default": "./dist/normalizer.js"
+      },
+      "require": {
+        "types": "./dist/normalizer.d.cts",
+        "default": "./dist/normalizer.cjs"
+      }
     },
     "./tokenizers": {
-      "types": "./dist/tokenizers.d.ts",
-      "import": "./dist/tokenizers.js"
+      "import": {
+        "types": "./dist/tokenizers.d.ts",
+        "default": "./dist/tokenizers.js"
+      },
+      "require": {
+        "types": "./dist/tokenizers.d.cts",
+        "default": "./dist/tokenizers.cjs"
+      }
     },
     "./media": {
-      "types": "./dist/media.d.ts",
-      "import": "./dist/media.js"
+      "import": {
+        "types": "./dist/media.d.ts",
+        "default": "./dist/media.js"
+      },
+      "require": {
+        "types": "./dist/media.d.cts",
+        "default": "./dist/media.cjs"
+      }
     },
     "./federation": {
-      "types": "./dist/federation.d.ts",
-      "import": "./dist/federation.js"
+      "import": {
+        "types": "./dist/federation.d.ts",
+        "default": "./dist/federation.js"
+      },
+      "require": {
+        "types": "./dist/federation.d.cts",
+        "default": "./dist/federation.cjs"
+      }
     },
     "./app-framework": {
-      "types": "./dist/app-framework.d.ts",
-      "import": "./dist/app-framework.js"
+      "import": {
+        "types": "./dist/app-framework.d.ts",
+        "default": "./dist/app-framework.js"
+      },
+      "require": {
+        "types": "./dist/app-framework.d.cts",
+        "default": "./dist/app-framework.cjs"
+      }
     }
   },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup && node scripts/bundle-types.js",
+    "build:js": "tsup",
+    "build:types": "node scripts/bundle-types.js",
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "fflate": "^0.8.2",
+    "zod": "^3.22.4",
+    "gpt-tokenizer": "^3.4.0"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.33.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "react-hook-form": "^7.0.0",
+    "@hookform/resolvers": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "react-hook-form": {
+      "optional": true
+    },
+    "@hookform/resolvers": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
     "@character-foundry/core": "workspace:^",
     "@character-foundry/schemas": "workspace:^",
     "@character-foundry/png": "workspace:^",
@@ -81,9 +198,9 @@
     "@character-foundry/tokenizers": "workspace:^",
     "@character-foundry/media": "workspace:^",
     "@character-foundry/federation": "workspace:^",
-    "@character-foundry/app-framework": "workspace:^"
-  },
-  "devDependencies": {
+    "@character-foundry/app-framework": "workspace:^",
+    "dts-bundle-generator": "^9.5.1",
+    "tsup": "^8.5.1",
     "typescript": "^5.3.0"
   },
   "publishConfig": {
@@ -94,5 +211,15 @@
     "type": "git",
     "url": "https://github.com/character-foundry/character-foundry",
     "directory": "packages/character-foundry"
-  }
+  },
+  "keywords": [
+    "character-card",
+    "tavern",
+    "sillytavern",
+    "chara",
+    "voxta",
+    "ai",
+    "roleplay"
+  ],
+  "license": "MIT"
 }
