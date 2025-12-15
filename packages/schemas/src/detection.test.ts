@@ -200,26 +200,42 @@ describe('format detection', () => {
 // Issue #20: Tests for lenient structural checks and schema defaulting
 describe('lenient parsing (Issue #20)', () => {
   describe('looksLikeWrappedV2 vs isWrappedV2', () => {
-    it('looksLikeWrappedV2 accepts malformed wrapped cards that isWrappedV2 rejects', () => {
-      // Card with missing required field (personality is missing)
-      const malformed = {
+    it('isWrappedV2 accepts cards with missing optional string fields due to defaults', () => {
+      // Card with missing field (personality is missing) - now passes due to .default('')
+      const missingField = {
         spec: 'chara_card_v2',
         spec_version: '2.0',
         data: {
           name: 'Céline',
           description: 'A character',
-          // personality: MISSING
+          // personality: MISSING - gets defaulted to ''
           scenario: '',
           first_mes: 'Hello',
           mes_example: '',
         },
       };
 
-      // Strict Zod validation fails
-      expect(isWrappedV2(malformed)).toBe(false);
+      // Now passes due to .default('') on string fields
+      expect(isWrappedV2(missingField)).toBe(true);
+      expect(looksLikeWrappedV2(missingField)).toBe(true);
+    });
 
-      // Structural check passes
-      expect(looksLikeWrappedV2(malformed)).toBe(true);
+    it('looksLikeWrappedV2 accepts malformed cards with wrong field types that isWrappedV2 rejects', () => {
+      // Card with wrong type (name is number instead of string)
+      const wrongType = {
+        spec: 'chara_card_v2',
+        spec_version: '2.0',
+        data: {
+          name: 12345, // Wrong type - should be string
+          description: 'A character',
+        },
+      };
+
+      // Strict Zod validation fails due to wrong type
+      expect(isWrappedV2(wrongType)).toBe(false);
+
+      // Structural check passes (doesn't validate types)
+      expect(looksLikeWrappedV2(wrongType)).toBe(true);
     });
 
     it('looksLikeWrappedV2 accepts cards with wrong spec_version', () => {

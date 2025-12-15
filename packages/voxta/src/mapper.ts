@@ -164,14 +164,14 @@ export function ccv3ToVoxta(card: CCv3Data): VoxtaCharacter {
     Label: cardData.nickname || voxtaExt?.label,
     Version: cardData.character_version,
 
-    // Core content
+    // Core content (handle nullable personality/mes_example)
     Description: appearance,
-    Personality: standardToVoxta(cardData.personality),
+    Personality: standardToVoxta(cardData.personality ?? ''),
     Profile: standardToVoxta(cardData.description),
     Scenario: standardToVoxta(cardData.scenario),
     FirstMessage: standardToVoxta(cardData.first_mes),
     AlternativeFirstMessages: (cardData.alternate_greetings || []).map(standardToVoxta),
-    MessageExamples: standardToVoxta(cardData.mes_example || ''),
+    MessageExamples: standardToVoxta(cardData.mes_example ?? ''),
 
     // System prompts
     SystemPrompt: standardToVoxta(cardData.system_prompt || ''),

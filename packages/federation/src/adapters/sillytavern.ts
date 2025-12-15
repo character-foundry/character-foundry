@@ -143,10 +143,10 @@ export function ccv3ToSTCharacter(card: CCv3Data, filename?: string): STCharacte
     data: {
       name: data.name,
       description: data.description,
-      personality: data.personality,
+      personality: data.personality ?? '',  // Coerce null to empty string
       scenario: data.scenario,
       first_mes: data.first_mes,
-      mes_example: data.mes_example,
+      mes_example: data.mes_example ?? '',  // Coerce null to empty string
       creator_notes: data.creator_notes,
       system_prompt: data.system_prompt,
       post_history_instructions: data.post_history_instructions,

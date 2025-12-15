@@ -63,23 +63,24 @@ export const CCv3CharacterBookSchema = z.object({
  * We use .default() to make parsing lenient while still producing valid output.
  */
 export const CCv3DataInnerSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  personality: z.string(),
-  scenario: z.string(),
-  first_mes: z.string(),
-  mes_example: z.string(),
+  // Core fields - use .default('') to handle missing fields in malformed cards
+  name: z.string().default(''),
+  description: z.string().default(''),
+  personality: z.string().nullable().default(''),  // Can be null in wild (141 cards)
+  scenario: z.string().default(''),
+  first_mes: z.string().default(''),
+  mes_example: z.string().nullable().default(''),  // Can be null in wild (186 cards)
   // "Required" per spec but often missing in wild - use defaults for leniency
   creator: z.string().default(''),
   character_version: z.string().default(''),
   tags: z.array(z.string()).default([]),
-  group_only_greetings: z.array(z.string()).default([]),  // Rarely seen in wild
+  group_only_greetings: z.array(z.string()).default([]),
   // Optional fields
   creator_notes: z.string().optional(),
   system_prompt: z.string().optional(),
   post_history_instructions: z.string().optional(),
   alternate_greetings: z.array(z.string()).optional(),
-  character_book: CCv3CharacterBookSchema.optional(),
+  character_book: CCv3CharacterBookSchema.optional().nullable(),
   extensions: z.record(z.unknown()).optional(),
   // v3 specific
   assets: z.array(AssetDescriptorSchema).optional(),

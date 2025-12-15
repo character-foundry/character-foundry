@@ -120,14 +120,14 @@ export function writeVoxta(
     Name: cardData.name,
     Version: cardData.character_version,
 
-    // Core Info - apply macro conversion
+    // Core Info - apply macro conversion (handle nullable personality/mes_example)
     Description: appearance,
-    Personality: standardToVoxta(cardData.personality),
+    Personality: standardToVoxta(cardData.personality ?? ''),
     Profile: standardToVoxta(cardData.description),
     Scenario: standardToVoxta(cardData.scenario),
     FirstMessage: standardToVoxta(cardData.first_mes),
     AlternativeFirstMessages: (cardData.alternate_greetings || []).map(standardToVoxta),
-    MessageExamples: standardToVoxta(cardData.mes_example || ''),
+    MessageExamples: standardToVoxta(cardData.mes_example ?? ''),
 
     // System prompts - Voxta supports these
     SystemPrompt: cardData.system_prompt ? standardToVoxta(cardData.system_prompt) : undefined,

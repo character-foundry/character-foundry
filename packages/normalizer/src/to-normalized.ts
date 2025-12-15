@@ -23,10 +23,10 @@ export function normalizeV2(input: CCv2Data | CCv2Wrapped): NormalizedCard {
   return {
     name: data.name,
     description: data.description,
-    personality: data.personality,
+    personality: data.personality ?? '',  // Coerce null to empty string
     scenario: data.scenario,
     firstMes: data.first_mes,
-    mesExample: data.mes_example,
+    mesExample: data.mes_example ?? '',  // Coerce null to empty string
     systemPrompt: data.system_prompt,
     postHistoryInstructions: data.post_history_instructions,
     creatorNotes: data.creator_notes,
@@ -35,7 +35,7 @@ export function normalizeV2(input: CCv2Data | CCv2Wrapped): NormalizedCard {
     tags: data.tags || [],
     creator: data.creator,
     characterVersion: data.character_version,
-    characterBook: data.character_book as CCv3CharacterBook | undefined,
+    characterBook: data.character_book ?? undefined,
     extensions: data.extensions || {},
   };
 }
@@ -49,10 +49,10 @@ export function normalizeV3(card: CCv3Data): NormalizedCard {
   return {
     name: data.name,
     description: data.description,
-    personality: data.personality,
+    personality: data.personality ?? '',  // Coerce null to empty string
     scenario: data.scenario,
     firstMes: data.first_mes,
-    mesExample: data.mes_example,
+    mesExample: data.mes_example ?? '',  // Coerce null to empty string
     systemPrompt: data.system_prompt,
     postHistoryInstructions: data.post_history_instructions,
     creatorNotes: data.creator_notes,
@@ -61,7 +61,7 @@ export function normalizeV3(card: CCv3Data): NormalizedCard {
     tags: data.tags || [],
     creator: data.creator,
     characterVersion: data.character_version,
-    characterBook: data.character_book,
+    characterBook: data.character_book ?? undefined,
     extensions: data.extensions || {},
   };
 }

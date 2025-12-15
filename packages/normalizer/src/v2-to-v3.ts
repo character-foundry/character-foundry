@@ -8,6 +8,7 @@
 import type {
   CCv2Data,
   CCv2Wrapped,
+  CCv2LorebookEntry,
   CCv3Data,
   CCv3CharacterBook,
   CCv3LorebookEntry,
@@ -18,7 +19,7 @@ import { getV2Data } from '@character-foundry/schemas';
  * Convert CCv2 lorebook entry to CCv3 format
  */
 function convertLorebookEntry(
-  entry: CCv2Data['character_book'] extends { entries: (infer E)[] } | undefined ? E : never,
+  entry: CCv2LorebookEntry,
   index: number
 ): CCv3LorebookEntry {
   return {

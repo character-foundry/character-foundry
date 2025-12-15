@@ -46,7 +46,7 @@ export interface CardForCounting {
         content?: string;
         enabled?: boolean;
       }>;
-    };
+    } | null;
   };
   // Support for unwrapped cards
   name?: string;
@@ -64,7 +64,7 @@ export interface CardForCounting {
       content?: string;
       enabled?: boolean;
     }>;
-  };
+  } | null;
 }
 
 /**

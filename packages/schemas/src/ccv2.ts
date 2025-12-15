@@ -16,10 +16,10 @@ import { z } from 'zod';
 export const CCv2LorebookEntrySchema = z.object({
   keys: z.array(z.string()),
   content: z.string(),
-  extensions: z.record(z.unknown()),
   enabled: z.boolean(),
   insertion_order: z.number().int(),
   // Optional fields
+  extensions: z.record(z.unknown()).optional(),
   case_sensitive: z.boolean().optional(),
   name: z.string().optional(),
   priority: z.number().int().optional(),
@@ -48,18 +48,19 @@ export const CCv2CharacterBookSchema = z.object({
  * Character Card v2 data structure schema
  */
 export const CCv2DataSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  personality: z.string(),
-  scenario: z.string(),
-  first_mes: z.string(),
-  mes_example: z.string(),
+  // Core fields - use .default('') to handle missing fields in malformed cards
+  name: z.string().default(''),
+  description: z.string().default(''),
+  personality: z.string().nullable().default(''),  // Can be null in wild (141 cards)
+  scenario: z.string().default(''),
+  first_mes: z.string().default(''),
+  mes_example: z.string().nullable().default(''),  // Can be null in wild (186 cards)
   // Optional fields
   creator_notes: z.string().optional(),
   system_prompt: z.string().optional(),
   post_history_instructions: z.string().optional(),
   alternate_greetings: z.array(z.string()).optional(),
-  character_book: CCv2CharacterBookSchema.optional(),
+  character_book: CCv2CharacterBookSchema.optional().nullable(),
   tags: z.array(z.string()).optional(),
   creator: z.string().optional(),
   character_version: z.string().optional(),

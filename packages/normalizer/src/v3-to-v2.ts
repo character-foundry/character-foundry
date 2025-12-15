@@ -11,6 +11,7 @@ import type {
   CCv2CharacterBook,
   CCv2LorebookEntry,
   CCv3Data,
+  CCv3LorebookEntry,
 } from '@character-foundry/schemas';
 
 /**
@@ -24,9 +25,7 @@ export const V3_TO_V2_LOST_FIELDS = [
 /**
  * Convert CCv3 lorebook entry to CCv2 format
  */
-function convertLorebookEntry(
-  entry: CCv3Data['data']['character_book'] extends { entries: (infer E)[] } | undefined ? E : never
-): CCv2LorebookEntry {
+function convertLorebookEntry(entry: CCv3LorebookEntry): CCv2LorebookEntry {
   return {
     keys: entry.keys,
     content: entry.content,

@@ -70,7 +70,7 @@ export function mergeCharacterEdits(
   }
 
   if (edits.personality !== undefined) {
-    char.Personality = standardToVoxta(edits.personality);
+    char.Personality = standardToVoxta(edits.personality ?? '');
   }
 
   if (edits.scenario !== undefined) {
@@ -86,7 +86,7 @@ export function mergeCharacterEdits(
   }
 
   if (edits.mes_example !== undefined) {
-    char.MessageExamples = standardToVoxta(edits.mes_example);
+    char.MessageExamples = standardToVoxta(edits.mes_example ?? '');
   }
 
   // System prompts
