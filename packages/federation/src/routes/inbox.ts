@@ -13,9 +13,27 @@ import type {
   InstallActivity,
   ActivityType,
 } from '../types.js';
+import type {
+  ModerationStore,
+  FlagActivity,
+  BlockActivity,
+} from '../moderation/types.js';
 import { parseActivity, parseForkActivity, parseInstallActivity } from '../activitypub.js';
+import { parseFlagActivity, parseBlockActivity } from '../moderation/activities.js';
 import { assertFederationEnabled } from '../index.js';
 import { parseSignatureHeader, verifyHttpSignature, calculateDigest } from '../http-signatures.js';
+
+/**
+ * Extract host from an actor ID URL
+ */
+function extractHostFromActorId(actorId: string): string | null {
+  try {
+    const url = new URL(actorId);
+    return url.host;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Handle incoming ActivityPub activities
@@ -81,11 +99,37 @@ export async function handleInbox(
     onLike?: (activity: FederatedActivity) => Promise<void>;
     onAnnounce?: (activity: FederatedActivity) => Promise<void>;
     onUndo?: (activity: FederatedActivity) => Promise<void>;
+    // Moderation handlers
+    onFlag?: (activity: FlagActivity, parsedReport: ReturnType<typeof parseFlagActivity>) => Promise<void>;
+    onBlock?: (activity: BlockActivity, parsedBlock: ReturnType<typeof parseBlockActivity>) => Promise<void>;
+    /**
+     * Moderation store for instance blocking.
+     * If provided, blocked instances are rejected BEFORE signature verification (saves CPU).
+     */
+    moderationStore?: ModerationStore;
   }
 ): Promise<InboxResult> {
   assertFederationEnabled('handleInbox');
 
   try {
+    // Early instance block check - BEFORE signature verification (saves CPU for blocked instances)
+    // We extract actor from the raw body to avoid full parsing costs
+    if (options.moderationStore) {
+      const actorId = typeof body === 'object' && body !== null && 'actor' in body
+        ? String((body as Record<string, unknown>).actor)
+        : null;
+
+      if (actorId) {
+        const host = extractHostFromActorId(actorId);
+        if (host && await options.moderationStore.isInstanceBlocked(host)) {
+          return {
+            accepted: false,
+            error: `Instance ${host} is blocked`,
+          };
+        }
+      }
+    }
+
     // Parse the activity
     let activity: FederatedActivity;
     try {
@@ -321,6 +365,22 @@ export async function handleInbox(
           await options.onUndo(activity);
         }
         return { accepted: true, activityType: 'Undo' };
+      }
+
+      case 'Flag': {
+        const parsed = parseFlagActivity(activity);
+        if (options.onFlag && parsed) {
+          await options.onFlag(activity as unknown as FlagActivity, parsed);
+        }
+        return { accepted: true, activityType: 'Flag' };
+      }
+
+      case 'Block': {
+        const parsed = parseBlockActivity(activity);
+        if (options.onBlock && parsed) {
+          await options.onBlock(activity as unknown as BlockActivity, parsed);
+        }
+        return { accepted: true, activityType: 'Block' };
       }
 
       default: {

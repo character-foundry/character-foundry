@@ -124,7 +124,9 @@ export type ActivityType =
   | 'Follow'    // Subscribe to creator
   | 'Undo'      // Undo previous activity
   | 'Fork'      // Fork/derive from another card
-  | 'Install';  // Consumer installed a card (stats notification)
+  | 'Install'   // Consumer installed a card (stats notification)
+  | 'Flag'      // Report content/actor (moderation)
+  | 'Block';    // Instance-level block (moderation)
 
 /**
  * Platform role in federation topology
@@ -370,7 +372,14 @@ export type FederationEventType =
   | 'sync:failed'
   | 'sync:skipped'
   | 'actor:followed'
-  | 'actor:unfollowed';
+  | 'actor:unfollowed'
+  // Moderation events
+  | 'moderation:report-received'    // When a Flag activity is received
+  | 'moderation:action-taken'       // When a moderation action is taken
+  | 'moderation:instance-blocked'   // When an instance is blocked
+  | 'moderation:instance-unblocked' // When an instance is unblocked
+  | 'moderation:policy-matched'     // When content matches a policy rule
+  | 'moderation:policy-rejected';   // When content is rejected by policy
 
 /**
  * Federation event

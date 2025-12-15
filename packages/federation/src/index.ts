@@ -234,3 +234,50 @@ export {
   signRequest,
   calculateDigest,
 } from './http-signatures.js';
+
+// Moderation - community-based content moderation tools
+export {
+  // Activity types
+  type FlagActivity,
+  type BlockActivity,
+  // Report types
+  type ModerationReport,
+  type ReportStatus,
+  type ReportCategory,
+  // Action types
+  type ModerationAction,
+  type ActionType,
+  // Block types
+  type InstanceBlock,
+  type InstanceBlockLevel,
+  // Policy types
+  type ContentPolicy,
+  type ContentPolicyRule,
+  type PolicyRuleType,
+  type PolicyAction,
+  type PolicyEvaluationResult,
+  // Rate limit types
+  type RateLimitBucket,
+  type RateLimitResult,
+  // Store interface
+  type ModerationStore,
+  // Event types
+  type ModerationEvent,
+  type ModerationEventType,
+  type ModerationEventListener,
+  // Activities
+  MODERATION_ACTIVITY_CONTEXT,
+  createFlagActivity,
+  parseFlagActivity,
+  validateFlagActivity as validateFlagActivityFields,
+  createBlockActivity,
+  parseBlockActivity,
+  validateBlockActivity as validateBlockActivityFields,
+  // Stores
+  MemoryModerationStore,
+  D1ModerationStore,
+  // Engines
+  PolicyEngine,
+  RateLimiter,
+  type RateLimiterConfig,
+} from './moderation/index.js';
