@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/voxta",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Voxta package format reader and writer",
   "type": "module",
   "exports": {
@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@character-foundry/core": "workspace:^",
+    "@character-foundry/media": "workspace:^",
     "@character-foundry/schemas": "workspace:^",
     "fflate": "^0.8.0"
   },

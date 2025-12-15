@@ -17,6 +17,7 @@ import {
   preflightZipSizes,
   ZipPreflightError,
 } from '@character-foundry/core/zip';
+import { detectImageFormat, getExtension } from '@character-foundry/media';
 import type { CCv3Data, CCv3CharacterBook } from '@character-foundry/schemas';
 import type {
   VoxtaCharacter,
@@ -672,9 +673,12 @@ export function addCharacterToPackage(
     { level: compressionLevel },
   ];
 
-  // Add thumbnail if provided
+  // Add thumbnail if provided (detect format)
   if (thumbnail) {
-    zipEntries[`Characters/${charId}/thumbnail.png`] = [thumbnail, { level: compressionLevel }];
+    const thumbData = thumbnail instanceof Uint8Array ? thumbnail : new Uint8Array(thumbnail);
+    const thumbFormat = detectImageFormat(thumbData);
+    const thumbExt = thumbFormat ? getExtension(thumbFormat) : 'png';
+    zipEntries[`Characters/${charId}/thumbnail.${thumbExt}`] = [thumbnail, { level: compressionLevel }];
   }
 
   // Add assets if provided

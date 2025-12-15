@@ -224,12 +224,6 @@ importers:
       '@character-foundry/core':
         specifier: workspace:^
         version: link:../core
-      '@character-foundry/exporter':
-        specifier: workspace:^
-        version: link:../exporter
-      '@character-foundry/loader':
-        specifier: workspace:^
-        version: link:../loader
       '@character-foundry/schemas':
         specifier: workspace:^
         version: link:../schemas
@@ -398,6 +392,9 @@ importers:
       '@character-foundry/core':
         specifier: workspace:^
         version: link:../core
+      '@character-foundry/media':
+        specifier: workspace:^
+        version: link:../media
       '@character-foundry/schemas':
         specifier: workspace:^
         version: link:../schemas

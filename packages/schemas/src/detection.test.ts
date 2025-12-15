@@ -4,6 +4,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { detectSpec, detectSpecDetailed, hasLorebook, looksLikeCard } from './detection.js';
+import { looksLikeWrappedV2, getV2Data, isWrappedV2 } from './ccv2.js';
+import { looksLikeV3Card, isV3Card, CCv3DataInnerSchema } from './ccv3.js';
 
 describe('format detection', () => {
   describe('detectSpec', () => {
@@ -191,6 +193,147 @@ describe('format detection', () => {
       expect(looksLikeCard(null)).toBe(false);
       expect(looksLikeCard({})).toBe(false);
       expect(looksLikeCard({ name: '' })).toBe(false);
+    });
+  });
+});
+
+// Issue #20: Tests for lenient structural checks and schema defaulting
+describe('lenient parsing (Issue #20)', () => {
+  describe('looksLikeWrappedV2 vs isWrappedV2', () => {
+    it('looksLikeWrappedV2 accepts malformed wrapped cards that isWrappedV2 rejects', () => {
+      // Card with missing required field (personality is missing)
+      const malformed = {
+        spec: 'chara_card_v2',
+        spec_version: '2.0',
+        data: {
+          name: 'Céline',
+          description: 'A character',
+          // personality: MISSING
+          scenario: '',
+          first_mes: 'Hello',
+          mes_example: '',
+        },
+      };
+
+      // Strict Zod validation fails
+      expect(isWrappedV2(malformed)).toBe(false);
+
+      // Structural check passes
+      expect(looksLikeWrappedV2(malformed)).toBe(true);
+    });
+
+    it('looksLikeWrappedV2 accepts cards with wrong spec_version', () => {
+      const wrongVersion = {
+        spec: 'chara_card_v2',
+        spec_version: '1.0', // Wrong but still recognizable
+        data: { name: 'Test' },
+      };
+
+      expect(isWrappedV2(wrongVersion)).toBe(false);
+      expect(looksLikeWrappedV2(wrongVersion)).toBe(true);
+    });
+
+    it('looksLikeWrappedV2 rejects non-wrapped structures', () => {
+      expect(looksLikeWrappedV2(null)).toBe(false);
+      expect(looksLikeWrappedV2({ spec: 'chara_card_v2' })).toBe(false); // missing data
+      expect(looksLikeWrappedV2({ data: { name: 'Test' } })).toBe(false); // missing spec
+      expect(looksLikeWrappedV2({ spec: 'chara_card_v3', data: {} })).toBe(false); // wrong spec
+    });
+  });
+
+  describe('getV2Data with malformed cards', () => {
+    it('unwraps malformed wrapped cards correctly', () => {
+      const malformed = {
+        spec: 'chara_card_v2',
+        spec_version: '2.0',
+        data: {
+          name: 'Céline',
+          description: 'Test',
+        },
+      };
+
+      const result = getV2Data(malformed as any);
+
+      // Should return the inner data, not the wrapper
+      expect(result.name).toBe('Céline');
+      expect((result as any).spec).toBeUndefined();
+    });
+
+    it('returns unwrapped cards as-is', () => {
+      const unwrapped = {
+        name: 'Unwrapped Char',
+        description: 'Test',
+        personality: 'Friendly',
+        scenario: '',
+        first_mes: 'Hi',
+        mes_example: '',
+      };
+
+      const result = getV2Data(unwrapped as any);
+
+      expect(result.name).toBe('Unwrapped Char');
+    });
+  });
+
+  describe('looksLikeV3Card', () => {
+    it('accepts V3 cards with missing optional fields', () => {
+      const minimalV3 = {
+        spec: 'chara_card_v3',
+        spec_version: '3.0',
+        data: { name: 'Test' }, // Missing group_only_greetings, etc.
+      };
+
+      expect(looksLikeV3Card(minimalV3)).toBe(true);
+    });
+
+    it('rejects non-V3 structures', () => {
+      expect(looksLikeV3Card(null)).toBe(false);
+      expect(looksLikeV3Card({ spec: 'chara_card_v2', data: {} })).toBe(false);
+      expect(looksLikeV3Card({ spec: 'chara_card_v3' })).toBe(false); // missing data
+    });
+  });
+
+  describe('V3 schema with defaults', () => {
+    it('parses V3 inner data with missing optional fields using defaults', () => {
+      const minimal = {
+        name: 'Test Character',
+        description: 'A test',
+        personality: 'Friendly',
+        scenario: '',
+        first_mes: 'Hello',
+        mes_example: '',
+        // Missing: creator, character_version, tags, group_only_greetings
+      };
+
+      const result = CCv3DataInnerSchema.parse(minimal);
+
+      // Defaults should be applied
+      expect(result.creator).toBe('');
+      expect(result.character_version).toBe('');
+      expect(result.tags).toEqual([]);
+      expect(result.group_only_greetings).toEqual([]);
+    });
+
+    it('preserves provided values over defaults', () => {
+      const withValues = {
+        name: 'Test Character',
+        description: 'A test',
+        personality: 'Friendly',
+        scenario: '',
+        first_mes: 'Hello',
+        mes_example: '',
+        creator: 'Custom Creator',
+        character_version: '2.0',
+        tags: ['custom', 'tags'],
+        group_only_greetings: ['Hello everyone!'],
+      };
+
+      const result = CCv3DataInnerSchema.parse(withValues);
+
+      expect(result.creator).toBe('Custom Creator');
+      expect(result.character_version).toBe('2.0');
+      expect(result.tags).toEqual(['custom', 'tags']);
+      expect(result.group_only_greetings).toEqual(['Hello everyone!']);
     });
   });
 });

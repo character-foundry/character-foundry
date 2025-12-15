@@ -83,6 +83,74 @@ describe('ccv2ToCCv3', () => {
     expect(result.data.name).toBe('V2 Character');
   });
 
+  // Issue #20: Malformed wrapped V2 cards that fail strict Zod validation
+  // but still have valid data in the data field
+  it('should handle wrapped v2 with missing required fields in data (Issue #20)', () => {
+    // This card is wrapped but data is missing some "required" fields
+    // (e.g., personality is missing). Strict Zod validation would reject it.
+    const malformedWrapped = {
+      spec: 'chara_card_v2',
+      spec_version: '2.0',
+      data: {
+        name: 'Céline',
+        description: 'A character with missing fields',
+        // personality is MISSING
+        scenario: 'Test scenario',
+        first_mes: 'Hello',
+        mes_example: 'Example',
+      },
+    };
+
+    const result = ccv2ToCCv3(malformedWrapped as CCv2Wrapped);
+
+    // Should still extract the name correctly (the bug was returning undefined)
+    expect(result.data.name).toBe('Céline');
+    expect(result.data.description).toBe('A character with missing fields');
+    // Missing fields should be defaulted
+    expect(result.data.personality).toBe('');
+  });
+
+  it('should handle wrapped v2 with null fields', () => {
+    const wrappedWithNulls = {
+      spec: 'chara_card_v2',
+      spec_version: '2.0',
+      data: {
+        name: 'Test Char',
+        description: 'Description',
+        personality: null, // null instead of string
+        scenario: '',
+        first_mes: 'Hello',
+        mes_example: '',
+      },
+    };
+
+    const result = ccv2ToCCv3(wrappedWithNulls as unknown as CCv2Wrapped);
+
+    expect(result.data.name).toBe('Test Char');
+    // null should be defaulted to empty string via ?? operator
+    expect(result.data.personality).toBe('');
+  });
+
+  it('should handle wrapped v2 with wrong spec_version', () => {
+    // Some tools export with spec_version: "1.0" or other variations
+    const wrongVersion = {
+      spec: 'chara_card_v2',
+      spec_version: '1.0', // Wrong version but still wrapped format
+      data: {
+        name: 'Wrong Version Char',
+        description: 'Desc',
+        personality: 'Nice',
+        scenario: '',
+        first_mes: 'Hi',
+        mes_example: '',
+      },
+    };
+
+    const result = ccv2ToCCv3(wrongVersion as unknown as CCv2Wrapped);
+
+    expect(result.data.name).toBe('Wrong Version Char');
+  });
+
   it('should preserve character book', () => {
     const v2WithBook: CCv2Data = {
       ...testV2Data,

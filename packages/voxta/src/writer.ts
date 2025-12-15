@@ -6,6 +6,7 @@
 
 import { zipSync, type Zippable } from 'fflate';
 import { type BinaryData, fromString, generateUUID } from '@character-foundry/core';
+import { detectImageFormat, getExtension } from '@character-foundry/media';
 import type { CCv3Data } from '@character-foundry/schemas';
 import type {
   VoxtaWriteAsset,
@@ -210,13 +211,20 @@ export function writeVoxta(
     assetCount++;
   }
 
-  // 4. Add thumbnail
+  // 4. Add thumbnail (detect format - supports PNG, WebP, JPEG)
   if (!mainThumbnail && assets.length > 0) {
     mainThumbnail = assets.find((a) => a.type === 'icon');
   }
 
   if (mainThumbnail) {
-    zipEntries[`Characters/${characterId}/thumbnail.png`] = [
+    const thumbData =
+      mainThumbnail.data instanceof Uint8Array
+        ? mainThumbnail.data
+        : new Uint8Array(mainThumbnail.data);
+    const thumbFormat = detectImageFormat(thumbData);
+    const thumbExt = thumbFormat ? getExtension(thumbFormat) : 'png';
+
+    zipEntries[`Characters/${characterId}/thumbnail.${thumbExt}`] = [
       mainThumbnail.data,
       { level: compressionLevel as CompressionLevel },
     ];
@@ -242,9 +250,16 @@ export function writeVoxta(
       { level: compressionLevel as CompressionLevel },
     ];
 
-    // Add scenario thumbnail if provided
+    // Add scenario thumbnail if provided (detect format)
     if (options.scenarioThumbnail) {
-      zipEntries[`Scenarios/${scenarioId}/thumbnail.png`] = [
+      const scenarioThumbData =
+        options.scenarioThumbnail instanceof Uint8Array
+          ? options.scenarioThumbnail
+          : new Uint8Array(options.scenarioThumbnail);
+      const scenarioThumbFormat = detectImageFormat(scenarioThumbData);
+      const scenarioThumbExt = scenarioThumbFormat ? getExtension(scenarioThumbFormat) : 'png';
+
+      zipEntries[`Scenarios/${scenarioId}/thumbnail.${scenarioThumbExt}`] = [
         options.scenarioThumbnail,
         { level: compressionLevel as CompressionLevel },
       ];

@@ -212,11 +212,14 @@ export async function optimize(
       const asset = images[i]!;
       printProgress('image', i + 1, images.length, basename(asset.path), options.verbose);
 
-      // Voxta hardcodes "thumbnail.png" - must stay PNG format
-      const isThumbnailPng =
+      // Voxta thumbnail.png - convert to WebP only if savings are worth it (>100KB)
+      const isVoxtaThumbnail =
         extracted.format === 'voxpkg' && basename(asset.path).toLowerCase() === 'thumbnail.png';
 
-      const effectiveImageOptions: ImageOptions = isThumbnailPng
+      // For small thumbnails (<100KB), keep as PNG - conversion overhead not worth it
+      const keepAsPng = isVoxtaThumbnail && asset.size < 100 * 1024;
+
+      const effectiveImageOptions: ImageOptions = keepAsPng
         ? { ...imageOptions, format: 'png' }
         : imageOptions;
 

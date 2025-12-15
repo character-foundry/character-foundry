@@ -135,11 +135,30 @@ export function parseV2Data(data: unknown): CCv2Data {
 }
 
 /**
- * Get v2 card data from wrapped or unwrapped format
+ * Check if data looks like a wrapped V2 card structurally (without strict validation).
+ * This is more lenient than isWrappedV2 - it just checks structure, not full schema validity.
+ */
+export function looksLikeWrappedV2(data: unknown): data is { spec: string; data: Record<string, unknown> } {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    obj.spec === 'chara_card_v2' &&
+    obj.data !== null &&
+    typeof obj.data === 'object'
+  );
+}
+
+/**
+ * Get v2 card data from wrapped or unwrapped format.
+ *
+ * Uses structural check instead of strict Zod validation to handle
+ * malformed cards that have the right structure but missing/invalid fields.
+ * The caller (e.g., ccv2ToCCv3) handles defaulting missing fields.
  */
 export function getV2Data(card: CCv2Data | CCv2Wrapped): CCv2Data {
-  if (isWrappedV2(card)) {
-    return card.data;
+  // Use structural check - more lenient than isWrappedV2 schema validation
+  if (looksLikeWrappedV2(card)) {
+    return card.data as CCv2Data;
   }
   return card;
 }

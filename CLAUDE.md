@@ -364,18 +364,18 @@ pnpm build && pnpm test
 |---------|---------|
 | `@character-foundry/character-foundry` | 0.1.3 |
 | `@character-foundry/core` | 0.1.3 |
-| `@character-foundry/schemas` | 0.2.0 |
+| `@character-foundry/schemas` | 0.2.1 |
 | `@character-foundry/png` | 0.0.5 |
 | `@character-foundry/charx` | 0.0.6 |
 | `@character-foundry/exporter` | 0.1.3 |
-| `@character-foundry/normalizer` | 0.1.3 |
+| `@character-foundry/normalizer` | 0.1.4 |
 | `@character-foundry/lorebook` | 0.0.2 |
-| `@character-foundry/voxta` | 0.1.11 |
+| `@character-foundry/voxta` | 0.1.12 |
 | `@character-foundry/loader` | 0.1.9 |
 | `@character-foundry/federation` | 0.5.0 |
 | `@character-foundry/media` | 0.1.2 |
 | `@character-foundry/tokenizers` | 0.1.1 |
-| `@character-foundry/cli` | 0.2.2 |
+| `@character-foundry/cli` | 0.2.3 |
 | `@character-foundry/app-framework` | 0.2.1 |
 
 ### Publishing Troubleshooting

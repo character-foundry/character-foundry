@@ -2,6 +2,7 @@
  * CCv2 to CCv3 Converter
  *
  * Converts CCv2 card data to CCv3 format.
+ * Handles malformed cards gracefully by defaulting missing fields.
  */
 
 import type {
@@ -11,7 +12,7 @@ import type {
   CCv3CharacterBook,
   CCv3LorebookEntry,
 } from '@character-foundry/schemas';
-import { getV2Data, isWrappedV2 } from '@character-foundry/schemas';
+import { getV2Data } from '@character-foundry/schemas';
 
 /**
  * Convert CCv2 lorebook entry to CCv3 format
@@ -56,10 +57,13 @@ function convertCharacterBook(
 }
 
 /**
- * Convert CCv2 card to CCv3 format
+ * Convert CCv2 card to CCv3 format.
  *
- * @param input - CCv2 card data (wrapped or unwrapped)
- * @returns CCv3 card data
+ * Philosophy: Be lenient on input - never completely drop data due to missing fields.
+ * Defaults are applied for any missing required fields to ensure valid output.
+ *
+ * @param input - CCv2 card data (wrapped or unwrapped, potentially malformed)
+ * @returns CCv3 card data with all required fields populated
  */
 export function ccv2ToCCv3(input: CCv2Data | CCv2Wrapped): CCv3Data {
   const data = getV2Data(input);
@@ -68,12 +72,14 @@ export function ccv2ToCCv3(input: CCv2Data | CCv2Wrapped): CCv3Data {
     spec: 'chara_card_v3',
     spec_version: '3.0',
     data: {
-      name: data.name,
-      description: data.description,
-      personality: data.personality,
-      scenario: data.scenario,
-      first_mes: data.first_mes,
-      mes_example: data.mes_example,
+      // Core required fields - default to empty string if missing/undefined
+      name: data.name ?? '',
+      description: data.description ?? '',
+      personality: data.personality ?? '',
+      scenario: data.scenario ?? '',
+      first_mes: data.first_mes ?? '',
+      mes_example: data.mes_example ?? '',
+      // Optional in V2, required in V3 - always provide defaults
       creator_notes: data.creator_notes || '',
       system_prompt: data.system_prompt || '',
       post_history_instructions: data.post_history_instructions || '',

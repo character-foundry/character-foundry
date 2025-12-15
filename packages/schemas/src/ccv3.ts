@@ -56,7 +56,11 @@ export const CCv3CharacterBookSchema = z.object({
 });
 
 /**
- * Character Card v3 inner data structure schema
+ * Character Card v3 inner data structure schema.
+ *
+ * Note: Fields like group_only_greetings, creator, character_version, and tags
+ * are technically "required" per V3 spec but rarely present in wild cards.
+ * We use .default() to make parsing lenient while still producing valid output.
  */
 export const CCv3DataInnerSchema = z.object({
   name: z.string(),
@@ -65,12 +69,11 @@ export const CCv3DataInnerSchema = z.object({
   scenario: z.string(),
   first_mes: z.string(),
   mes_example: z.string(),
-  // Required metadata
-  creator: z.string(),
-  character_version: z.string(),
-  tags: z.array(z.string()),
-  // Required field (can be empty array)
-  group_only_greetings: z.array(z.string()),
+  // "Required" per spec but often missing in wild - use defaults for leniency
+  creator: z.string().default(''),
+  character_version: z.string().default(''),
+  tags: z.array(z.string()).default([]),
+  group_only_greetings: z.array(z.string()).default([]),  // Rarely seen in wild
   // Optional fields
   creator_notes: z.string().optional(),
   system_prompt: z.string().optional(),
@@ -150,4 +153,18 @@ export function parseV3DataInner(data: unknown): CCv3DataInner {
  */
 export function getV3Data(card: CCv3Data): CCv3DataInner {
   return card.data;
+}
+
+/**
+ * Check if data looks like a V3 card structurally (without strict validation).
+ * More lenient than isV3Card - just checks structure, not full schema validity.
+ */
+export function looksLikeV3Card(data: unknown): data is { spec: string; data: Record<string, unknown> } {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    obj.spec === 'chara_card_v3' &&
+    obj.data !== null &&
+    typeof obj.data === 'object'
+  );
 }
