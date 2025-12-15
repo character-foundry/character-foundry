@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/media",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Image processing utilities for character cards",
   "type": "module",
   "exports": {

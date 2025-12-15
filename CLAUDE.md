@@ -374,7 +374,7 @@ pnpm build && pnpm test
 | `@character-foundry/voxta` | 0.1.13 |
 | `@character-foundry/loader` | 0.1.10 |
 | `@character-foundry/federation` | 0.5.2 |
-| `@character-foundry/media` | 0.1.2 |
+| `@character-foundry/media` | 0.1.3 |
 | `@character-foundry/tokenizers` | 0.1.3 |
 | `@character-foundry/cli` | 0.3.1 |
 | `@character-foundry/app-framework` | 0.2.2 |

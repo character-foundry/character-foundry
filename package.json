@@ -21,7 +21,8 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
-    "verify-build": "node scripts/verify-build.js"
+    "verify-build": "node scripts/verify-build.js",
+    "check-deps": "node scripts/check-published-deps.js"
   },
   "devDependencies": {
     "turbo": "^2.0.0",
