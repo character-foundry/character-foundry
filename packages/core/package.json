@@ -35,8 +35,10 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
+  "dependencies": {
+    "fflate": "^0.8.1"
+  },
   "devDependencies": {
-    "fflate": "^0.8.1",
     "tsup": "^8.5.1",
     "typescript": "^5.3.0",
     "vitest": "^2.0.0"
