@@ -246,13 +246,30 @@ export async function validateActivitySignature(
     }
   }
 
-  // Extract actor ID from keyId (format: actorId#main-key)
-  const actorId = parsed.keyId.split('#')[0]!;
+  // Verify the keyId matches the activity actor using strict URL equality
+  // Key ID format: "https://example.com/actors/alice#main-key"
+  // Actor format: "https://example.com/actors/alice"
+  // @security Strict equality prevents URL confusion attacks where:
+  // - actor: https://evil.com/victim
+  // - keyId: https://evil.com/victim-fake#main-key (would match with startsWith)
+  let keyIdBase: string;
+  let actorBase: string;
+  try {
+    const keyIdUrl = new URL(parsed.keyId);
+    const actorUrl = new URL(activity.actor);
+    // Extract base (origin + pathname) - key ID has fragment, actor doesn't
+    keyIdBase = `${keyIdUrl.origin}${keyIdUrl.pathname}`;
+    actorBase = `${actorUrl.origin}${actorUrl.pathname}`;
+  } catch {
+    return { valid: false, error: 'Invalid key ID or actor URL' };
+  }
 
-  // Verify the keyId matches the activity actor
-  if (!activity.actor.startsWith(actorId)) {
+  if (keyIdBase !== actorBase) {
     return { valid: false, error: 'Key ID does not match activity actor' };
   }
+
+  // Extract actor ID from keyId for fetching
+  const actorId = keyIdBase;
 
   // Fetch the actor to get their public key
   const actor = await options.fetchActor(actorId);

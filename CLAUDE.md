@@ -371,7 +371,7 @@ pnpm build && pnpm test
 | `@character-foundry/lorebook` | 0.0.2 |
 | `@character-foundry/voxta` | 0.1.11 |
 | `@character-foundry/loader` | 0.1.9 |
-| `@character-foundry/federation` | 0.3.2 |
+| `@character-foundry/federation` | 0.3.3 |
 | `@character-foundry/media` | 0.1.2 |
 | `@character-foundry/tokenizers` | 0.1.1 |
 | `@character-foundry/cli` | 0.1.0 |

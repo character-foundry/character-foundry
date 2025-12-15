@@ -1,7 +1,7 @@
 # Federation Package Documentation
 
 **Package:** `@character-foundry/federation`
-**Version:** 0.3.2
+**Version:** 0.3.3
 **Environment:** Node.js (>=18), Browser, and Cloudflare Workers
 
 The `@character-foundry/federation` package provides experimental ActivityPub-based federation for syncing character cards across platforms.
@@ -999,6 +999,20 @@ const result = await validateHttpSignature(activity, headers, {
 - `(request-target)` header MUST be signed
 - `host` header MUST be present and signed
 - `date` header MUST be present and signed
+
+> **⚠️ CRITICAL: Path Must Match Your Route**
+>
+> The `path` option MUST match the actual request path. If your inbox is mounted at
+> `/api/federation/inbox`, you must pass that exact path—not `/inbox`. Signature
+> verification will fail if the path doesn't match what the sender signed.
+>
+> ```typescript
+> // ❌ WRONG - signatures will fail to verify
+> handleInbox(body, headers, { path: '/inbox', ... });
+>
+> // ✅ CORRECT - matches your actual route
+> handleInbox(body, headers, { path: '/api/federation/inbox', ... });
+> ```
 
 **Security implications:**
 - Without `date` in signature: replay attacks possible
