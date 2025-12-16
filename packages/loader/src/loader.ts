@@ -275,7 +275,7 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
             const buffer = base64Decode(chunk.text);
 
             // Infer extension from assetId if possible
-            let extMatch = assetId.match(/\.([^.]+)$/);
+            const extMatch = assetId.match(/\.([^.]+)$/);
             let ext = extMatch ? extMatch[1] : null;
             
             if (!ext) {
@@ -338,7 +338,7 @@ function parseCharx(data: BinaryData, options: Required<ParseOptions>): ParseRes
     }));
 
   // Determine source format
-  let sourceFormat: SourceFormat = charxData.isRisuFormat ? 'charx_risu' : 'charx';
+  const sourceFormat: SourceFormat = charxData.isRisuFormat ? 'charx_risu' : 'charx';
 
   return {
     card: charxData.card,

@@ -1,10 +1,14 @@
-name: Publish Packages
+name: Publish Packages (Manual)
 
+# Manual fallback for publishing. Prefer using changesets via release.yml
+# This workflow is for emergency manual releases only
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
+    inputs:
+      confirm:
+        description: 'Type PUBLISH to confirm manual release'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -13,6 +17,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'PUBLISH'
     steps:
       - uses: actions/checkout@v4
 

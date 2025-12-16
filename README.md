@@ -44,35 +44,42 @@ import { CCv3Data } from '@character-foundry/character-foundry/schemas';
 
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
-| **`@character-foundry/character-foundry`** | **0.1.5** | **Meta package - installs everything** | - |
-| `@character-foundry/core` | 0.1.3 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
-| `@character-foundry/schemas` | 0.2.2 | CCv2, CCv3, Voxta types + Zod schemas + runtime validation | [docs/schemas.md](docs/schemas.md) |
-| `@character-foundry/png` | 0.0.6 | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
-| `@character-foundry/charx` | 0.0.7 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
-| `@character-foundry/voxta` | 0.1.13 | Voxta packages, multi-character, scenarios, collections, merge utilities | [docs/voxta.md](docs/voxta.md) |
-| `@character-foundry/lorebook` | 0.0.3 | Lorebook parsing, extraction, insertion | [docs/lorebook.md](docs/lorebook.md) |
-| `@character-foundry/loader` | 0.1.10 | Universal `parseCard()` + `parseLorebook()` + `parse()` with format detection | [docs/loader.md](docs/loader.md) |
-| `@character-foundry/exporter` | 0.1.4 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
-| `@character-foundry/normalizer` | 0.1.5 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
-| `@character-foundry/tokenizers` | 0.1.3 | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
-| `@character-foundry/media` | 0.1.3 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
-| `@character-foundry/image-utils` | 0.1.0 | Image URL extraction, SSRF protection, safety checks | - |
-| `@character-foundry/cli` | 0.3.1 | CLI tool: detect, info, validate, loss, export, extract-assets | [docs/cli.md](docs/cli.md) |
-| `@character-foundry/federation` | 0.5.2 | ActivityPub federation + HTTP signatures + D1 store (gated, opt-in) | [docs/federation.md](docs/federation.md) |
-| `@character-foundry/app-framework` | 0.2.2 | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
+| **`@character-foundry/character-foundry`** | **0.1.7** | **Main library - all functionality bundled** | - |
+| **`@character-foundry/cli`** | **0.3.1** | **CLI tool** | [docs/cli.md](docs/cli.md) |
+
+### Internal Packages (bundled, not published separately)
+
+| Package | Description | Docs |
+|---------|-------------|------|
+| `core` | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
+| `schemas` | CCv2, CCv3, Voxta types + Zod schemas + runtime validation | [docs/schemas.md](docs/schemas.md) |
+| `png` | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
+| `charx` | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
+| `voxta` | Voxta packages, multi-character, scenarios, collections, merge utilities | [docs/voxta.md](docs/voxta.md) |
+| `lorebook` | Lorebook parsing, extraction, insertion | [docs/lorebook.md](docs/lorebook.md) |
+| `loader` | Universal `parseCard()` + `parseLorebook()` + `parse()` with format detection | [docs/loader.md](docs/loader.md) |
+| `exporter` | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
+| `normalizer` | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
+| `tokenizers` | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
+| `media` | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
+| `image-utils` | Image URL extraction, SSRF protection, safety checks | - |
+| `federation` | ActivityPub federation + HTTP signatures + D1 store (gated, opt-in) | [docs/federation.md](docs/federation.md) |
+| `app-framework` | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
 
 ## Installation
 
-Packages are published to **npm**. Install everything:
-
 ```bash
+# Stable release
 npm install @character-foundry/character-foundry
+
+# Development release (latest features, may be unstable)
+npm install @character-foundry/character-foundry@dev
 ```
 
-Or install individual packages:
+For CLI:
 
 ```bash
-npm install @character-foundry/loader @character-foundry/exporter
+npm install -g @character-foundry/cli
 ```
 
 ## Features
@@ -239,6 +246,53 @@ pnpm test
 # Typecheck
 pnpm typecheck
 ```
+
+## Contributing
+
+We use a branch-based workflow with automated releases:
+
+### Branch Strategy
+
+```
+feature/* → dev → master
+            ↓       ↓
+         @dev    @latest (npm tags)
+```
+
+- **`feature/*`**: Feature branches for development
+- **`dev`**: Integration branch, auto-publishes to `@dev` npm tag
+- **`master`**: Production branch, releases to `@latest` npm tag
+
+### Making Changes
+
+1. Create a feature branch from `dev`:
+   ```bash
+   git checkout dev
+   git checkout -b feature/my-feature
+   ```
+
+2. Make your changes and commit
+
+3. Add a changeset describing your changes:
+   ```bash
+   pnpm changeset
+   # Select packages, change type (patch/minor/major), and describe
+   ```
+
+4. Push and create PR to `dev`
+
+5. After merge to `dev`:
+   - CI runs tests
+   - Auto-publishes to `@dev` npm tag
+   - Test with `npm install @character-foundry/character-foundry@dev`
+
+6. When ready for production: PR from `dev` → `master`
+   - Changesets bot creates a Release PR
+   - Merge Release PR to publish to npm `@latest`
+
+### Commit Guidelines
+
+We use [Changesets](https://github.com/changesets/changesets) for versioning. Run `pnpm changeset` after making changes to create a changeset file describing your changes.
 
 ## Security
 

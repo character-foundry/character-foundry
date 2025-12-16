@@ -240,7 +240,7 @@ export class SyncEngine {
 
       // Check for existing sync state
       const federatedId = generateCardId(this.baseUrl, `${sourcePlatform}-${sourceId}`);
-      let syncState = await this.stateStore.get(federatedId);
+      const syncState = await this.stateStore.get(federatedId);
 
       // Check for conflicts
       if (syncState?.platformIds[targetPlatform]) {
@@ -567,7 +567,7 @@ export class SyncEngine {
       }
 
       // Find source card by looking up sync state or trying to get directly
-      let sourceState = await this.stateStore.get(sourceFederatedId);
+      const sourceState = await this.stateStore.get(sourceFederatedId);
       const sourceLocalId = sourceState?.platformIds[sourcePlatform];
 
       if (!sourceLocalId) {

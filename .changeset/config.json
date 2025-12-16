@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "character-foundry/character-foundry" }],
+  "commit": false,
+  "fixed": [],
+  "linked": [["@character-foundry/character-foundry", "@character-foundry/cli"]],
+  "access": "public",
+  "baseBranch": "master",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@character-foundry/core",
+    "@character-foundry/schemas",
+    "@character-foundry/png",
+    "@character-foundry/charx",
+    "@character-foundry/voxta",
+    "@character-foundry/lorebook",
+    "@character-foundry/loader",
+    "@character-foundry/exporter",
+    "@character-foundry/normalizer",
+    "@character-foundry/tokenizers",
+    "@character-foundry/media",
+    "@character-foundry/image-utils",
+    "@character-foundry/federation",
+    "@character-foundry/app-framework"
+  ]
+}
