@@ -5,7 +5,6 @@
  */
 
 import type { BinaryData } from '@character-foundry/core';
-import type { CCv3Data, SourceFormat } from '@character-foundry/schemas';
 
 /**
  * Target export format

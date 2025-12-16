@@ -5,8 +5,8 @@
  */
 
 import type { BinaryData } from '@character-foundry/core';
-import { toString, ParseError, SizeLimitError, base64Decode, parseURI, getMimeTypeFromExt } from '@character-foundry/core';
-import { detectSpec, type CCv3Data, type CCv2Data, type CCv2Wrapped, type Spec, type SourceFormat, type AssetDescriptor } from '@character-foundry/schemas';
+import { toString, ParseError, SizeLimitError, base64Decode } from '@character-foundry/core';
+import { detectSpec, type CCv3Data, type CCv2Data, type SourceFormat } from '@character-foundry/schemas';
 import { extractFromPNG, removeAllTextChunks } from '@character-foundry/png';
 import { readCharX } from '@character-foundry/charx';
 import { readVoxta, voxtaToCCv3 } from '@character-foundry/voxta';
@@ -321,7 +321,7 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
             const buffer = base64Decode(chunk.text);
 
             // Infer extension from assetId if possible
-            let extMatch = assetId.match(/\.([^.]+)$/);
+            const extMatch = assetId.match(/\.([^.]+)$/);
             let ext = extMatch ? extMatch[1] : null;
             
             if (!ext) {
@@ -384,7 +384,7 @@ function parseCharx(data: BinaryData, options: Required<ParseOptions>): ParseRes
     }));
 
   // Determine source format
-  let sourceFormat: SourceFormat = charxData.isRisuFormat ? 'charx_risu' : 'charx';
+  const sourceFormat: SourceFormat = charxData.isRisuFormat ? 'charx_risu' : 'charx';
 
   return {
     card: charxData.card,
@@ -542,7 +542,7 @@ function parseJsonFromParsed(
   parsed: unknown,
   jsonStr: string,
   rawBuffer: BinaryData,
-  options: Required<ParseOptions>
+  _options: Required<ParseOptions>
 ): ParseResult {
   const spec = detectSpec(parsed);
   let card: CCv3Data;

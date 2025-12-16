@@ -5,7 +5,6 @@
  * cross-platform token reporting.
  */
 
-import type { TokenizerAdapter } from './types.js';
 import { getTokenizer } from './registry.js';
 
 /**

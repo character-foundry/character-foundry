@@ -212,7 +212,7 @@ describe('AutoForm', () => {
       name: z.string(),
     });
 
-    const { container } = render(
+    render(
       <AutoForm schema={schema} withSubmit>
         {({ fields, submit }) => (
           <div>

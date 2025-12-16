@@ -2,6 +2,53 @@
 
 Universal TypeScript library for reading, writing, and converting AI character card formats.
 
+## WORKFLOW - READ THIS FIRST
+
+**CRITICAL: ALL work must follow this process. NO exceptions.**
+
+### Branch Strategy
+
+```
+feature/* → dev → master
+            ↓       ↓
+         @dev    @latest (npm tags)
+```
+
+### Development Process
+
+1. **Create feature branch from `dev`**
+   ```bash
+   git checkout dev && git pull
+   git checkout -b feature/my-feature
+   ```
+
+2. **Do the work** - Make changes, write code, etc.
+
+3. **Add a changeset** (for user-facing changes)
+   ```bash
+   pnpm changeset
+   # Select: character-foundry and/or cli
+   # Choose: patch (bug fix), minor (feature), major (breaking)
+   # Describe: what changed and why
+   ```
+
+4. **Test thoroughly** - Run `pnpm build && pnpm test` - must pass
+
+5. **Get human confirmation** - Wait for user approval
+
+6. **Merge to `dev`** - Creates a `@dev` npm release for testing
+
+7. **When ready for production** - PR from `dev` → `master`
+   - Changesets bot creates Release PR with CHANGELOG
+   - Merge Release PR to publish `@latest`
+
+**DO NOT:**
+- Work directly in master or dev
+- Skip testing
+- Skip changesets for user-facing changes
+- Merge without confirmation
+- Break the build
+
 ## Project Structure
 
 ```
@@ -227,8 +274,6 @@ All TypeScript types are inferred from Zod schemas using `z.infer<>`, ensuring t
 ## Open Issues
 
 - #3 - Validate RisuAI CharX against SillyTavern
-- #5 - CI: Add end-to-end tests
-- #15 - Runtime validation (Phase 1 ✅ complete, Phase 2-4 pending)
 
 ## Publishing
 
@@ -255,31 +300,40 @@ import { exportCard } from '@character-foundry/character-foundry/exporter';
 import { CCv3Data } from '@character-foundry/character-foundry/schemas';
 ```
 
-### Version Bumping
+### Version Bumping (Automated via Changesets)
 
-**Simple rule**: Only bump `character-foundry` and/or `cli` when making changes.
+**Versions are now managed automatically by Changesets.**
 
 1. Make your changes to any package(s)
-2. Bump version in `packages/character-foundry/package.json` (or `packages/cli/package.json`)
+2. Run `pnpm changeset` to describe your changes
 3. Run `pnpm build && pnpm test`
-4. Commit and push
+4. Commit and push (including the `.changeset/*.md` file)
 
-No more cascading version bumps across 10+ packages!
+When merged to master, the Release PR will:
+- Bump versions automatically based on changeset types
+- Update CHANGELOG.md
+- Publish to npm on merge
 
 ### Release Checklist
 
-1. [ ] `pnpm build` - Build all packages
-2. [ ] `pnpm test` - Run all tests
-3. [ ] Bump version in `packages/character-foundry/package.json` and/or `packages/cli/package.json`
-4. [ ] Update version table below
-5. [ ] `git push origin master` - Triggers publish workflow
+**For Dev Releases (automatic on merge to dev):**
+1. [ ] PR merged to `dev` branch
+2. [ ] CI passes (build + test)
+3. [ ] Auto-publishes to npm with `@dev` tag
+
+**For Production Releases:**
+1. [ ] PR from `dev` → `master` with changesets
+2. [ ] Changesets bot creates Release PR
+3. [ ] Review CHANGELOG in Release PR
+4. [ ] Merge Release PR → publishes to npm `@latest`
+5. [ ] Update version table below (optional, CHANGELOG is authoritative)
 
 ### Published Versions
 
 | Package | Version |
 |---------|---------|
-| `@character-foundry/character-foundry` | 0.1.7 |
-| `@character-foundry/cli` | 0.3.1 |
+| `@character-foundry/character-foundry` | 0.1.8 |
+| `@character-foundry/cli` | 0.3.2 |
 
 ### Authentication
 

@@ -149,7 +149,7 @@ export function removeLorebookFromCard(
   card: CCv3Data,
   lorebookName: string
 ): CCv3Data {
-  let updatedCard = { ...card, data: { ...card.data } };
+  const updatedCard = { ...card, data: { ...card.data } };
 
   // Check main character_book
   if (card.data.character_book?.name === lorebookName) {
@@ -182,7 +182,7 @@ export function removeLinkedEntriesBySource(
   card: CCv3Data,
   sourceUrl: string
 ): CCv3Data {
-  let updatedCard = { ...card, data: { ...card.data } };
+  const updatedCard = { ...card, data: { ...card.data } };
 
   // Clean main character_book
   if (card.data.character_book) {
@@ -238,7 +238,7 @@ export function replaceLorebookInCard(
   card: CCv3Data,
   updatedBook: CCv3CharacterBook
 ): CCv3Data {
-  let updatedCard = { ...card, data: { ...card.data } };
+  const updatedCard = { ...card, data: { ...card.data } };
 
   // Check main character_book
   if (card.data.character_book?.name === updatedBook.name) {

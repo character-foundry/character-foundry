@@ -1,6 +1,7 @@
 {
   "name": "character-foundry",
   "version": "0.0.1",
+  "type": "module",
   "private": true,
   "description": "Shared primitives for AI character card handling",
   "repository": {
@@ -18,17 +19,30 @@
   "scripts": {
     "build": "turbo build",
     "test": "turbo test",
-    "lint": "turbo lint",
     "typecheck": "turbo typecheck",
+    "lint": "eslint packages/*/src",
+    "lint:fix": "eslint packages/*/src --fix",
     "clean": "turbo clean && rm -rf node_modules",
     "verify-build": "node scripts/verify-build.js",
-    "check-deps": "node scripts/check-published-deps.js"
+    "check-deps": "node scripts/check-published-deps.js",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && pnpm run publish:packages",
+    "publish:packages": "cd packages/character-foundry && pnpm publish --no-git-checks --provenance && cd ../cli && pnpm publish --no-git-checks --provenance"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.0",
+    "@eslint/js": "^9.39.2",
     "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.50.0",
+    "@typescript-eslint/parser": "^8.50.0",
     "dts-bundle-generator": "^9.5.1",
+    "eslint": "^9.39.2",
+    "globals": "^16.5.0",
     "turbo": "^2.0.0",
     "typescript": "^5.3.0",
+    "typescript-eslint": "^8.50.0",
     "vitest": "^2.0.0"
   },
   "packageManager": "pnpm@9.0.0",

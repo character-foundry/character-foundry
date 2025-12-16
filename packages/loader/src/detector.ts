@@ -9,7 +9,7 @@ import { getZipOffset } from '@character-foundry/core/zip';
 import { isPNG } from '@character-foundry/png';
 import { isCharX, isJpegCharX } from '@character-foundry/charx';
 import { isVoxta } from '@character-foundry/voxta';
-import type { ContainerFormat, DetectionResult } from './types.js';
+import type { DetectionResult } from './types.js';
 
 /**
  * PNG magic bytes

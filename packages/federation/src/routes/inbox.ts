@@ -6,7 +6,6 @@
 
 import type {
   FederatedActivity,
-  FederatedActor,
   InboxResult,
   InboxHandlerOptions,
   ForkActivity,
