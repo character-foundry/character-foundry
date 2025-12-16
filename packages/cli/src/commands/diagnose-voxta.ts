@@ -16,6 +16,16 @@ interface DiagnoseOptions {
   quiet?: boolean;
 }
 
+interface DiagnoseReport {
+  characterId: string;
+  path: string;
+  totalFields: number;
+  populatedFields: number;
+  emptyFields: number;
+  emptyFieldNames: string[];
+  fieldAnalysis: Record<string, string>;
+}
+
 function formatValue(value: unknown): string {
   if (value === undefined) return '<undefined>';
   if (value === null) return '<null>';
@@ -51,7 +61,7 @@ export function createDiagnoseVoxtaCommand(): Command {
           process.exit(1);
         }
 
-        const reports: any[] = [];
+        const reports: DiagnoseReport[] = [];
 
         for (const charPath of characterFiles) {
           const fileData = extracted[charPath]!;

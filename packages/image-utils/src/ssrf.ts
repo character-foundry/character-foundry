@@ -42,9 +42,21 @@ export const DEFAULT_SSRF_POLICY: Required<SSRFPolicy> = {
  * This is the canonical SSRF protection - all apps should use this
  * before fetching external URLs.
  *
+ * **Limitations (browser-side validation only):**
+ * - Cannot detect domains that resolve to private IPs (e.g., `attacker.com` -> `127.0.0.1`)
+ * - Cannot prevent DNS rebinding attacks (domain resolves differently on subsequent requests)
+ * - Cannot validate redirect destinations (server may redirect to internal URLs)
+ * - Does not perform actual DNS resolution - only validates URL syntax and hostname patterns
+ *
+ * For server-side applications requiring stronger SSRF protection, perform DNS resolution
+ * and validate the resolved IP address before making the request, and validate redirect
+ * destinations or disable redirects entirely.
+ *
  * @param url - URL to validate
  * @param policy - SSRF policy (uses defaults if not provided)
  * @returns Safety check result with reason if unsafe
+ *
+ * @see https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
  *
  * @example
  * ```typescript

@@ -443,7 +443,25 @@ export function streamingUnzipSync(
       }
 
       // Skip this file (consume but don't store) for 'skip' and 'warn' modes
-      file.ondata = () => { /* consume and discard */ };
+      // SECURITY: Still count bytes to prevent zip bombs hidden behind unsafe paths
+      file.ondata = (err, chunk, _final) => {
+        if (error) return;
+        if (err) {
+          error = err;
+          return;
+        }
+        if (chunk && chunk.length > 0) {
+          totalBytes += chunk.length;
+          if (totalBytes > limits.maxTotalSize) {
+            error = new ZipPreflightError(
+              `Total actual size ${totalBytes} exceeds limit ${limits.maxTotalSize}`,
+              totalBytes,
+              limits.maxTotalSize
+            );
+            file.terminate();
+          }
+        }
+      };
       file.start();
       return;
     }

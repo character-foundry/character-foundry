@@ -8,6 +8,13 @@ import type { UIHints, FieldUIHint, FieldCondition } from '../types/ui-hints';
 import { WidgetRegistry } from '../registry/widget-registry';
 import { WidgetRegistryContext } from './hooks/useWidgetRegistry';
 
+// Known FieldUIHint keys for detection (module-level constant for hoisting)
+const HINT_KEYS = new Set([
+  'widget', 'label', 'placeholder', 'helperText', 'hidden', 'readOnly',
+  'className', 'condition', 'group', 'rows', 'accept', 'multiple', 'maxSize',
+  'options', 'searchable', 'searchPlaceholder', 'noResultsText',
+]);
+
 /**
  * Props for the AutoForm component.
  *
@@ -187,8 +194,10 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
           }
         }
 
-        // Recurse into nested hints (but not into FieldUIHint properties)
-        if (!('widget' in hint) && !('label' in hint) && !('condition' in hint)) {
+        // Recurse into nested hints (but not into FieldUIHint objects)
+        const hintKeys = Object.keys(hint);
+        const isHintObject = hintKeys.length > 0 && hintKeys.every((k) => HINT_KEYS.has(k));
+        if (!isHintObject) {
           extractConditionFields(hint as Record<string, unknown>, prefix ? `${prefix}.${key}` : key);
         }
       }
@@ -265,17 +274,11 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
     return () => subscription.unsubscribe();
   }, [watch]);
 
-  // Known FieldUIHint keys for detection
-  const HINT_KEYS = new Set([
-    'widget', 'label', 'placeholder', 'helperText', 'hidden', 'readOnly',
-    'className', 'condition', 'group', 'rows', 'accept', 'multiple', 'maxSize',
-    'options', 'searchable', 'searchPlaceholder', 'noResultsText',
-  ]);
-
-  // Check if an object is a FieldUIHint (has at least one known hint property)
+  // Check if an object is a FieldUIHint (ALL keys must be known hint keys AND at least one exists)
   const isFieldUIHint = useCallback((obj: unknown): obj is FieldUIHint => {
     if (!obj || typeof obj !== 'object') return false;
-    return Object.keys(obj).some((key) => HINT_KEYS.has(key));
+    const keys = Object.keys(obj);
+    return keys.length > 0 && keys.every((key) => HINT_KEYS.has(key));
   }, []);
 
   // Get hint for a field (supports dot notation and nested syntax)

@@ -13,8 +13,11 @@ export type BuiltinWidget =
   | 'select'
   | 'searchable-select'
   | 'radio'
+  | 'radio-group'
   | 'slider'
+  | 'range'
   | 'color-picker'
+  | 'color'
   | 'tag-input'
   | 'file-upload';
 

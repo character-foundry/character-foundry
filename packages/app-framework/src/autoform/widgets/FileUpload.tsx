@@ -216,7 +216,7 @@ export function FileUpload({
         onDrop={handleDrop}
         onClick={handleClick}
         role="button"
-        tabIndex={disabled ? -1 : 0}
+        tabIndex={disabled || hint?.readOnly ? -1 : 0}
         aria-describedby={
           [Boolean(displayError) && errorId, hasHelper && helperId].filter(Boolean).join(' ') ||
           undefined
@@ -229,7 +229,7 @@ export function FileUpload({
           name={name}
           accept={accept}
           multiple={multiple}
-          disabled={disabled}
+          disabled={disabled || hint?.readOnly}
           onChange={handleChange}
           aria-invalid={Boolean(displayError)}
           aria-required={required}

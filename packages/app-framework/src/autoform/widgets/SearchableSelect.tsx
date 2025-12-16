@@ -226,7 +226,7 @@ export function SearchableSelect({
           type="button"
           id={id}
           onClick={handleOpen}
-          disabled={disabled}
+          disabled={disabled || hint?.readOnly}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           aria-labelledby={`${id}-label`}
