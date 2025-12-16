@@ -38,7 +38,8 @@
     "@character-foundry/loader": "workspace:^",
     "@character-foundry/exporter": "workspace:^",
     "@character-foundry/schemas": "workspace:^",
-    "@character-foundry/tokenizers": "workspace:^"
+    "@character-foundry/tokenizers": "workspace:^",
+    "@character-foundry/voxta": "workspace:^"
   },
   "optionalDependencies": {
     "sharp": "^0.33.0"
