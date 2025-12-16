@@ -333,7 +333,7 @@ When merged to master, the Release PR will:
 | Package | Version |
 |---------|---------|
 | `@character-foundry/character-foundry` | 0.1.8 |
-| `@character-foundry/cli` | 0.3.1 |
+| `@character-foundry/cli` | 0.3.2 |
 
 ### Authentication
 
