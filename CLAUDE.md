@@ -274,8 +274,6 @@ All TypeScript types are inferred from Zod schemas using `z.infer<>`, ensuring t
 ## Open Issues
 
 - #3 - Validate RisuAI CharX against SillyTavern
-- #5 - CI: Add end-to-end tests
-- #15 - Runtime validation (Phase 1 ✅ complete, Phase 2-4 pending)
 
 ## Publishing
 
