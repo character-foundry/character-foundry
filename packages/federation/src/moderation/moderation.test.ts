@@ -16,7 +16,6 @@ import {
 import { MemoryModerationStore } from './store.js';
 import { PolicyEngine } from './policy-engine.js';
 import { RateLimiter } from './rate-limiter.js';
-import type { ContentPolicy, ContentPolicyRule } from './types.js';
 
 describe('Moderation Activities', () => {
   describe('Flag Activity', () => {

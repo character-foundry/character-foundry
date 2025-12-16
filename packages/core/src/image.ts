@@ -6,18 +6,15 @@
 
 import {
   type BinaryData,
-  readUInt32BE,
   indexOf,
   fromLatin1,
-  slice,
-  toLatin1
 } from './binary.js';
 
 /**
  * Check if an image buffer contains animation data.
  * Supports: APNG, WebP (Animated), GIF
  */
-export function isAnimatedImage(data: BinaryData, mimeType?: string): boolean {
+export function isAnimatedImage(data: BinaryData, _mimeType?: string): boolean {
   // 1. WebP Detection
   // RIFF .... WEBP
   if (

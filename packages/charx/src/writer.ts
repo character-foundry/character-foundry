@@ -6,7 +6,6 @@
 
 import { zipSync, type Zippable } from 'fflate';
 import {
-  type BinaryData,
   fromString,
   getMimeTypeFromExt,
 } from '@character-foundry/core';

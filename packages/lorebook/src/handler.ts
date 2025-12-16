@@ -45,7 +45,7 @@ export function convertLorebook(
  */
 function toSillyTavern(
   book: CCv3CharacterBook,
-  original?: SillyTavernWorldInfo
+  _original?: SillyTavernWorldInfo
 ): SillyTavernWorldInfo {
   const entries: Record<string, SillyTavernEntry> = {};
 
@@ -111,7 +111,7 @@ function mapCCv3Position(position?: CCv3LorebookEntry['position']): number {
 /**
  * Convert CCv3 to Agnai lorebook format
  */
-function toAgnai(book: CCv3CharacterBook, original?: AgnaiLorebook): AgnaiLorebook {
+function toAgnai(book: CCv3CharacterBook, _original?: AgnaiLorebook): AgnaiLorebook {
   const entries: AgnaiEntry[] = book.entries.map((entry: CCv3LorebookEntry, i: number) => {
     // Try to recover original Agnai-specific fields
     const agnaiExt = (entry.extensions?.agnai || {}) as { weight?: number };

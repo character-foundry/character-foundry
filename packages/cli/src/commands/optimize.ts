@@ -7,7 +7,6 @@
 import { Command } from 'commander';
 import { access } from 'node:fs/promises';
 import { optimize } from '../optimizer/index.js';
-import { PRESETS } from '../optimizer/presets.js';
 
 export function createOptimizeCommand(): Command {
   const cmd = new Command('optimize')

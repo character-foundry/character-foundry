@@ -4,7 +4,7 @@
  * Extracts voxpkg/charx packages to temp directories for processing.
  */
 
-import { readFile, writeFile, mkdir, rm, readdir, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
 import { join, basename, extname, dirname, resolve, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
@@ -13,7 +13,6 @@ import {
   streamingUnzipSync,
   preflightZipSizes,
   isPathSafe,
-  ZipPreflightError,
 } from '@character-foundry/core/zip';
 
 export type PackageFormat = 'voxpkg' | 'charx' | 'unknown';

@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from 'react';
+import { useState, useCallback } from 'react';
 import type { FieldGroupProps } from '../types/ui-hints';
 
 /**

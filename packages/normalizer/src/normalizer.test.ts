@@ -9,8 +9,6 @@ import {
   ccv3ToCCv2Wrapped,
   checkV3ToV2Loss,
   normalize,
-  normalizeV2,
-  normalizeV3,
   denormalizeToV3,
   denormalizeToV2Data,
   denormalizeToV2Wrapped,

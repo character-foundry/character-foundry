@@ -10,7 +10,6 @@ import type {
   FederatedCard,
   FederatedActivity,
   FederatedActor,
-  ActivityType,
   PlatformId,
   ForkActivity,
   InstallActivity,

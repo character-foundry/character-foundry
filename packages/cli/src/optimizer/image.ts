@@ -233,7 +233,7 @@ export async function optimizeImage(
           optimizedFormat: originalFormat,
         };
       }
-    } catch (err) {
+    } catch {
       // Clean up temp file if it exists
       try {
         await unlink(tempPath);
