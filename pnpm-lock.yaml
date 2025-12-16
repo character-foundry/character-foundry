@@ -116,6 +116,9 @@ importers:
       '@character-foundry/federation':
         specifier: workspace:^
         version: link:../federation
+      '@character-foundry/image-utils':
+        specifier: workspace:^
+        version: link:../image-utils
       '@character-foundry/loader':
         specifier: workspace:^
         version: link:../loader

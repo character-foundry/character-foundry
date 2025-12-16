@@ -21,6 +21,7 @@ const entries = [
   'normalizer',
   'tokenizers',
   'media',
+  'image-utils',
   'federation',
   'app-framework',
 ];
@@ -63,6 +64,7 @@ for (const entry of entries) {
           '@character-foundry/normalizer',
           '@character-foundry/tokenizers',
           '@character-foundry/media',
+          '@character-foundry/image-utils',
           '@character-foundry/federation',
           '@character-foundry/app-framework',
         ],

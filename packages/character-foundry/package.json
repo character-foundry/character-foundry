@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/character-foundry",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Universal TypeScript library for AI character card formats",
   "type": "module",
   "exports": {
@@ -124,6 +124,16 @@
         "default": "./dist/media.cjs"
       }
     },
+    "./image-utils": {
+      "import": {
+        "types": "./dist/image-utils.d.ts",
+        "default": "./dist/image-utils.js"
+      },
+      "require": {
+        "types": "./dist/image-utils.d.cts",
+        "default": "./dist/image-utils.cjs"
+      }
+    },
     "./federation": {
       "import": {
         "types": "./dist/federation.d.ts",
@@ -197,6 +207,7 @@
     "@character-foundry/normalizer": "workspace:^",
     "@character-foundry/tokenizers": "workspace:^",
     "@character-foundry/media": "workspace:^",
+    "@character-foundry/image-utils": "workspace:^",
     "@character-foundry/federation": "workspace:^",
     "@character-foundry/app-framework": "workspace:^",
     "dts-bundle-generator": "^9.5.1",
