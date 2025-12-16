@@ -144,27 +144,27 @@ export function analyzeField(name: string, zodType: z.ZodTypeAny): FieldInfo {
   // Store the original description before unwrapping
   const description = getDescription(zodType);
 
-  // Unwrap optional wrapper
-  if (currentType instanceof z.ZodOptional) {
-    isOptional = true;
-    currentType = currentType.unwrap();
-  }
+  // Unwrap all wrapper types (optional, nullable, default, effects) in any order
+  let unwrapping = true;
+  while (unwrapping) {
+    unwrapping = false;
 
-  // Unwrap nullable wrapper
-  if (currentType instanceof z.ZodNullable) {
-    isNullable = true;
-    currentType = currentType.unwrap();
-  }
-
-  // Unwrap default wrapper and extract default value
-  if (currentType instanceof z.ZodDefault) {
-    defaultValue = currentType._def.defaultValue();
-    currentType = currentType._def.innerType;
-  }
-
-  // Handle ZodEffects (refinements, transforms)
-  if (currentType instanceof z.ZodEffects) {
-    currentType = currentType._def.schema;
+    if (currentType instanceof z.ZodOptional) {
+      isOptional = true;
+      currentType = currentType.unwrap();
+      unwrapping = true;
+    } else if (currentType instanceof z.ZodNullable) {
+      isNullable = true;
+      currentType = currentType.unwrap();
+      unwrapping = true;
+    } else if (currentType instanceof z.ZodDefault) {
+      defaultValue = currentType._def.defaultValue();
+      currentType = currentType._def.innerType;
+      unwrapping = true;
+    } else if (currentType instanceof z.ZodEffects) {
+      currentType = currentType._def.schema;
+      unwrapping = true;
+    }
   }
 
   // Handle ZodUnion - pick the first option for rendering

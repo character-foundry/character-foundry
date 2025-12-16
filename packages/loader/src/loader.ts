@@ -32,6 +32,64 @@ const DEFAULT_OPTIONS: Required<ParseOptions> = {
 };
 
 /**
+ * Asset URI prefix variants used across different character card formats.
+ * These prefixes indicate the asset is stored as a PNG chunk reference.
+ *
+ * Each entry documents which format uses it:
+ * - 'asset:' - Common CCv2/CCv3 format (SillyTavern, others)
+ * - '__asset:' - CCv3 internal reference format (SillyTavern)
+ * - 'pngchunk:' - Explicit PNG chunk reference
+ * - 'chara-ext-asset_' - RisuAI PNG chunk format (with optional colon after underscore)
+ * - '__asset_' - Legacy underscore variant
+ */
+const ASSET_PREFIX_VARIANTS = [
+  { prefix: '__asset:', format: 'CCv3 (SillyTavern)' },
+  { prefix: 'asset:', format: 'CCv2/CCv3 common' },
+  { prefix: 'pngchunk:', format: 'Explicit PNG chunk' },
+  { prefix: 'chara-ext-asset_:', format: 'RisuAI (with colon)' },
+  { prefix: 'chara-ext-asset_', format: 'RisuAI' },
+  { prefix: '__asset_', format: 'Legacy underscore variant' },
+] as const;
+
+/**
+ * Check if a URI is a PNG chunk asset reference
+ */
+function isChunkReference(uri: string): boolean {
+  return (
+    ASSET_PREFIX_VARIANTS.some(({ prefix }) => uri.startsWith(prefix)) ||
+    !uri.includes(':') // Plain ID like "0" is also a chunk reference
+  );
+}
+
+/**
+ * Strip known asset prefixes from a URI to get the raw asset ID
+ */
+function stripAssetPrefix(uri: string): string {
+  for (const { prefix } of ASSET_PREFIX_VARIANTS) {
+    if (uri.startsWith(prefix)) {
+      return uri.substring(prefix.length);
+    }
+  }
+  return uri;
+}
+
+/**
+ * Generate all possible chunk key candidates for an asset ID.
+ * Different formats store chunks under different keys, so we try all variants.
+ */
+function generateChunkKeyCandidates(assetId: string, originalUri: string): string[] {
+  return [
+    assetId,                        // Plain ID: "0"
+    originalUri,                    // Original URI: "__asset:0"
+    `asset:${assetId}`,             // Common format
+    `__asset:${assetId}`,           // CCv3 format
+    `__asset_${assetId}`,           // Legacy underscore variant
+    `chara-ext-asset_${assetId}`,   // RisuAI format
+    `chara-ext-asset_:${assetId}`,  // RisuAI format with colon
+  ];
+}
+
+/**
  * Estimate decoded size from base64 string length
  * Base64 encodes 3 bytes as 4 characters, so decoded is ~75% of encoded length
  */
@@ -153,15 +211,16 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
 
     // PERFORMANCE: Build a Map for O(1) chunk lookups instead of O(n) per asset
     const chunkMap = new Map<string, { keyword: string; text: string }>();
+    // Get RisuAI prefixes for suffix indexing (chara-ext-asset_ variants)
+    const risuIndexPrefixes = ASSET_PREFIX_VARIANTS.filter(v => v.prefix.startsWith('chara-ext-asset_'));
     for (const chunk of extracted.extraChunks) {
       chunkMap.set(chunk.keyword, chunk);
       // Also index by suffix for chara-ext-asset_ variants
-      if (chunk.keyword.startsWith('chara-ext-asset_')) {
-        const suffix = chunk.keyword.replace('chara-ext-asset_', '');
-        chunkMap.set(suffix, chunk);
-        // Handle colon prefix variant
-        if (suffix.startsWith(':')) {
-          chunkMap.set(suffix.substring(1), chunk);
+      for (const { prefix } of risuIndexPrefixes) {
+        if (chunk.keyword.startsWith(prefix)) {
+          const suffix = chunk.keyword.substring(prefix.length);
+          chunkMap.set(suffix, chunk);
+          break;
         }
       }
     }
@@ -169,28 +228,12 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
     for (const descriptor of card.data.assets) {
       if (!descriptor.uri) continue;
 
-      // Check if it's a chunk reference
-      if (
-        descriptor.uri.startsWith('__asset:') ||
-        descriptor.uri.startsWith('asset:') ||
-        descriptor.uri.startsWith('pngchunk:') ||
-        !descriptor.uri.includes(':') // e.g. just "0"
-      ) {
-        let assetId = descriptor.uri;
-        if (assetId.startsWith('__asset:')) assetId = assetId.substring(8);
-        else if (assetId.startsWith('asset:')) assetId = assetId.substring(6);
-        else if (assetId.startsWith('pngchunk:')) assetId = assetId.substring(9);
+      // Check if it's a chunk reference (uses centralized ASSET_PREFIX_VARIANTS)
+      if (isChunkReference(descriptor.uri)) {
+        const assetId = stripAssetPrefix(descriptor.uri);
 
         // Try different key variations using O(1) Map lookups
-        const candidates = [
-          assetId,                        // "0"
-          descriptor.uri,                 // "__asset:0"
-          `asset:${assetId}`,             // "asset:0"
-          `__asset:${assetId}`,           // "__asset:0"
-          `__asset_${assetId}`,           // "__asset_0"
-          `chara-ext-asset_${assetId}`,   // "chara-ext-asset_0"
-          `chara-ext-asset_:${assetId}`,  // "chara-ext-asset_:0"
-        ];
+        const candidates = generateChunkKeyCandidates(assetId, descriptor.uri);
 
         // Find chunk using Map (O(1) per candidate instead of O(n))
         let chunk: { keyword: string; text: string } | undefined;
@@ -253,15 +296,18 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
     }
 
     // Add orphaned chunks (fallback)
+    // Only process RisuAI asset chunk patterns (chara-ext-asset_) to avoid junk
+    const risuPrefixes = ASSET_PREFIX_VARIANTS.filter(v => v.prefix.startsWith('chara-ext-asset_'));
     for (const chunk of extracted.extraChunks) {
       if (!usedChunks.has(chunk.keyword)) {
         let assetId: string | null = null;
-        
+
         // Only process known asset chunk patterns to avoid junk
-        if (chunk.keyword.startsWith('chara-ext-asset_:')) {
-          assetId = chunk.keyword.substring('chara-ext-asset_:'.length);
-        } else if (chunk.keyword.startsWith('chara-ext-asset_')) {
-          assetId = chunk.keyword.substring('chara-ext-asset_'.length);
+        for (const { prefix } of risuPrefixes) {
+          if (chunk.keyword.startsWith(prefix)) {
+            assetId = chunk.keyword.substring(prefix.length);
+            break;
+          }
         }
 
         if (assetId) {

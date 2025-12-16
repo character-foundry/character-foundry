@@ -27,14 +27,26 @@ describe('AutoForm', () => {
     expect(screen.getByRole('switch')).toBeInTheDocument();
   });
 
-  it('renders enum as select/radio', () => {
+  it('renders small enum as radio group', () => {
     const schema = z.object({
       role: z.enum(['admin', 'user']),
     });
 
     render(<AutoForm schema={schema} />);
 
-    // Enum with 2 options renders as radio/select
+    // Enum with ≤4 options renders as radio group
+    expect(screen.getByRole('radiogroup')).toBeInTheDocument();
+    expect(screen.getAllByRole('radio')).toHaveLength(2);
+  });
+
+  it('renders large enum as select', () => {
+    const schema = z.object({
+      color: z.enum(['red', 'green', 'blue', 'yellow', 'orange', 'purple']),
+    });
+
+    render(<AutoForm schema={schema} />);
+
+    // Enum with >4 options renders as select
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 

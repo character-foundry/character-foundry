@@ -346,17 +346,29 @@ export async function handleInbox(
 
     switch (activityType) {
       case 'Fork': {
+        const parsed = parseForkActivity(activity);
+        if (!parsed) {
+          return {
+            accepted: false,
+            error: 'Invalid Fork activity: missing or malformed required fields',
+          };
+        }
         if (options.onFork) {
-          const forkActivity = activity as unknown as ForkActivity;
-          await options.onFork(forkActivity);
+          await options.onFork(activity as ForkActivity);
         }
         return { accepted: true, activityType: 'Fork' };
       }
 
       case 'Install': {
+        const parsed = parseInstallActivity(activity);
+        if (!parsed) {
+          return {
+            accepted: false,
+            error: 'Invalid Install activity: missing or malformed required fields',
+          };
+        }
         if (options.onInstall) {
-          const installActivity = activity as unknown as InstallActivity;
-          await options.onInstall(installActivity);
+          await options.onInstall(activity as InstallActivity);
         }
         return { accepted: true, activityType: 'Install' };
       }
