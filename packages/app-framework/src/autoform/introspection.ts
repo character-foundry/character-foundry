@@ -320,7 +320,7 @@ export function setValueAtPath(
  * Extract description from a Zod type's definition.
  */
 function getDescription(zodType: z.ZodTypeAny): string | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return (zodType as any)._def?.description;
 }
 
@@ -366,7 +366,7 @@ function extractInnerType(
  */
 function extractConstraints(zodType: z.ZodTypeAny): FieldConstraints | undefined {
   const constraints: FieldConstraints = {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const checks = (zodType as any)._def?.checks as Array<{ kind: string; value?: unknown }> | undefined;
 
   if (!Array.isArray(checks)) {
@@ -416,12 +416,12 @@ function extractConstraints(zodType: z.ZodTypeAny): FieldConstraints | undefined
 
   // Check for positive/negative via refinements on number
   if (zodType instanceof z.ZodNumber) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const minCheck = checks.find((c) => c.kind === 'min');
     if (minCheck && (minCheck as any).inclusive === false && minCheck.value === 0) {
       constraints.positive = true;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const maxCheck = checks.find((c) => c.kind === 'max');
     if (maxCheck && (maxCheck as any).inclusive === false && maxCheck.value === 0) {
       constraints.negative = true;

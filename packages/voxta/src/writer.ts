@@ -49,7 +49,7 @@ export function writeVoxta(
   assets: VoxtaWriteAsset[],
   options: VoxtaWriteOptions = {}
 ): VoxtaBuildResult {
-  let { compressionLevel = 6, includePackageJson = false } = options;
+  const { compressionLevel = 6, includePackageJson = false } = options;
   const cardData = card.data;
 
   // Get Voxta extension data if present
