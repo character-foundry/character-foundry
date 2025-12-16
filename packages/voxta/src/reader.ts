@@ -12,7 +12,6 @@ import {
 } from '@character-foundry/core';
 import {
   type Unzipped,
-  findZipStart,
   getZipOffset,
   streamingUnzipSync,
   ZipPreflightError,

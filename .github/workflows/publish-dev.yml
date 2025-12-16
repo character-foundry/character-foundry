@@ -53,10 +53,9 @@ jobs:
 
       - name: Update package versions for dev release
         run: |
-          cd packages/character-foundry
-          npm version ${{ steps.version.outputs.cf_version }} --no-git-tag-version
-          cd ../cli
-          npm version ${{ steps.version.outputs.cli_version }} --no-git-tag-version
+          # Use node to update version directly (avoids npm parsing workspace: protocol)
+          node -e "const p=require('./packages/character-foundry/package.json'); p.version='${{ steps.version.outputs.cf_version }}'; require('fs').writeFileSync('./packages/character-foundry/package.json', JSON.stringify(p, null, 2)+'\n')"
+          node -e "const p=require('./packages/cli/package.json'); p.version='${{ steps.version.outputs.cli_version }}'; require('fs').writeFileSync('./packages/cli/package.json', JSON.stringify(p, null, 2)+'\n')"
 
       - name: Publish character-foundry @dev
         working-directory: packages/character-foundry

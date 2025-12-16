@@ -6,7 +6,6 @@
 
 import { z } from 'zod';
 import { AssetDescriptorSchema } from './common.js';
-import type { AssetDescriptor } from './common.js';
 
 // ============================================================================
 // Zod Schemas

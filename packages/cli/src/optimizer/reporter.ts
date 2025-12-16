@@ -5,7 +5,7 @@
  */
 
 import { basename } from 'node:path';
-import type { AssetInfo, ExtractedPackage } from './extractor.js';
+import type { ExtractedPackage } from './extractor.js';
 import type { PresetName, ImageOptions, AudioOptions, VideoOptions } from './presets.js';
 
 export interface AssetResult {
@@ -235,7 +235,7 @@ export function printAssetResult(
 /**
  * Print final optimization report
  */
-export function printFinalReport(report: OptimizationReport, verbose: boolean): void {
+export function printFinalReport(report: OptimizationReport, _verbose: boolean): void {
   console.log('');
   console.log('Results:');
   console.log(`  Original:  ${formatSize(report.originalSize)}`);

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { voxtaToCCv3, ccv3ToVoxta } from './mapper.js';
+import { voxtaToCCv3 } from './mapper.js';
 import type { VoxtaCharacter } from './types.js';
 
 describe('voxtaToCCv3 - COMPREHENSIVE field validation', () => {

@@ -9,7 +9,6 @@ import type {
   CCv2Wrapped,
   CCv3Data,
   NormalizedCard,
-  CCv3CharacterBook,
 } from '@character-foundry/schemas';
 import { getV2Data, isWrappedV2, isV3Card } from '@character-foundry/schemas';
 import { FormatNotSupportedError } from '@character-foundry/core';

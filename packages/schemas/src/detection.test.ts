@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { detectSpec, detectSpecDetailed, hasLorebook, looksLikeCard } from './detection.js';
 import { looksLikeWrappedV2, getV2Data, isWrappedV2 } from './ccv2.js';
-import { looksLikeV3Card, isV3Card, CCv3DataInnerSchema } from './ccv3.js';
+import { looksLikeV3Card, CCv3DataInnerSchema } from './ccv3.js';
 
 describe('format detection', () => {
   describe('detectSpec', () => {
