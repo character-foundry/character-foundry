@@ -20,7 +20,8 @@ pnpm add @character-foundry/character-foundry
 ```
 
 ```typescript
-import { parseCard, exportCard } from '@character-foundry/character-foundry';
+import { parseCard } from '@character-foundry/character-foundry/loader';
+import { exportCard } from '@character-foundry/character-foundry/exporter';
 
 // Load any format
 const { card, assets, format } = parseCard(buffer);
@@ -30,12 +31,13 @@ console.log(card.data.name); // Character name
 const pngBuffer = exportCard(card, assets, { format: 'png' });
 ```
 
-Or import from specific packages:
+All functionality is available via subpath exports:
 
 ```typescript
-import { parseCard } from '@character-foundry/loader';
-import { exportCard } from '@character-foundry/exporter';
-import { readVoxta } from '@character-foundry/voxta';
+import { parseCard } from '@character-foundry/character-foundry/loader';
+import { exportCard } from '@character-foundry/character-foundry/exporter';
+import { readVoxta } from '@character-foundry/character-foundry/voxta';
+import { CCv3Data } from '@character-foundry/character-foundry/schemas';
 ```
 
 ## Packages
