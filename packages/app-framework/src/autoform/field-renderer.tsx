@@ -10,6 +10,9 @@ import {
   Switch,
   Select,
   SearchableSelect,
+  RadioGroup,
+  Slider,
+  ColorPicker,
   TagInput,
   SecretInput,
   FileUpload,
@@ -55,12 +58,15 @@ const BUILTIN_WIDGETS: Record<string, ComponentType<FieldWidgetProps<unknown>>> 
   checkbox: Switch as ComponentType<FieldWidgetProps<unknown>>,
   select: Select as ComponentType<FieldWidgetProps<unknown>>,
   'searchable-select': SearchableSelect as ComponentType<FieldWidgetProps<unknown>>,
-  radio: Select as ComponentType<FieldWidgetProps<unknown>>, // Could be RadioGroup
+  radio: RadioGroup as ComponentType<FieldWidgetProps<unknown>>,
+  'radio-group': RadioGroup as ComponentType<FieldWidgetProps<unknown>>,
   password: SecretInput as ComponentType<FieldWidgetProps<unknown>>,
   'tag-input': TagInput as ComponentType<FieldWidgetProps<unknown>>,
   'file-upload': FileUpload as ComponentType<FieldWidgetProps<unknown>>,
-  slider: NumberInput as ComponentType<FieldWidgetProps<unknown>>, // Could be Slider widget
-  'color-picker': TextInput as ComponentType<FieldWidgetProps<unknown>>, // Could be ColorPicker widget
+  slider: Slider as ComponentType<FieldWidgetProps<unknown>>,
+  range: Slider as ComponentType<FieldWidgetProps<unknown>>,
+  'color-picker': ColorPicker as ComponentType<FieldWidgetProps<unknown>>,
+  color: ColorPicker as ComponentType<FieldWidgetProps<unknown>>,
 };
 
 /**
