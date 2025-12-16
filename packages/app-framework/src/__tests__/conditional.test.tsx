@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { z } from 'zod';
 import { AutoForm } from '../autoform/AutoForm';
@@ -11,7 +11,7 @@ describe('Conditional Fields', () => {
         advancedOption: z.string().optional(),
       });
 
-      const { rerender } = render(
+      render(
         <AutoForm
           schema={schema}
           defaultValues={{ showAdvanced: true }}

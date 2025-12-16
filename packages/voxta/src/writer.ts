@@ -5,7 +5,7 @@
  */
 
 import { zipSync, type Zippable } from 'fflate';
-import { type BinaryData, fromString, generateUUID } from '@character-foundry/core';
+import { fromString, generateUUID } from '@character-foundry/core';
 import { detectImageFormat, getExtension } from '@character-foundry/media';
 import type { CCv3Data } from '@character-foundry/schemas';
 import type {

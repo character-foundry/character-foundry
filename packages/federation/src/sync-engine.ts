@@ -20,12 +20,10 @@ import type {
   ForkResult,
   ForkActivity,
   ForkNotification,
-  FederatedCard,
   InstallActivity,
-  InstallNotification,
   CardStats,
 } from './types.js';
-import { cardToActivityPub, generateCardId, createForkActivity, parseForkActivity, parseInstallActivity } from './activitypub.js';
+import { generateCardId, parseForkActivity, parseInstallActivity } from './activitypub.js';
 import { assertFederationEnabled } from './index.js';
 
 /**
@@ -458,7 +456,7 @@ export class SyncEngine {
 
     try {
       let sourceCard: CCv3Data | null = null;
-      let sourcePlatform: PlatformId | null = null;
+      let _sourcePlatform: PlatformId | null = null;
 
       if (resolution === 'merge' && mergedCard) {
         sourceCard = mergedCard;
@@ -469,7 +467,7 @@ export class SyncEngine {
             const adapter = this.platforms.get(platform as PlatformId);
             if (adapter) {
               sourceCard = await adapter.getCard(id);
-              sourcePlatform = platform as PlatformId;
+              _sourcePlatform = platform as PlatformId;
               break;
             }
           }
@@ -480,7 +478,7 @@ export class SyncEngine {
           const remoteId = syncState.platformIds[syncState.conflict.remotePlatform];
           if (remoteId) {
             sourceCard = await adapter.getCard(remoteId);
-            sourcePlatform = syncState.conflict.remotePlatform;
+            _sourcePlatform = syncState.conflict.remotePlatform;
           }
         }
       }

@@ -28,9 +28,8 @@ import {
   handleInbox,
   validateForkActivity,
   validateInstallActivity,
-  calculateDigest,
 } from './index.js';
-import type { ForkActivity, InstallActivity, FederatedCard, ForkNotification } from './types.js';
+import type { ForkActivity, InstallActivity, ForkNotification } from './types.js';
 
 // Enable federation for tests (dual opt-in: env var + code)
 beforeAll(() => {
@@ -311,7 +310,7 @@ describe('SyncEngine', () => {
       engine.on('sync:started', () => events.push('started'));
       engine.on('sync:completed', () => events.push('completed'));
 
-      const cardId = await platform1.saveCard(testCard);
+      await platform1.saveCard(testCard);
       await engine.syncPlatform('archive', 'hub');
 
       expect(events).toContain('started');

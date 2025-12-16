@@ -37,7 +37,7 @@ export function FileUpload({
   const id = `field-${name}`;
   const errorId = `${id}-error`;
   const helperId = `${id}-helper`;
-  const hasError = Boolean(error);
+  const _hasError = Boolean(error);
   const hasHelper = Boolean(hint?.helperText);
 
   const inputRef = useRef<HTMLInputElement>(null);

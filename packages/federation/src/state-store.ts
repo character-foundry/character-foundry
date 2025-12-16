@@ -132,7 +132,7 @@ export class FileSyncStateStore implements SyncStateStore {
       for (const state of data) {
         this.states.set(state.federatedId, state);
       }
-    } catch (err) {
+    } catch {
       // File doesn't exist or is invalid - start fresh
       this.states.clear();
     }

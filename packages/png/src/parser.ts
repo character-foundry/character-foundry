@@ -55,7 +55,7 @@ function inflateSyncWithLimit(compressed: BinaryData, maxSize: number = MAX_INFL
   let totalSize = 0;
   let error: Error | null = null;
 
-  const inflater = new Inflate((data: Uint8Array, final: boolean) => {
+  const inflater = new Inflate((data: Uint8Array, _final: boolean) => {
     if (error) return; // Stop processing if we've hit a limit
 
     if (data && data.length > 0) {

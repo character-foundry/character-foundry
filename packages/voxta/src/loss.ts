@@ -11,7 +11,7 @@ import type { VoxtaLossReport } from './types.js';
 /**
  * Fields that cannot be represented in Voxta format
  */
-const ALWAYS_LOST_FIELDS = [
+const _ALWAYS_LOST_FIELDS = [
   'group_only_greetings',    // Voxta doesn't support groups
 ];
 

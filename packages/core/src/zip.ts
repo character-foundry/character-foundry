@@ -264,7 +264,7 @@ export function preflightZipSizes(
   // Offset 12: Size of central directory
   // Offset 16: Offset of start of central directory
   const totalEntries = zipData[eocdOffset + 8]! | (zipData[eocdOffset + 9]! << 8);
-  const cdSize = readUInt32LEFromBytes(zipData, eocdOffset + 12);
+  const _cdSize = readUInt32LEFromBytes(zipData, eocdOffset + 12);
   const cdOffset = readUInt32LEFromBytes(zipData, eocdOffset + 16);
 
   // Check file count limit

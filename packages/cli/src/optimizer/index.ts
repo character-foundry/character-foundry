@@ -5,7 +5,6 @@
  */
 
 import { basename, dirname, extname, join } from 'node:path';
-import { stat } from 'node:fs/promises';
 import {
   extractPackage,
   repackPackage,
@@ -21,8 +20,6 @@ import { optimizeVideo } from './video.js';
 import {
   type PresetName,
   type ImageOptions,
-  type AudioOptions,
-  type VideoOptions,
   getPreset,
   mergeOptions,
 } from './presets.js';

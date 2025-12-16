@@ -39,7 +39,7 @@ function checkPngLoss(card: CCv3Data, assets: ExportAsset[]): ExportLossReport {
   }
 
   // Check for embedded asset URIs that won't resolve
-  const extensions = card.data.extensions as Record<string, unknown> | undefined;
+  const _extensions = card.data.extensions as Record<string, unknown> | undefined;
   if (card.data.assets && card.data.assets.length > 1) {
     warnings.push('Card has multiple asset references - only main will be available');
   }
@@ -56,7 +56,7 @@ function checkPngLoss(card: CCv3Data, assets: ExportAsset[]): ExportLossReport {
 /**
  * Check loss for CharX export
  */
-function checkCharxLoss(card: CCv3Data, assets: ExportAsset[]): ExportLossReport {
+function checkCharxLoss(card: CCv3Data, _assets: ExportAsset[]): ExportLossReport {
   const lostFields: string[] = [];
   const lostAssets: string[] = [];
   const warnings: string[] = [];

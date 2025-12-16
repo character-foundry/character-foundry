@@ -5,10 +5,9 @@
  */
 
 import type { CCv3Data, CCv2Data } from '@character-foundry/schemas';
-import { 
-  embedIntoPNG, 
-  injectTextChunk, 
-  removeAllTextChunks 
+import {
+  injectTextChunk,
+  removeAllTextChunks
 } from '@character-foundry/png';
 import { base64Encode, fromString, ValidationError } from '@character-foundry/core';
 import type { ExportAsset, PngExportOptions, ExportResult } from './types.js';

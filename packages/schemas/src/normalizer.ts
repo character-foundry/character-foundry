@@ -62,7 +62,7 @@ const V3_REQUIRED_DEFAULTS: Partial<CCv3Data['data']> = {
 /**
  * Fields that belong at root level for wrapped format
  */
-const ROOT_FIELDS = ['spec', 'spec_version', 'data'] as const;
+const _ROOT_FIELDS = ['spec', 'spec_version', 'data'] as const;
 
 /**
  * Fields that belong in the data object
