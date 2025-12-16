@@ -22,9 +22,15 @@
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
     "verify-build": "node scripts/verify-build.js",
-    "check-deps": "node scripts/check-published-deps.js"
+    "check-deps": "node scripts/check-published-deps.js",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && pnpm run publish:packages",
+    "publish:packages": "cd packages/character-foundry && pnpm publish --no-git-checks --provenance && cd ../cli && pnpm publish --no-git-checks --provenance"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.0",
     "@types/node": "^20.10.0",
     "dts-bundle-generator": "^9.5.1",
     "turbo": "^2.0.0",
