@@ -121,10 +121,10 @@ export function FieldRenderer({
 
   if (hint?.widget) {
     if (typeof hint.widget === 'string') {
-      // Built-in widget name or custom registered widget
+      // Check custom widgets first, then built-in widgets
       Widget =
-        BUILTIN_WIDGETS[hint.widget] ??
         widgetRegistry.getComponent(hint.widget) ??
+        BUILTIN_WIDGETS[hint.widget] ??
         (TextInput as ComponentType<FieldWidgetProps<unknown>>);
     } else {
       // Custom component passed directly
