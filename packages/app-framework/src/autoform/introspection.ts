@@ -229,7 +229,21 @@ export function analyzeField(name: string, zodType: z.ZodTypeAny): FieldInfo {
 }
 
 /**
+ * Dangerous property names that should never be accessed via path traversal.
+ * These are JavaScript prototype chain keys that could enable prototype pollution attacks.
+ */
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Check if a property key is safe to access.
+ */
+function isSafeKey(key: string): boolean {
+  return !DANGEROUS_KEYS.has(key);
+}
+
+/**
  * Get the value at a dot-notation path from an object.
+ * SECURITY: Rejects dangerous keys (__proto__, constructor, prototype) to prevent prototype pollution.
  *
  * @example
  * ```ts
@@ -244,7 +258,15 @@ export function getValueAtPath(
   let current: unknown = obj;
 
   for (const part of parts) {
+    // SECURITY: Reject dangerous property names
+    if (!isSafeKey(part)) {
+      return undefined;
+    }
     if (current == null || typeof current !== 'object') {
+      return undefined;
+    }
+    // Use Object.hasOwn to avoid prototype chain lookup
+    if (!Object.hasOwn(current as object, part)) {
       return undefined;
     }
     current = (current as Record<string, unknown>)[part];
@@ -255,6 +277,7 @@ export function getValueAtPath(
 
 /**
  * Set a value at a dot-notation path in an object (immutably).
+ * SECURITY: Rejects dangerous keys (__proto__, constructor, prototype) to prevent prototype pollution.
  *
  * @example
  * ```ts
@@ -271,13 +294,21 @@ export function setValueAtPath(
   if (parts.length === 0 || parts[0] === undefined) {
     return obj;
   }
-  if (parts.length === 1) {
-    return { ...obj, [parts[0]]: value };
-  }
 
   const first = parts[0];
+
+  // SECURITY: Reject dangerous property names
+  if (!isSafeKey(first)) {
+    console.warn(`Rejected dangerous property key in path: ${first}`);
+    return obj;
+  }
+
+  if (parts.length === 1) {
+    return { ...obj, [first]: value };
+  }
+
   const rest = parts.slice(1);
-  const nested = (obj[first] as Record<string, unknown>) ?? {};
+  const nested = (Object.hasOwn(obj, first) ? obj[first] : {}) as Record<string, unknown> ?? {};
 
   return {
     ...obj,

@@ -7,7 +7,15 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   splitting: false,
-  external: ['react', 'react-dom'],
+  // Externalize peer dependencies - consumer's bundler will resolve them
+  // This enables deduplication and smaller app bundles
+  external: [
+    'react',
+    'react-dom',
+    'react-hook-form',
+    '@hookform/resolvers',
+    '@hookform/resolvers/zod',
+  ],
   esbuildOptions(options) {
     options.jsx = 'automatic';
   },

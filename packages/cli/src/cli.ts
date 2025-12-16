@@ -13,10 +13,11 @@ import {
   createExportCommand,
   createExtractAssetsCommand,
   createOptimizeCommand,
+  createScanCommand,
 } from './commands/index.js';
 
 // Read version from package.json
-const VERSION = '0.1.0';
+const VERSION = '0.3.0';
 
 export function createCLI(): Command {
   const program = new Command();
@@ -34,6 +35,7 @@ export function createCLI(): Command {
   program.addCommand(createExportCommand());
   program.addCommand(createExtractAssetsCommand());
   program.addCommand(createOptimizeCommand());
+  program.addCommand(createScanCommand());
 
   return program;
 }

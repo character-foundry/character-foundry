@@ -4,7 +4,7 @@
  * Functions for merging CCv3 edits into Voxta structures.
  */
 
-import { unzipSync, zipSync, type Unzipped, type Zippable } from 'fflate';
+import { zipSync, type Zippable } from 'fflate';
 import {
   type BinaryData,
   fromString,
@@ -14,8 +14,9 @@ import {
 } from '@character-foundry/core';
 import {
   findZipStart,
-  preflightZipSizes,
+  streamingUnzipSync,
   ZipPreflightError,
+  type Unzipped,
 } from '@character-foundry/core/zip';
 import { detectImageFormat, getExtension } from '@character-foundry/media';
 import type { CCv3Data, CCv3CharacterBook } from '@character-foundry/schemas';
@@ -250,12 +251,17 @@ export function applyVoxtaDeltas(
   // Handle SFX archives
   const zipData = findZipStart(originalBuffer);
 
-  // SECURITY: Preflight check even for delta operations
+  // SECURITY: Use streaming unzip with actual byte tracking and path validation
+  // This protects against:
+  // 1. Zip bombs (archives that lie about sizes in central directory)
+  // 2. Path traversal attacks (Zip Slip)
+  let unzipped: Unzipped;
   try {
-    preflightZipSizes(zipData, {
+    unzipped = streamingUnzipSync(zipData, {
       maxFileSize: DELTA_MAX_FILE_SIZE,
       maxTotalSize: DELTA_MAX_TOTAL_SIZE,
       maxFiles: 10000,
+      unsafePathHandling: 'reject', // Fail on path traversal attempts
     });
   } catch (err) {
     if (err instanceof ZipPreflightError) {
@@ -265,14 +271,6 @@ export function applyVoxtaDeltas(
         err.oversizedEntry || 'Voxta package'
       );
     }
-    throw err;
-  }
-
-  // Unzip original (now safe - preflight passed)
-  let unzipped: Unzipped;
-  try {
-    unzipped = unzipSync(zipData);
-  } catch (err) {
     throw new ParseError(
       `Failed to unzip Voxta package: ${err instanceof Error ? err.message : String(err)}`,
       'voxta'
@@ -464,12 +462,14 @@ export function extractCharacterPackage(
   // Handle SFX archives
   const zipData = findZipStart(originalBuffer);
 
-  // SECURITY: Preflight check
+  // SECURITY: Use streaming unzip with actual byte tracking and path validation
+  let unzipped: Unzipped;
   try {
-    preflightZipSizes(zipData, {
+    unzipped = streamingUnzipSync(zipData, {
       maxFileSize: DELTA_MAX_FILE_SIZE,
       maxTotalSize: DELTA_MAX_TOTAL_SIZE,
       maxFiles: 10000,
+      unsafePathHandling: 'reject',
     });
   } catch (err) {
     if (err instanceof ZipPreflightError) {
@@ -479,14 +479,6 @@ export function extractCharacterPackage(
         err.oversizedEntry || 'Voxta package'
       );
     }
-    throw err;
-  }
-
-  // Unzip original (now safe - preflight passed)
-  let unzipped: Unzipped;
-  try {
-    unzipped = unzipSync(zipData);
-  } catch (err) {
     throw new ParseError(
       `Failed to unzip Voxta package: ${err instanceof Error ? err.message : String(err)}`,
       'voxta'
@@ -611,12 +603,14 @@ export function addCharacterToPackage(
   // Handle SFX archives
   const zipData = findZipStart(originalBuffer);
 
-  // SECURITY: Preflight check
+  // SECURITY: Use streaming unzip with actual byte tracking and path validation
+  let unzipped: Unzipped;
   try {
-    preflightZipSizes(zipData, {
+    unzipped = streamingUnzipSync(zipData, {
       maxFileSize: DELTA_MAX_FILE_SIZE,
       maxTotalSize: DELTA_MAX_TOTAL_SIZE,
       maxFiles: 10000,
+      unsafePathHandling: 'reject',
     });
   } catch (err) {
     if (err instanceof ZipPreflightError) {
@@ -626,14 +620,6 @@ export function addCharacterToPackage(
         err.oversizedEntry || 'Voxta package'
       );
     }
-    throw err;
-  }
-
-  // Unzip original (now safe - preflight passed)
-  let unzipped: Unzipped;
-  try {
-    unzipped = unzipSync(zipData);
-  } catch (err) {
     throw new ParseError(
       `Failed to unzip Voxta package: ${err instanceof Error ? err.message : String(err)}`,
       'voxta'

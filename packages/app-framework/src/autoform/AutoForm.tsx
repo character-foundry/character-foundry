@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useMemo, useEffect, useCallback, useRef, useState, type ReactNode } from 'react';
 import { z } from 'zod';
 import { useForm, Controller, FormProvider, type DefaultValues, type Path } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -148,44 +148,122 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
     return defaults;
   }, [fieldInfoMap]);
 
+  // Properly merge nested defaults using deep merge
+  const mergedDefaults = useMemo(() => {
+    return deepMerge(
+      deepMerge(schemaDefaults, defaultValues as Record<string, unknown> ?? {}),
+      values as Record<string, unknown> ?? {}
+    );
+  }, [schemaDefaults, defaultValues, values]);
+
   // Setup react-hook-form
   // shouldUnregister ensures hidden/conditional fields don't leak stale values
   const methods = useForm<z.infer<T>>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      ...schemaDefaults,
-      ...defaultValues,
-      ...values,
-    } as DefaultValues<z.infer<T>>,
+    defaultValues: mergedDefaults as DefaultValues<z.infer<T>>,
     mode: 'onChange',
     shouldUnregister: true,
   });
 
-  const { control, handleSubmit, watch, formState, reset } = methods;
-
-  // Watch all values for conditional field evaluation
-  const watchedValues = watch();
+  const { control, handleSubmit, watch, formState, reset, getValues } = methods;
 
   // Track previous values to avoid unnecessary resets in controlled mode
   const prevValuesRef = useRef<z.infer<T> | undefined>(values);
+
+  // PERFORMANCE: Extract condition fields from uiHints to watch only those
+  // This avoids re-rendering on every keystroke for non-conditional forms
+  const conditionFields = useMemo(() => {
+    const fields = new Set<string>();
+    const extractConditionFields = (hints: Record<string, unknown>, prefix = '') => {
+      for (const [key, value] of Object.entries(hints)) {
+        if (!value || typeof value !== 'object') continue;
+        const hint = value as Record<string, unknown>;
+
+        // Check for condition.field
+        if (hint.condition && typeof hint.condition === 'object') {
+          const condition = hint.condition as { field?: string };
+          if (condition.field) {
+            fields.add(condition.field);
+          }
+        }
+
+        // Recurse into nested hints (but not into FieldUIHint properties)
+        if (!('widget' in hint) && !('label' in hint) && !('condition' in hint)) {
+          extractConditionFields(hint as Record<string, unknown>, prefix ? `${prefix}.${key}` : key);
+        }
+      }
+    };
+    extractConditionFields(uiHints as Record<string, unknown>);
+    return Array.from(fields);
+  }, [uiHints]);
+
+  // PERFORMANCE: Only watch fields used in conditions (not all fields)
+  // This prevents re-renders on every keystroke for forms without conditions
+  // Using a state + subscription approach instead of watch() to minimize re-renders
+  const [conditionValues, setConditionValues] = useState<Record<string, unknown>>({});
+
+  useEffect(() => {
+    if (conditionFields.length === 0) return;
+
+    // Initialize with current values
+    const initial: Record<string, unknown> = {};
+    const currentValues = getValues();
+    for (const field of conditionFields) {
+      initial[field] = getValueAtPath(currentValues as Record<string, unknown>, field);
+    }
+    setConditionValues(initial);
+
+    // Subscribe to changes in condition fields only
+    const subscription = watch((formValues, { name }) => {
+      // Only update if a condition field changed
+      if (name && conditionFields.includes(name)) {
+        setConditionValues((prev) => ({
+          ...prev,
+          [name]: getValueAtPath(formValues as Record<string, unknown>, name),
+        }));
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [conditionFields, watch, getValues]);
 
   // Sync external values in controlled mode (with deep comparison)
   useEffect(() => {
     if (values && !shallowEqual(values, prevValuesRef.current)) {
       prevValuesRef.current = values;
-      reset({ ...schemaDefaults, ...defaultValues, ...values } as z.infer<T>);
+      // Use deep merge to properly handle nested values
+      const resetValues = deepMerge(
+        deepMerge(schemaDefaults, defaultValues as Record<string, unknown> ?? {}),
+        values as Record<string, unknown> ?? {}
+      );
+      reset(resetValues as z.infer<T>);
     }
   }, [values, reset, schemaDefaults, defaultValues]);
 
-  // Call onChange when values change
+  // PERFORMANCE: Use subscription for onChange instead of watch() + useEffect
+  // This avoids re-rendering the entire form on every change
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const schemaRef = useRef(schema);
+  schemaRef.current = schema;
+
   useEffect(() => {
-    if (onChange) {
-      const result = schema.safeParse(watchedValues);
-      if (result.success) {
-        onChange(result.data);
+    if (!onChangeRef.current) return;
+
+    // Subscribe to form value changes (doesn't cause re-renders)
+    const subscription = watch((formValues, { type }) => {
+      // Only fire onChange for actual value changes, not focus/blur
+      if (type !== 'change') return;
+
+      // Validate with schema and call onChange if valid
+      const result = schemaRef.current.safeParse(formValues);
+      if (result.success && onChangeRef.current) {
+        onChangeRef.current(result.data);
       }
-    }
-  }, [watchedValues, onChange, schema]);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   // Known FieldUIHint keys for detection
   const HINT_KEYS = new Set([
@@ -232,11 +310,14 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
     (condition: FieldCondition | undefined): boolean => {
       if (!condition) return true;
 
-      const fieldValue = getValueAtPath(watchedValues as Record<string, unknown>, condition.field);
+      // Use the watched condition values for evaluation (only updates when condition fields change)
+      const fieldValue = conditionFields.length > 0
+        ? conditionValues[condition.field]
+        : getValueAtPath(getValues() as Record<string, unknown>, condition.field);
 
-      // Custom predicate
+      // Custom predicate - pass full values for complex conditions
       if (condition.when) {
-        return condition.when(fieldValue, watchedValues as Record<string, unknown>);
+        return condition.when(fieldValue, getValues() as Record<string, unknown>);
       }
 
       // Equals check
@@ -261,7 +342,7 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
 
       return true;
     },
-    [watchedValues]
+    [conditionFields, conditionValues, getValues]
   );
 
   // Determine field order (top-level only)
@@ -394,7 +475,69 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
 }
 
 /**
+ * Deep merge two objects, with target values taking precedence.
+ * Arrays are replaced, not merged.
+ * SECURITY: Rejects dangerous keys to prevent prototype pollution.
+ */
+function deepMerge(
+  base: Record<string, unknown>,
+  override: Record<string, unknown>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...base };
+
+  for (const key of Object.keys(override)) {
+    // SECURITY: Skip dangerous keys
+    if (!isSafeKey(key)) continue;
+
+    const baseVal = base[key];
+    const overrideVal = override[key];
+
+    // If both are plain objects, recurse
+    if (
+      isPlainObject(baseVal) &&
+      isPlainObject(overrideVal)
+    ) {
+      result[key] = deepMerge(
+        baseVal as Record<string, unknown>,
+        overrideVal as Record<string, unknown>
+      );
+    } else if (overrideVal !== undefined) {
+      // Override wins for non-objects or arrays
+      result[key] = overrideVal;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Check if a value is a plain object (not null, array, or other types).
+ */
+function isPlainObject(val: unknown): val is Record<string, unknown> {
+  return (
+    val !== null &&
+    typeof val === 'object' &&
+    !Array.isArray(val) &&
+    Object.getPrototypeOf(val) === Object.prototype
+  );
+}
+
+/**
+ * Dangerous property names that should never be accessed/set via path traversal.
+ * These are JavaScript prototype chain keys that could enable prototype pollution attacks.
+ */
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Check if a property key is safe to access/set.
+ */
+function isSafeKey(key: string): boolean {
+  return !DANGEROUS_KEYS.has(key);
+}
+
+/**
  * Helper to set a value at a nested path in an object (mutating).
+ * SECURITY: Rejects dangerous keys (__proto__, constructor, prototype) to prevent prototype pollution.
  */
 function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
   const parts = path.split('.');
@@ -403,7 +546,14 @@ function setNestedValue(obj: Record<string, unknown>, path: string, value: unkno
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
     if (part === undefined) continue;
-    if (!(part in current) || typeof current[part] !== 'object') {
+
+    // SECURITY: Reject dangerous property names
+    if (!isSafeKey(part)) {
+      console.warn(`Rejected dangerous property key in path: ${part}`);
+      return;
+    }
+
+    if (!Object.hasOwn(current, part) || typeof current[part] !== 'object') {
       current[part] = {};
     }
     current = current[part] as Record<string, unknown>;
@@ -411,6 +561,11 @@ function setNestedValue(obj: Record<string, unknown>, path: string, value: unkno
 
   const lastPart = parts[parts.length - 1];
   if (lastPart !== undefined) {
+    // SECURITY: Reject dangerous property names
+    if (!isSafeKey(lastPart)) {
+      console.warn(`Rejected dangerous property key in path: ${lastPart}`);
+      return;
+    }
     current[lastPart] = value;
   }
 }

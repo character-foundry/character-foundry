@@ -135,6 +135,21 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
   if (extracted.extraChunks && options.extractAssets && card.data.assets) {
     const usedChunks = new Set<string>();
 
+    // PERFORMANCE: Build a Map for O(1) chunk lookups instead of O(n) per asset
+    const chunkMap = new Map<string, { keyword: string; text: string }>();
+    for (const chunk of extracted.extraChunks) {
+      chunkMap.set(chunk.keyword, chunk);
+      // Also index by suffix for chara-ext-asset_ variants
+      if (chunk.keyword.startsWith('chara-ext-asset_')) {
+        const suffix = chunk.keyword.replace('chara-ext-asset_', '');
+        chunkMap.set(suffix, chunk);
+        // Handle colon prefix variant
+        if (suffix.startsWith(':')) {
+          chunkMap.set(suffix.substring(1), chunk);
+        }
+      }
+    }
+
     for (const descriptor of card.data.assets) {
       if (!descriptor.uri) continue;
 
@@ -150,7 +165,7 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
         else if (assetId.startsWith('asset:')) assetId = assetId.substring(6);
         else if (assetId.startsWith('pngchunk:')) assetId = assetId.substring(9);
 
-        // Try different key variations
+        // Try different key variations using O(1) Map lookups
         const candidates = [
           assetId,                        // "0"
           descriptor.uri,                 // "__asset:0"
@@ -161,15 +176,12 @@ function parsePng(data: BinaryData, options: Required<ParseOptions>): ParseResul
           `chara-ext-asset_:${assetId}`,  // "chara-ext-asset_:0"
         ];
 
-        const chunk = extracted.extraChunks.find(c => candidates.includes(c.keyword)) ||
-                      extracted.extraChunks.find(c => {
-                        // Fallback: Check for chara-ext-asset_ prefix matching
-                        if (c.keyword.startsWith('chara-ext-asset_')) {
-                          const suffix = c.keyword.replace('chara-ext-asset_', '');
-                          return suffix === assetId || suffix === `:${assetId}` || suffix === descriptor.uri;
-                        }
-                        return false;
-                      });
+        // Find chunk using Map (O(1) per candidate instead of O(n))
+        let chunk: { keyword: string; text: string } | undefined;
+        for (const candidate of candidates) {
+          chunk = chunkMap.get(candidate);
+          if (chunk) break;
+        }
 
         if (chunk) {
           try {
@@ -433,6 +445,11 @@ function parseVoxta(data: BinaryData, options: Required<ParseOptions>): ParseRes
  * Parse raw JSON data
  */
 function parseJson(data: BinaryData, options: Required<ParseOptions>): ParseResult {
+  // SECURITY: Check size limit before parsing to prevent DoS via large JSON
+  if (data.length > options.maxFileSize) {
+    throw new SizeLimitError(data.length, options.maxFileSize, 'JSON file');
+  }
+
   let jsonStr: string;
   try {
     jsonStr = toString(data);
@@ -537,10 +554,18 @@ export function getContainerFormat(data: BinaryData): ContainerFormat {
   return detectFormat(data).format;
 }
 
+/** Default max lorebook size (10MB - lorebooks are typically small) */
+const DEFAULT_MAX_LOREBOOK_SIZE = 10 * 1024 * 1024;
+
 /**
  * Parse a standalone lorebook from JSON data
  */
-function parseLorebookData(data: BinaryData): LorebookParseResult {
+function parseLorebookData(data: BinaryData, maxSize: number = DEFAULT_MAX_LOREBOOK_SIZE): LorebookParseResult {
+  // SECURITY: Check size limit before parsing to prevent DoS via large JSON
+  if (data.length > maxSize) {
+    throw new SizeLimitError(data.length, maxSize, 'Lorebook file');
+  }
+
   let jsonStr: string;
   try {
     jsonStr = toString(data);
@@ -656,7 +681,7 @@ export function parse(data: BinaryData, options: ParseOptions = {}): UniversalPa
 
     // Check if it's a lorebook first (more specific check)
     if (isLorebookJson(parsed)) {
-      return parseLorebookData(data);
+      return parseLorebookData(data, opts.maxFileSize);
     }
 
     // Otherwise try to parse as card
@@ -669,7 +694,7 @@ export function parse(data: BinaryData, options: ParseOptions = {}): UniversalPa
     // Neither card nor lorebook - could still be unknown lorebook format
     // Try lorebook as fallback
     try {
-      return parseLorebookData(data);
+      return parseLorebookData(data, opts.maxFileSize);
     } catch {
       throw new ParseError('JSON does not appear to be a valid character card or lorebook', 'json');
     }

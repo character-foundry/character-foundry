@@ -39,3 +39,11 @@ SESSION-STATE.md
 docs/internal/
 *_TODO.md
 .card-analysis/
+
+# Test fixtures (large binary files - download separately)
+# Keep: MANIFEST.md, synthetic/generate*.*, .gitkeep
+fixtures/basic/**/*.png
+fixtures/basic/**/*.charx
+fixtures/basic/**/*.voxpkg
+fixtures/extended/
+fixtures/large/

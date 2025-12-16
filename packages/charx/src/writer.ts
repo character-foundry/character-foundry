@@ -18,6 +18,24 @@ import type {
   CompressionLevel,
 } from './types.js';
 
+/** Safe asset types for CharX path construction (whitelist) */
+const SAFE_ASSET_TYPES = new Set([
+  'icon', 'user_icon', 'emotion', 'background', 'sound', 'video',
+  'custom', 'x-risu-asset', 'data', 'unknown',
+]);
+
+/** Safe file extensions (whitelist) */
+const SAFE_EXTENSIONS = new Set([
+  // Images
+  'png', 'jpg', 'jpeg', 'webp', 'gif', 'avif', 'svg', 'bmp', 'ico',
+  // Audio
+  'mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus',
+  // Video
+  'mp4', 'webm', 'avi', 'mov', 'mkv',
+  // Data
+  'json', 'txt', 'bin',
+]);
+
 /**
  * Get CharX category from MIME type
  */
@@ -26,6 +44,41 @@ function getCharxCategory(mimetype: string): string {
   if (mimetype.startsWith('audio/')) return 'audio';
   if (mimetype.startsWith('video/')) return 'video';
   return 'other';
+}
+
+/**
+ * Sanitize an asset type for safe use in file paths.
+ * Only allows whitelisted types to prevent path traversal.
+ */
+function sanitizeAssetType(type: string): string {
+  // Normalize to lowercase
+  const normalized = type.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+
+  // Use whitelist - if not in whitelist, default to 'custom'
+  if (SAFE_ASSET_TYPES.has(normalized)) {
+    return normalized;
+  }
+
+  // For unknown types, sanitize strictly
+  const sanitized = normalized.replace(/[^a-z0-9]/g, '');
+  return sanitized || 'custom';
+}
+
+/**
+ * Sanitize a file extension for safe use in file paths.
+ * Only allows whitelisted extensions to prevent traversal.
+ */
+function sanitizeExtension(ext: string): string {
+  // Remove leading dot if present, normalize to lowercase
+  const normalized = ext.replace(/^\./, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  // Use whitelist - if not in whitelist, default to 'bin'
+  if (SAFE_EXTENSIONS.has(normalized)) {
+    return normalized;
+  }
+
+  // Unknown extension - use 'bin' as safe fallback
+  return 'bin';
 }
 
 /**
@@ -93,11 +146,14 @@ Import this file into SillyTavern, RisuAI, or other compatible applications.
 
   for (let i = 0; i < assets.length; i++) {
     const asset = assets[i]!;
-    const mimetype = getMimeTypeFromExt(asset.ext);
+    // SECURITY: Sanitize all path components to prevent path traversal
+    const safeType = sanitizeAssetType(asset.type);
+    const safeExt = sanitizeExtension(asset.ext);
+    const mimetype = getMimeTypeFromExt(safeExt);
     const category = getCharxCategory(mimetype);
-    const safeName = sanitizeName(asset.name, asset.ext);
+    const safeName = sanitizeName(asset.name, safeExt);
 
-    const assetPath = `assets/${asset.type}/${category}/${safeName}.${asset.ext}`;
+    const assetPath = `assets/${safeType}/${category}/${safeName}.${safeExt}`;
 
     zipEntries[assetPath] = [asset.data, { level: compressionLevel as CompressionLevel }];
     assetCount++;
@@ -131,19 +187,25 @@ Import this file into SillyTavern, RisuAI, or other compatible applications.
  */
 function transformAssetUris(card: CCv3Data, assets: CharxWriteAsset[]): CCv3Data {
   // Clone the card to avoid mutations
-  const transformed: CCv3Data = JSON.parse(JSON.stringify(card));
+  // Note: Using structuredClone where available for better performance and preserving undefined
+  const transformed: CCv3Data = typeof structuredClone === 'function'
+    ? structuredClone(card)
+    : JSON.parse(JSON.stringify(card));
 
   // Generate assets array from provided assets
   transformed.data.assets = assets.map((asset): AssetDescriptor => {
-    const mimetype = getMimeTypeFromExt(asset.ext);
+    // SECURITY: Sanitize all path components to prevent path traversal
+    const safeType = sanitizeAssetType(asset.type);
+    const safeExt = sanitizeExtension(asset.ext);
+    const mimetype = getMimeTypeFromExt(safeExt);
     const category = getCharxCategory(mimetype);
-    const safeName = sanitizeName(asset.name, asset.ext);
+    const safeName = sanitizeName(asset.name, safeExt);
 
     return {
       type: asset.type as AssetDescriptor['type'],
-      uri: `embeded://assets/${asset.type}/${category}/${safeName}.${asset.ext}`,
+      uri: `embeded://assets/${safeType}/${category}/${safeName}.${safeExt}`,
       name: safeName,
-      ext: asset.ext,
+      ext: safeExt,
     };
   });
 

@@ -42,21 +42,22 @@ import { readVoxta } from '@character-foundry/voxta';
 
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
-| **`@character-foundry/character-foundry`** | **0.1.3** | **Meta package - installs everything** | - |
+| **`@character-foundry/character-foundry`** | **0.1.5** | **Meta package - installs everything** | - |
 | `@character-foundry/core` | 0.1.3 | Binary utilities, base64, ZIP, URI parsing, security | [docs/core.md](docs/core.md) |
-| `@character-foundry/schemas` | 0.2.0 | CCv2, CCv3, Voxta types + Zod schemas + runtime validation | [docs/schemas.md](docs/schemas.md) |
-| `@character-foundry/png` | 0.0.5 | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
-| `@character-foundry/charx` | 0.0.6 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
-| `@character-foundry/voxta` | 0.1.11 | Voxta packages, multi-character, scenarios, collections, merge utilities | [docs/voxta.md](docs/voxta.md) |
-| `@character-foundry/lorebook` | 0.0.2 | Lorebook parsing, extraction, insertion | [docs/lorebook.md](docs/lorebook.md) |
-| `@character-foundry/loader` | 0.1.9 | Universal `parseCard()` + `parseLorebook()` + `parse()` with format detection | [docs/loader.md](docs/loader.md) |
-| `@character-foundry/exporter` | 0.1.3 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
-| `@character-foundry/normalizer` | 0.1.3 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
-| `@character-foundry/tokenizers` | 0.1.1 | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
-| `@character-foundry/media` | 0.1.2 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
-| `@character-foundry/cli` | 0.1.0 | CLI tool: detect, info, validate, loss, export, extract-assets | [docs/cli.md](docs/cli.md) |
-| `@character-foundry/federation` | 0.2.0 | ActivityPub federation + HTTP signatures + D1 store (experimental) | [docs/federation.md](docs/federation.md) |
-| `@character-foundry/app-framework` | 0.2.1 | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
+| `@character-foundry/schemas` | 0.2.2 | CCv2, CCv3, Voxta types + Zod schemas + runtime validation | [docs/schemas.md](docs/schemas.md) |
+| `@character-foundry/png` | 0.0.6 | PNG chunk handling, metadata stripping, inflate protection | [docs/png.md](docs/png.md) |
+| `@character-foundry/charx` | 0.0.7 | CharX reader/writer, JPEG+ZIP support | [docs/charx.md](docs/charx.md) |
+| `@character-foundry/voxta` | 0.1.13 | Voxta packages, multi-character, scenarios, collections, merge utilities | [docs/voxta.md](docs/voxta.md) |
+| `@character-foundry/lorebook` | 0.0.3 | Lorebook parsing, extraction, insertion | [docs/lorebook.md](docs/lorebook.md) |
+| `@character-foundry/loader` | 0.1.10 | Universal `parseCard()` + `parseLorebook()` + `parse()` with format detection | [docs/loader.md](docs/loader.md) |
+| `@character-foundry/exporter` | 0.1.4 | Universal `exportCard()` with loss reporting | [docs/exporter.md](docs/exporter.md) |
+| `@character-foundry/normalizer` | 0.1.5 | v2 → v3 conversion | [docs/normalizer.md](docs/normalizer.md) |
+| `@character-foundry/tokenizers` | 0.1.3 | GPT-4/LLaMA token counting + card field counting | [docs/tokenizers.md](docs/tokenizers.md) |
+| `@character-foundry/media` | 0.1.3 | Image format detection, dimensions, thumbnail generation | [docs/media.md](docs/media.md) |
+| `@character-foundry/image-utils` | 0.1.0 | Image URL extraction, SSRF protection, safety checks | - |
+| `@character-foundry/cli` | 0.3.1 | CLI tool: detect, info, validate, loss, export, extract-assets | [docs/cli.md](docs/cli.md) |
+| `@character-foundry/federation` | 0.5.2 | ActivityPub federation + HTTP signatures + D1 store (gated, opt-in) | [docs/federation.md](docs/federation.md) |
+| `@character-foundry/app-framework` | 0.2.2 | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
 
 ## Installation
 
@@ -218,7 +219,7 @@ Detailed documentation for each package:
 - **[Tokenizers](docs/tokenizers.md)** - GPT-4/LLaMA token counting
 - **[Media](docs/media.md)** - Image format detection, dimensions, thumbnails
 - **[CLI](docs/cli.md)** - Command-line tool for character cards
-- **[Federation](docs/federation.md)** - ActivityPub federation (experimental)
+- **[Federation](docs/federation.md)** - ActivityPub federation (gated, opt-in)
 - **[App Framework](docs/app-framework.md)** - Schema-driven UI with AutoForm
 
 ## Development

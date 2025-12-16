@@ -17,8 +17,9 @@ packages/
   normalizer/ - V2 ↔ V3 ↔ NormalizedCard conversion
   tokenizers/ - GPT-4/LLaMA token counting + card field counting
   media/      - Image format detection, dimensions, thumbnail generation
+  image-utils/ - Image URL extraction, SSRF protection, safety validation
   cli/        - Command-line tool: detect, info, validate, loss, export, extract-assets
-  federation/ - ActivityPub federation + HTTP signatures + D1 store (experimental, gated)
+  federation/ - ActivityPub federation + HTTP signatures + D1 store (gated, opt-in)
   app-framework/ - Schema-driven UI framework: Extension, Registry, AutoForm (React peer dep)
 ```
 

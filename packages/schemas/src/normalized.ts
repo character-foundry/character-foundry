@@ -66,6 +66,8 @@ export interface DerivedFeatures {
   // Content flags
   hasAlternateGreetings: boolean;
   alternateGreetingsCount: number;
+  /** Total greetings = first_mes (1) + alternate_greetings */
+  totalGreetingsCount: number;
   hasLorebook: boolean;
   lorebookEntriesCount: number;
   hasEmbeddedImages: boolean;
@@ -97,6 +99,7 @@ export function createEmptyFeatures(): DerivedFeatures {
   return {
     hasAlternateGreetings: false,
     alternateGreetingsCount: 0,
+    totalGreetingsCount: 1, // first_mes always counts as 1
     hasLorebook: false,
     lorebookEntriesCount: 0,
     hasEmbeddedImages: false,

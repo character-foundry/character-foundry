@@ -5,10 +5,16 @@
  */
 
 import { readFile, writeFile, mkdir, rm, readdir, stat } from 'node:fs/promises';
-import { join, basename, extname, dirname } from 'node:path';
+import { join, basename, extname, dirname, resolve, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { unzipSync, zipSync, type Unzipped, type Zippable, type ZipOptions } from 'fflate';
+import { zipSync, type Zippable } from 'fflate';
+import {
+  streamingUnzipSync,
+  preflightZipSizes,
+  isPathSafe,
+  ZipPreflightError,
+} from '@character-foundry/core/zip';
 
 export type PackageFormat = 'voxpkg' | 'charx' | 'unknown';
 export type AssetType = 'image' | 'audio' | 'video' | 'other';
@@ -194,6 +200,13 @@ export function detectAssetType(filename: string): AssetType {
   return 'other';
 }
 
+/** Max file size for optimizer operations (50MB) */
+const OPTIMIZER_MAX_FILE_SIZE = 50 * 1024 * 1024;
+/** Max total size for optimizer operations (500MB) */
+const OPTIMIZER_MAX_TOTAL_SIZE = 500 * 1024 * 1024;
+/** Max files for optimizer operations */
+const OPTIMIZER_MAX_FILES = 10000;
+
 /**
  * Detect package format from file data
  */
@@ -203,10 +216,14 @@ export function detectFormat(data: Uint8Array): PackageFormat {
     return 'unknown';
   }
 
-  // Try to unzip and check for format markers
+  // Try to get file list from preflight (no full decompression)
   try {
-    const unzipped = unzipSync(data);
-    const paths = Object.keys(unzipped);
+    const preflight = preflightZipSizes(data, {
+      maxFileSize: OPTIMIZER_MAX_FILE_SIZE,
+      maxTotalSize: OPTIMIZER_MAX_TOTAL_SIZE,
+      maxFiles: OPTIMIZER_MAX_FILES,
+    });
+    const paths = preflight.entries.map((e) => e.fileName);
 
     // Voxta: Characters/, Books/, Scenarios/, Collections/, package.json
     if (
@@ -240,6 +257,28 @@ function isMetaFile(path: string): boolean {
 }
 
 /**
+ * Validate that a path stays within the temp directory (Zip Slip protection).
+ * Returns the safe absolute path or throws if traversal is detected.
+ */
+function validateExtractPath(tempDir: string, entryPath: string): string {
+  // First check using the core isPathSafe function
+  if (!isPathSafe(entryPath)) {
+    throw new Error(`Unsafe path detected: "${entryPath}" - potential path traversal attack`);
+  }
+
+  // Additional check: resolve and verify the path stays within tempDir
+  const absolutePath = resolve(tempDir, entryPath);
+  const relativePath = relative(tempDir, absolutePath);
+
+  // If the relative path starts with '..' or is absolute, it's a traversal attempt
+  if (relativePath.startsWith('..') || resolve(relativePath) === relativePath) {
+    throw new Error(`Path traversal detected: "${entryPath}" resolves outside temp directory`);
+  }
+
+  return absolutePath;
+}
+
+/**
  * Extract a package to a temporary directory
  */
 export async function extractPackage(inputPath: string): Promise<ExtractedPackage> {
@@ -254,8 +293,17 @@ export async function extractPackage(inputPath: string): Promise<ExtractedPackag
   const tempDir = join(tmpdir(), `cf-optimize-${randomUUID()}`);
   await mkdir(tempDir, { recursive: true });
 
-  // Unzip
-  const unzipped = unzipSync(data);
+  // SECURITY: Use streaming unzip with actual byte tracking and path validation
+  // This protects against:
+  // 1. Zip bombs (archives that lie about sizes in central directory)
+  // 2. Path traversal attacks (Zip Slip)
+  const unzipped = streamingUnzipSync(data, {
+    maxFileSize: OPTIMIZER_MAX_FILE_SIZE,
+    maxTotalSize: OPTIMIZER_MAX_TOTAL_SIZE,
+    maxFiles: OPTIMIZER_MAX_FILES,
+    unsafePathHandling: 'reject', // Fail on path traversal attempts
+  });
+
   const assets: AssetInfo[] = [];
   const metaFiles: string[] = [];
   let totalSize = 0;
@@ -265,7 +313,8 @@ export async function extractPackage(inputPath: string): Promise<ExtractedPackag
     // Skip directories (empty entries)
     if (path.endsWith('/') || content.length === 0) continue;
 
-    const absolutePath = join(tempDir, path);
+    // SECURITY: Validate path stays within temp directory
+    const absolutePath = validateExtractPath(tempDir, path);
     await mkdir(dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, content);
 

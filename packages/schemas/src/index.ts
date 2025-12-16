@@ -79,6 +79,9 @@ export {
   createEmptyFeatures,
 } from './normalized.js';
 
+// Feature derivation
+export { deriveFeatures } from './feature-deriver.js';
+
 // Detection
 export {
   type SpecDetectionResult,

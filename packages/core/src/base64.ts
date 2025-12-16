@@ -14,15 +14,30 @@ const isNode = typeof process !== 'undefined' &&
   process.versions.node != null;
 
 /**
+ * Threshold for switching to chunked encoding in browsers (1MB)
+ * Below this, simple string concatenation is fast enough.
+ * Above this, quadratic string growth becomes a problem.
+ */
+const LARGE_BUFFER_THRESHOLD = 1024 * 1024;
+
+/**
  * Encode binary data to base64 string
+ *
+ * PERFORMANCE: For large buffers (>1MB) in browsers, this automatically
+ * uses the chunked implementation to avoid quadratic string concatenation.
  */
 export function encode(data: BinaryData): string {
   if (isNode) {
-    // Node.js: use Buffer
+    // Node.js: Buffer handles large data efficiently
     return Buffer.from(data).toString('base64');
   }
 
-  // Browser: use btoa with binary string conversion
+  // Browser: use chunked encoding for large buffers to avoid O(n²) string growth
+  if (data.length > LARGE_BUFFER_THRESHOLD) {
+    return encodeChunked(data);
+  }
+
+  // Small buffers: simple approach is fast enough
   let binary = '';
   for (let i = 0; i < data.length; i++) {
     binary += String.fromCharCode(data[i]!);

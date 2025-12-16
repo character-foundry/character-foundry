@@ -1,9 +1,19 @@
-import { useState, useCallback, useRef, useEffect, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type ChangeEvent, type KeyboardEvent } from 'react';
 import type { FieldWidgetProps } from '../../types/ui-hints';
 
 interface Option {
   value: string;
   label: string;
+}
+
+/**
+ * Pre-indexed option for efficient filtering.
+ * Stores lowercase versions to avoid repeated lowercasing.
+ */
+interface IndexedOption {
+  option: Option;
+  labelLower: string;
+  valueLower: string;
 }
 
 /**
@@ -50,19 +60,44 @@ export function SearchableSelect({
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-  const options: Option[] = hint?.options ?? [];
+  const rawOptions: Option[] = hint?.options ?? [];
 
-  // Filter options based on search term
-  const filteredOptions = searchTerm
-    ? options.filter(
-        (opt) =>
-          opt.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          opt.value.toLowerCase().includes(searchTerm.toLowerCase())
+  // PERFORMANCE: Pre-index options with lowercase strings to avoid repeated toLowerCase() calls
+  // This only recalculates when options change
+  const indexedOptions = useMemo((): IndexedOption[] => {
+    return rawOptions.map((opt) => ({
+      option: opt,
+      labelLower: opt.label.toLowerCase(),
+      valueLower: opt.value.toLowerCase(),
+    }));
+  }, [rawOptions]);
+
+  // PERFORMANCE: Build a Map for O(1) value lookup
+  const optionsByValue = useMemo(() => {
+    const map = new Map<string, Option>();
+    for (const opt of rawOptions) {
+      map.set(opt.value, opt);
+    }
+    return map;
+  }, [rawOptions]);
+
+  // PERFORMANCE: Filter using pre-indexed lowercase strings
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) {
+      return rawOptions;
+    }
+    const searchLower = searchTerm.toLowerCase();
+    return indexedOptions
+      .filter(
+        (indexed) =>
+          indexed.labelLower.includes(searchLower) ||
+          indexed.valueLower.includes(searchLower)
       )
-    : options;
+      .map((indexed) => indexed.option);
+  }, [searchTerm, indexedOptions, rawOptions]);
 
-  // Get display label for current value
-  const selectedOption = options.find((opt) => opt.value === value);
+  // Get display label for current value using O(1) Map lookup
+  const selectedOption = optionsByValue.get(value ?? '');
   const displayValue = selectedOption?.label ?? value ?? '';
 
   // Handle click outside to close

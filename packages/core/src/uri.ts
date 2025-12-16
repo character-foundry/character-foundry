@@ -235,31 +235,164 @@ export function isVideoExt(ext: string): boolean {
   return videoExts.includes(ext.toLowerCase());
 }
 
+/** Safe MIME types for data: URIs that can be used in href/src */
+const SAFE_DATA_URI_MIME_TYPES = new Set([
+  // Images (safe for img src)
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/avif',
+  'image/bmp',
+  'image/x-icon',
+  // Audio (safe for audio src)
+  'audio/mpeg',
+  'audio/wav',
+  'audio/ogg',
+  'audio/flac',
+  'audio/mp4',
+  'audio/aac',
+  // Video (safe for video src)
+  'video/mp4',
+  'video/webm',
+  // Text/data (generally safe)
+  'text/plain',
+  'application/json',
+  'application/octet-stream',
+]);
+
+/** Potentially dangerous MIME types that should NOT be used in href/src */
+const DANGEROUS_DATA_URI_MIME_TYPES = new Set([
+  // Executable/script content
+  'text/html',
+  'text/javascript',
+  'application/javascript',
+  'application/x-javascript',
+  'text/css',
+  'image/svg+xml', // SVG can contain scripts
+  'application/xhtml+xml',
+  'application/xml',
+]);
+
 /**
- * Validate if a URI is safe to use
+ * Options for URI safety validation
  */
-export function isURISafe(uri: string, options: { allowHttp?: boolean; allowFile?: boolean } = {}): boolean {
+export interface URISafetyOptions {
+  /** Allow http:// URIs (default: false) */
+  allowHttp?: boolean;
+  /** Allow file:// URIs (default: false) */
+  allowFile?: boolean;
+  /**
+   * Allowed MIME types for data: URIs (default: all safe types).
+   * Set to empty array to reject all data: URIs.
+   * Set to undefined to use default safe list.
+   */
+  allowedDataMimes?: string[];
+}
+
+/**
+ * Result of URI safety check with detailed information
+ */
+export interface URISafetyResult {
+  /** Whether the URI is safe to use */
+  safe: boolean;
+  /** Reason if unsafe */
+  reason?: string;
+  /** Detected scheme */
+  scheme: URIScheme;
+  /** MIME type for data: URIs */
+  mimeType?: string;
+}
+
+/**
+ * Validate if a URI is safe to use (detailed version)
+ *
+ * @param uri - URI to validate
+ * @param options - Safety options
+ * @returns Detailed safety result
+ */
+export function checkURISafety(uri: string, options: URISafetyOptions = {}): URISafetyResult {
   const parsed = parseURI(uri);
 
   switch (parsed.scheme) {
     case 'embeded':
     case 'ccdefault':
     case 'internal':
-    case 'data':
     case 'https':
     case 'pngchunk':
-      return true;
+      return { safe: true, scheme: parsed.scheme };
+
+    case 'data': {
+      const mimeType = parsed.mimeType || 'text/plain';
+
+      // Check for explicitly dangerous MIME types
+      if (DANGEROUS_DATA_URI_MIME_TYPES.has(mimeType)) {
+        return {
+          safe: false,
+          scheme: parsed.scheme,
+          mimeType,
+          reason: `Data URI with potentially dangerous MIME type: ${mimeType}`,
+        };
+      }
+
+      // If custom allowed list is provided, check against it
+      if (options.allowedDataMimes !== undefined) {
+        if (options.allowedDataMimes.length === 0) {
+          return {
+            safe: false,
+            scheme: parsed.scheme,
+            mimeType,
+            reason: 'Data URIs are not allowed',
+          };
+        }
+        if (!options.allowedDataMimes.includes(mimeType)) {
+          return {
+            safe: false,
+            scheme: parsed.scheme,
+            mimeType,
+            reason: `Data URI MIME type not in allowed list: ${mimeType}`,
+          };
+        }
+      }
+
+      // Otherwise use default safe list
+      if (!SAFE_DATA_URI_MIME_TYPES.has(mimeType)) {
+        return {
+          safe: false,
+          scheme: parsed.scheme,
+          mimeType,
+          reason: `Unknown data URI MIME type: ${mimeType}`,
+        };
+      }
+
+      return { safe: true, scheme: parsed.scheme, mimeType };
+    }
 
     case 'http':
-      return options.allowHttp === true;
+      if (options.allowHttp === true) {
+        return { safe: true, scheme: parsed.scheme };
+      }
+      return { safe: false, scheme: parsed.scheme, reason: 'HTTP URIs are not allowed' };
 
     case 'file':
-      return options.allowFile === true;
+      if (options.allowFile === true) {
+        return { safe: true, scheme: parsed.scheme };
+      }
+      return { safe: false, scheme: parsed.scheme, reason: 'File URIs are not allowed' };
 
     case 'unknown':
     default:
-      return false;
+      return { safe: false, scheme: parsed.scheme, reason: 'Unknown URI scheme' };
   }
+}
+
+/**
+ * Validate if a URI is safe to use (simple boolean version for backwards compatibility)
+ *
+ * @deprecated Use checkURISafety() for detailed safety information
+ */
+export function isURISafe(uri: string, options: { allowHttp?: boolean; allowFile?: boolean } = {}): boolean {
+  return checkURISafety(uri, options).safe;
 }
 
 /**
