@@ -14,6 +14,7 @@ import {
   createExtractAssetsCommand,
   createOptimizeCommand,
   createScanCommand,
+  createDiagnoseVoxtaCommand,
 } from './commands/index.js';
 
 // Read version from package.json
@@ -36,6 +37,7 @@ export function createCLI(): Command {
   program.addCommand(createExtractAssetsCommand());
   program.addCommand(createOptimizeCommand());
   program.addCommand(createScanCommand());
+  program.addCommand(createDiagnoseVoxtaCommand());
 
   return program;
 }

@@ -104,6 +104,12 @@ export function voxtaToCCv3(character: VoxtaCharacter, books?: VoxtaBook[]): CCv
     ? Math.floor(new Date(character.DateModified).getTime() / 1000)
     : undefined;
 
+  // SPEC-COMPLIANT MAPPING (per CHARX_vs_VOXPKG_COMPARISON.md):
+  // - Voxta Description (physical appearance) → CCv3 visual_description extension
+  // - Voxta Personality → CCv3 personality
+  // - Voxta Profile (backstory/details) → CCv3 description
+  // Pure 1:1 mapping - no extraction, no magic
+
   // Build CCv3 card
   const card: CCv3Data = {
     spec: 'chara_card_v3',

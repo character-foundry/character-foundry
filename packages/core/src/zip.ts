@@ -238,8 +238,20 @@ export function preflightZipSizes(
       zipData[i + 2] === eocdSignature[2] &&
       zipData[i + 3] === eocdSignature[3]
     ) {
-      eocdOffset = i;
-      break;
+      // SECURITY: Validate comment length to avoid false positives
+      // If the ZIP comment contains the EOCD signature bytes, we could
+      // find the wrong location. Verify by checking comment length.
+      // Comment length is at offset +20 (2 bytes, little-endian)
+      if (i + 21 < zipData.length) {
+        const commentLength = zipData[i + 20]! | (zipData[i + 21]! << 8);
+        // True EOCD should be at: file_size - 22 - comment_length
+        const expectedOffset = zipData.length - 22 - commentLength;
+        if (i === expectedOffset) {
+          eocdOffset = i;
+          break;
+        }
+        // Otherwise, this is a false positive (signature in comment), continue searching
+      }
     }
   }
 
@@ -367,9 +379,19 @@ function readUInt32LEFromBytes(data: BinaryData, offset: number): number {
  * - 'warn': Skips unsafe files and calls onUnsafePath callback
  * - 'reject': Throws ZipPreflightError on unsafe paths
  *
+ * @performance SYNCHRONOUS BLOCKING OPERATION
+ * This function runs synchronously and will block the event loop during
+ * decompression. For large archives (>50MB), this can cause UI freezes
+ * in browser environments or block the Node.js event loop.
+ *
+ * Recommendations:
+ * - Browser: Use Web Workers for archives >10MB to avoid freezing the UI
+ * - Node.js: Consider worker threads for archives >50MB
+ * - All environments: Call preflightZipSizes() first to validate before extraction
+ *
  * @param data - ZIP file data (can be SFX/self-extracting)
  * @param limits - Size limits to enforce
- * @returns Promise resolving to extracted files
+ * @returns Extracted files (synchronously)
  * @throws ZipPreflightError if limits are exceeded during extraction
  */
 export function streamingUnzipSync(

@@ -72,12 +72,28 @@ function detectExtension(buffer: Uint8Array): string | null {
     return 'ogg';
   }
 
-  // MP3: ID3 (49 44 33) or Sync Frame (FF FB)
+  // MP3: ID3 (49 44 33) or MPEG Sync Frame
   if (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33) {
     return 'mp3';
   }
-  if (buffer.length > 1 && buffer[0] === 0xFF && (buffer[1]! & 0xE0) === 0xE0) { // simplified check
-    return 'mp3';
+  // MPEG sync frame: More rigorous check to avoid false positives
+  // Sync word: 11 bits of 1s (0xFFE or 0xFFF)
+  // Check MPEG version (bits 19-20) and Layer (bits 17-18) are valid
+  if (buffer.length >= 4 && buffer[0] === 0xFF && (buffer[1]! & 0xE0) === 0xE0) {
+    const byte2 = buffer[1]!;
+    const byte3 = buffer[2]!;
+    // Check MPEG version: bits 19-20 should not be 0b01 (reserved)
+    const version = (byte2 >> 3) & 0x03;
+    // Check Layer: bits 17-18 should not be 0b00 (reserved)
+    const layer = (byte2 >> 1) & 0x03;
+    // Check bitrate index: bits 12-15 should not be 0b1111 (invalid)
+    const bitrateIndex = (byte3 >> 4) & 0x0F;
+    // Check sample rate: bits 10-11 should not be 0b11 (reserved)
+    const sampleRate = (byte3 >> 2) & 0x03;
+
+    if (version !== 0x01 && layer !== 0x00 && bitrateIndex !== 0x0F && sampleRate !== 0x03) {
+      return 'mp3';
+    }
   }
 
   // WAV: 52 49 46 46 ... 57 41 56 45 (RIFF ... WAVE)
@@ -470,6 +486,18 @@ function parseJson(data: BinaryData, options: Required<ParseOptions>): ParseResu
     );
   }
 
+  return parseJsonFromParsed(parsed, jsonStr, data, options);
+}
+
+/**
+ * Parse from already-parsed JSON data (avoids double parsing)
+ */
+function parseJsonFromParsed(
+  parsed: unknown,
+  jsonStr: string,
+  rawBuffer: BinaryData,
+  options: Required<ParseOptions>
+): ParseResult {
   const spec = detectSpec(parsed);
   let card: CCv3Data;
   let sourceFormat: SourceFormat;
@@ -498,7 +526,7 @@ function parseJson(data: BinaryData, options: Required<ParseOptions>): ParseResu
     sourceFormat,
     originalShape: parsed,
     rawJson: jsonStr,
-    rawBuffer: data,
+    rawBuffer,
   };
 }
 
@@ -687,7 +715,8 @@ export function parse(data: BinaryData, options: ParseOptions = {}): UniversalPa
     // Otherwise try to parse as card
     const spec = detectSpec(parsed);
     if (spec) {
-      const result = parseJson(data, opts);
+      // PERFORMANCE: Pass already-parsed data to avoid re-parsing
+      const result = parseJsonFromParsed(parsed, jsonStr, data, opts);
       return { ...result, type: 'card' } as CardParseResult;
     }
 

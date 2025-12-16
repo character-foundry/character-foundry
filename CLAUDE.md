@@ -278,7 +278,7 @@ No more cascading version bumps across 10+ packages!
 
 | Package | Version |
 |---------|---------|
-| `@character-foundry/character-foundry` | 0.1.5 |
+| `@character-foundry/character-foundry` | 0.1.6 |
 | `@character-foundry/cli` | 0.3.1 |
 
 ### Authentication

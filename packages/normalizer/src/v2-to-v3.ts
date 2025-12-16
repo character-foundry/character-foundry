@@ -62,6 +62,7 @@ function convertCharacterBook(
  *
  * Philosophy: Be lenient on input - never completely drop data due to missing fields.
  * Defaults are applied for any missing required fields to ensure valid output.
+ * Pure 1:1 field mapping - no extraction, no magic.
  *
  * @param input - CCv2 card data (wrapped or unwrapped, potentially malformed)
  * @returns CCv3 card data with all required fields populated
