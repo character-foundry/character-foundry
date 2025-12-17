@@ -1,5 +1,14 @@
 # @character-foundry/cli
 
+## 0.4.3
+
+### Patch Changes
+
+- [#39](https://github.com/character-foundry/character-foundry/pull/39) [`6352698`](https://github.com/character-foundry/character-foundry/commit/63526982f38c5f4cab4085fa8a669713cc4d3447) Thanks [@axAilotl](https://github.com/axAilotl)! - Add 'in_chat' to lorebook position enum (RisuAI compatibility)
+
+  Found 8 entries using `position: "in_chat"` in wild data.
+  Validated against 1,295 lorebook entries - 100% pass rate.
+
 ## 0.4.2
 
 ### Patch Changes
