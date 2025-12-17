@@ -14,22 +14,22 @@ import { z } from 'zod';
  * Lorebook entry schema for v2 cards
  */
 export const CCv2LorebookEntrySchema = z.object({
-  keys: z.array(z.string()),
+  keys: z.array(z.string()).optional(), // Some tools use 'key' instead
   content: z.string(),
-  enabled: z.boolean(),
-  insertion_order: z.number().int(),
-  // Optional fields
+  enabled: z.boolean().default(true), // Default to enabled if missing
+  insertion_order: z.number().int().default(0),
+  // Optional fields - be lenient with nulls since wild data has them
   extensions: z.record(z.unknown()).optional(),
-  case_sensitive: z.boolean().optional(),
+  case_sensitive: z.boolean().nullable().optional(),
   name: z.string().optional(),
   priority: z.number().int().optional(),
   id: z.number().int().optional(),
   comment: z.string().optional(),
-  selective: z.boolean().optional(),
+  selective: z.boolean().nullable().optional(),
   secondary_keys: z.array(z.string()).optional(),
-  constant: z.boolean().optional(),
-  position: z.enum(['before_char', 'after_char']).optional(),
-});
+  constant: z.boolean().nullable().optional(),
+  position: z.union([z.enum(['before_char', 'after_char']), z.number().int()]).nullable().optional(),
+}).passthrough(); // Allow SillyTavern extensions like depth, probability, etc.
 
 /**
  * Character book (lorebook) schema for v2 cards
