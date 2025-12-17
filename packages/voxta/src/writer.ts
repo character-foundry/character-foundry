@@ -41,6 +41,30 @@ function sanitizeName(name: string, ext: string): string {
   return safeName;
 }
 
+function sanitizeExtension(ext: string): string {
+  const normalized = ext.trim().replace(/^\./, '').toLowerCase();
+
+  if (!normalized) {
+    throw new Error('Invalid asset extension: empty extension');
+  }
+
+  if (normalized.length > 64) {
+    throw new Error(`Invalid asset extension: too long (${normalized.length} chars)`);
+  }
+
+  // Prevent zip path traversal / separators
+  if (normalized.includes('/') || normalized.includes('\\') || normalized.includes('\0')) {
+    throw new Error('Invalid asset extension: path separators are not allowed');
+  }
+
+  // Conservative filename safety while still allowing common multi-part extensions (e.g. tar.gz)
+  if (!/^[a-z0-9][a-z0-9._-]*$/.test(normalized)) {
+    throw new Error(`Invalid asset extension: "${ext}"`);
+  }
+
+  return normalized;
+}
+
 /**
  * Build a Voxta package from CCv3 card data
  */
@@ -172,8 +196,9 @@ export function writeVoxta(
   let mainThumbnail: VoxtaWriteAsset | undefined;
 
   for (const asset of assets) {
-    const safeName = sanitizeName(asset.name, asset.ext);
-    const finalFilename = `${safeName}.${asset.ext}`;
+    const safeExt = sanitizeExtension(asset.ext);
+    const safeName = sanitizeName(asset.name, safeExt);
+    const finalFilename = `${safeName}.${safeExt}`;
     let voxtaPath = '';
 
     const tags = asset.tags || [];

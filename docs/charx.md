@@ -1,7 +1,7 @@
 # CharX Package Documentation
 
 **Package:** `@character-foundry/charx`
-**Version:** 0.0.4
+**Version:** 0.0.7
 **Environment:** Node.js and Browser
 
 The `@character-foundry/charx` package handles reading and writing CharX format files - a ZIP-based container format used by RisuAI that supports multiple assets.
@@ -42,13 +42,14 @@ Benefits over PNG:
 
 ```
 character.charx (ZIP archive)
-├── card.json           # CCv3 character data
-├── assets/
-│   ├── avatar.png      # Character portrait
-│   ├── happy.png       # Emotion: happy
-│   ├── sad.png         # Emotion: sad
-│   └── intro.mp3       # Audio asset
-└── cover.png           # Optional cover image
+├── card.json                 # CCv3 character data
+├── assets/                   # Embedded assets (any structure allowed)
+│   ├── icon/images/avatar.png
+│   ├── emotion/images/happy.png
+│   └── sound/audio/intro.mp3
+├── x_meta/                   # Optional (Risu): PNG chunk metadata
+│   └── 0.json
+└── module.risum              # Optional (Risu): opaque compiled scripts
 ```
 
 ### card.json
@@ -59,11 +60,11 @@ Standard CCv3 format with assets referencing files:
 {
   "spec": "chara_card_v3",
   "spec_version": "3.0",
-  "data": {
-    "name": "Character Name",
-    "assets": [
-      { "type": "icon", "uri": "embeded://assets/avatar.png", "name": "Avatar", "ext": "png" },
-      { "type": "emotion", "uri": "embeded://assets/happy.png", "name": "Happy", "ext": "png" }
+    "data": {
+      "name": "Character Name",
+      "assets": [
+      { "type": "icon", "uri": "embeded://assets/icon/images/avatar.png", "name": "Avatar", "ext": "png" },
+      { "type": "emotion", "uri": "embeded://assets/emotion/images/happy.png", "name": "Happy", "ext": "png" }
     ]
   }
 }
@@ -77,24 +78,25 @@ Standard CCv3 format with assets referencing files:
 
 ```typescript
 interface CharxReadOptions {
-  maxFileSize?: number;    // Per-file size limit (default: 50MB)
-  maxTotalSize?: number;   // Total extracted size limit
-  maxFiles?: number;       // Max files to extract
+  maxFileSize?: number;          // card.json limit (default: 10MB)
+  maxAssetSize?: number;         // per-asset limit (default: 50MB)
+  maxTotalSize?: number;         // total limit (default: 200MB)
+  preserveXMeta?: boolean;       // default: true
+  preserveModuleRisum?: boolean; // default: true
 }
 
 interface CharxAssetInfo {
-  path: string;            // Path in ZIP
-  name: string;            // Asset name
-  type: string;            // Asset type (icon, emotion, etc.)
-  mime: string;            // MIME type
-  size: number;            // File size
+  path: string;                  // Path in ZIP (e.g. assets/icon/images/avatar.png)
+  descriptor: AssetDescriptor;   // Card descriptor (uri, ext, etc.)
+  buffer?: Uint8Array;           // Extracted bytes
 }
 
 interface CharxData {
-  card: CCv3Data;          // Parsed card data
-  assets: ExtractedAsset[]; // Extracted asset files
-  cover?: Uint8Array;      // Cover image if present
-  meta?: CharxMetaEntry[]; // File metadata
+  card: CCv3Data;                   // Parsed card data
+  assets: CharxAssetInfo[];          // Extracted assets
+  metadata?: Map<number, CharxMetaEntry>; // Optional x_meta entries
+  moduleRisum?: Uint8Array;          // Optional opaque blob (Risu)
+  isRisuFormat: boolean;
 }
 ```
 
@@ -122,8 +124,9 @@ import { readCharX, readCardJsonOnly, readCharXAsync } from '@character-foundry/
 // Synchronous read (loads all assets into memory)
 const data = readCharX(buffer);
 // data.card - CCv3Data
-// data.assets - ExtractedAsset[]
-// data.cover - Uint8Array | undefined
+// data.assets - CharxAssetInfo[]
+// data.moduleRisum - Uint8Array | undefined
+// data.metadata - Map<number, CharxMetaEntry> | undefined
 
 // Read only card.json (faster, less memory)
 const card = readCardJsonOnly(buffer);
@@ -144,25 +147,26 @@ const data = await readCharXAsync(buffer, {
 type CompressionLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 interface CharxWriteAsset {
-  path: string;            // Path in ZIP (e.g., 'assets/avatar.png')
+  type: string;            // Asset type (icon, emotion, sound, etc.)
+  name: string;            // Asset name (without extension)
+  ext: string;             // File extension (validated, arbitrary types allowed)
   data: Uint8Array;        // File content
-  compress?: boolean;      // Whether to compress (default: false for images)
+  isMain?: boolean;
 }
 
 interface CharxWriteOptions {
-  compressionLevel?: CompressionLevel;  // 0=none, 9=max
-  cover?: Uint8Array;      // Cover image to include
-  preserveStructure?: boolean;  // Keep original file structure
+  spec?: 'v3' | 'risu';
+  compressionLevel?: CompressionLevel;
+  emitXMeta?: boolean;     // Default: false (auto-enabled for risu)
+  emitReadme?: boolean;    // Default: false
+  moduleRisum?: Uint8Array; // Optional opaque blob (Risu)
 }
 
 interface CharxBuildResult {
-  buffer: Uint8Array;      // Final ZIP buffer
-  size: number;            // Total size
-  fileCount: number;       // Number of files
+  buffer: Uint8Array;
+  assetCount: number;
+  totalSize: number;
 }
-
-// For async operations - fetch assets on demand
-type AssetFetcher = (uri: string) => Promise<Uint8Array>;
 ```
 
 ### Writing
@@ -172,19 +176,19 @@ import { writeCharX, writeCharXAsync } from '@character-foundry/charx';
 
 // Synchronous write
 const result = writeCharX(card, assets, {
+  spec: 'v3',
   compressionLevel: 6,
-  cover: coverImageBuffer,
+  emitReadme: false,
 });
 // result.buffer - Final CharX file
 
-// Async write with asset fetching
-const result = await writeCharXAsync(card, async (uri) => {
-  // Fetch asset data from URI
-  return await fetchAsset(uri);
-}, {
+// Async wrapper (same behavior, Promise-based API)
+const result = await writeCharXAsync(card, assets, {
   compressionLevel: 6,
 });
 ```
+
+`writeCharX()` preserves arbitrary file extensions for assets (useful for scripts/text), but rejects unsafe extensions that could result in path traversal inside the ZIP (e.g. values containing `/` or `\\`).
 
 ---
 
@@ -212,8 +216,8 @@ CharX supports a "mullet" format: JPEG in front, ZIP in back. This allows:
 ### Detection and Reading
 
 ```typescript
-import { isJpegCharX, readCharX, getZipOffset } from '@character-foundry/charx';
-import { getZipOffset } from '@character-foundry/core';
+import { isJpegCharX, readCharX } from '@character-foundry/charx';
+import { getZipOffset } from '@character-foundry/core/zip';
 
 // Detect JPEG+ZIP
 if (isJpegCharX(buffer)) {
@@ -248,17 +252,17 @@ async function loadCharX(path: string) {
     throw new Error('Not a valid CharX file');
   }
 
-  const { card, assets, cover } = readCharX(buffer);
+  const { card, assets } = readCharX(buffer);
 
   console.log(`Character: ${card.data.name}`);
   console.log(`Assets: ${assets.length}`);
 
   // List assets
   for (const asset of assets) {
-    console.log(`  - ${asset.name} (${asset.type}): ${asset.data.length} bytes`);
+    console.log(`  - ${asset.path}: ${asset.buffer?.length ?? 0} bytes`);
   }
 
-  return { card, assets, cover };
+  return { card, assets };
 }
 ```
 
@@ -278,11 +282,14 @@ async function createCharX(
   for (const { path, type } of assetPaths) {
     const data = await readFile(path);
     const filename = path.split('/').pop()!;
+    const ext = filename.split('.').pop() || 'bin';
+    const name = filename.replace(/\.[^.]+$/, '');
 
     assets.push({
-      path: `assets/${filename}`,
+      type,
+      name,
+      ext,
       data,
-      compress: false,  // Images don't compress well
     });
   }
 
@@ -308,11 +315,9 @@ function getAvatar(charxBuffer: Uint8Array): Uint8Array | null {
   if (!avatarDesc) return null;
 
   // Find matching extracted asset
-  const avatar = assets.find(a =>
-    avatarDesc.uri.includes(a.name) || a.type === 'icon'
-  );
+  const avatar = assets.find((a) => a.descriptor.uri === avatarDesc.uri);
 
-  return avatar?.data ?? null;
+  return (avatar?.buffer as Uint8Array | undefined) ?? null;
 }
 ```
 

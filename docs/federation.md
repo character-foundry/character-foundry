@@ -1,7 +1,7 @@
 # Federation Package Documentation
 
 **Package:** `@character-foundry/federation`
-**Version:** 0.3.4
+**Version:** 0.5.2
 **Environment:** Node.js (>=18), Browser, and Cloudflare Workers
 
 The `@character-foundry/federation` package provides experimental ActivityPub-based federation for syncing character cards across platforms.
@@ -91,6 +91,24 @@ import { enableFederation } from '@character-foundry/federation';
 
 // Single opt-in with skipEnvCheck
 enableFederation({ skipEnvCheck: true });
+```
+
+### Logging
+
+Federation uses a lightweight logger with a default verbosity of `warn`. You can configure it via `enableFederation()`:
+
+```typescript
+import { enableFederation } from '@character-foundry/federation';
+
+enableFederation({ logLevel: 'debug' }); // 'silent' | 'error' | 'warn' | 'info' | 'debug'
+```
+
+Or set it explicitly:
+
+```typescript
+import { setFederationLogLevel } from '@character-foundry/federation';
+
+setFederationLogLevel('info');
 ```
 
 If you try to use federation features without enabling:
@@ -1032,6 +1050,30 @@ const result = await validateHttpSignature(activity, headers, {
 **Security implications:**
 - Without `date` in signature: replay attacks possible
 - Without `host` in signature: cross-host request reuse possible
+
+### Internal Network Key (Optional)
+
+For internal-only deployments (e.g., multiple instances on the same private network), you can require a shared network key on inbound requests.
+
+- Header: `X-Foundry-Network-Key`
+- Option: `handleInbox(..., { networkKey: 'your-secret' })`
+- In `strictMode`, the header must also be included in the signed header list (prevents downgrade/injection).
+
+```typescript
+import { handleInbox } from '@character-foundry/federation';
+
+const rawBody = await req.text();
+const body = JSON.parse(rawBody);
+
+const result = await handleInbox(body, req.headers, {
+  rawBody,
+  strictMode: true,
+  method: 'POST',
+  path: '/api/federation/inbox',
+  networkKey: process.env.FOUNDRY_NETWORK_KEY!,
+  fetchActor,
+});
+```
 
 ### Digest Verification (Body Integrity)
 

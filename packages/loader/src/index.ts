@@ -43,6 +43,7 @@ export {
   validateClientMetadata,
   validateClientMetadataSync,
   computeContentHash,
+  computeContentHashV2,
   type ClientMetadata,
   type TokenCounts,
   type MetadataDiscrepancy,

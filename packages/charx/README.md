@@ -18,20 +18,20 @@ npm install @character-foundry/charx
 ## Quick Start
 
 ```typescript
-import { readCharx, writeCharx, isCharxHybrid } from '@character-foundry/charx';
+import { isCharX, isJpegCharX, readCharX, writeCharX } from '@character-foundry/charx';
 
 // Read CharX file
-const { card, assets, spec } = readCharx(buffer);
+const { card, assets, isRisuFormat } = readCharX(buffer);
 console.log(card.data.name);
 
-// Write CharX file
-const charxBuffer = writeCharx(card, assets, {
+// Write CharX file (supply CharxWriteAsset[] that you want embedded)
+const charxBuffer = writeCharX(card, [], {
   spec: 'v3',
   compressionLevel: 6,
 });
 
 // Check for JPEG+ZIP hybrid
-if (isCharxHybrid(buffer)) {
+if (isJpegCharX(buffer)) {
   // Handle hybrid format
 }
 ```

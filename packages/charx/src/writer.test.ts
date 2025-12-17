@@ -106,4 +106,24 @@ describe('writeCharX', () => {
     // Compressed should be smaller for repetitive data
     expect(compressed.buffer.length).toBeLessThan(uncompressed.buffer.length);
   });
+
+  it('should preserve non-whitelisted extensions', () => {
+    const scriptData = new Uint8Array([0x63, 0x6f, 0x6e, 0x73, 0x6f, 0x6c, 0x65]); // "console"
+    const assets = [
+      { name: 'startup', type: 'data' as const, ext: 'js', data: scriptData },
+    ];
+
+    const result = writeCharX(testCard, assets);
+    const unzipped = unzipSync(result.buffer);
+
+    expect(unzipped['assets/data/other/startup.js']).toBeDefined();
+  });
+
+  it('should reject unsafe extensions that could cause path traversal', () => {
+    const assets = [
+      { name: 'evil', type: 'data' as const, ext: '../pwned', data: new Uint8Array([1]) },
+    ];
+
+    expect(() => writeCharX(testCard, assets)).toThrow(/extension/i);
+  });
 });

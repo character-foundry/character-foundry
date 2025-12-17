@@ -149,4 +149,41 @@ describe('writeVoxta', () => {
       expect(charData.MemoryBooks).toContain(bookData.Id);
     });
   });
+
+  it('should preserve non-image extensions for misc assets', () => {
+    const card = createTestCard();
+    const characterId = '00000000-0000-4000-8000-000000000000';
+    const packageId = '00000000-0000-4000-8000-000000000001';
+
+    const result = writeVoxta(
+      card,
+      [
+        {
+          name: 'notes',
+          type: 'data',
+          ext: 'txt',
+          data: new Uint8Array([0x68, 0x69]), // "hi"
+        },
+      ],
+      { includePackageJson: false, characterId, packageId }
+    );
+
+    const files = unzipSync(result.buffer);
+    expect(files[`Characters/${characterId}/Assets/Misc/notes.txt`]).toBeDefined();
+  });
+
+  it('should reject unsafe extensions that could cause path traversal', () => {
+    const card = createTestCard();
+
+    expect(() =>
+      writeVoxta(card, [
+        {
+          name: 'evil',
+          type: 'data',
+          ext: '../pwned',
+          data: new Uint8Array([1]),
+        },
+      ])
+    ).toThrow(/extension/i);
+  });
 });

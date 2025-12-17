@@ -771,6 +771,90 @@ describe('Fork Support', () => {
       expect(result.error).toContain('Invalid activity');
     });
 
+    describe('Network Key Gate', () => {
+      const sharedKey = 'test-network-key';
+      const keyHeader = 'X-Foundry-Network-Key';
+
+      function createTestForkActivity() {
+        const forkedCard = cardToActivityPub(testCard, {
+          id: 'https://example.com/cards/fork-456',
+          actorId,
+        });
+
+        return createForkActivity(
+          'https://original.com/cards/source-123',
+          forkedCard,
+          actorId,
+          baseUrl
+        );
+      }
+
+      it('should reject when network key is configured but missing', async () => {
+        const activity = createTestForkActivity();
+
+        const result = await handleInbox(activity, new Headers(), {
+          fetchActor: async () => null,
+          networkKey: sharedKey,
+        });
+
+        expect(result.accepted).toBe(false);
+        expect(result.error).toContain('network key');
+      });
+
+      it('should reject when network key is wrong', async () => {
+        const activity = createTestForkActivity();
+
+        const result = await handleInbox(activity, new Headers({ [keyHeader]: 'wrong' }), {
+          fetchActor: async () => null,
+          networkKey: sharedKey,
+        });
+
+        expect(result.accepted).toBe(false);
+        expect(result.error).toContain('network key');
+      });
+
+      it('should accept when network key matches (non-strict mode)', async () => {
+        let receivedFork: ForkActivity | undefined;
+        const activity = createTestForkActivity();
+
+        const result = await handleInbox(activity, new Headers({ [keyHeader]: sharedKey }), {
+          fetchActor: async () => null,
+          networkKey: sharedKey,
+          onFork: async (act) => {
+            receivedFork = act;
+          },
+        });
+
+        expect(result.accepted).toBe(true);
+        expect(result.activityType).toBe('Fork');
+        expect(receivedFork).toBeDefined();
+      });
+
+      it('should require the network key header be signed in strict mode', async () => {
+        const activity = createTestForkActivity();
+
+        const headers = new Headers({
+          // Signature is intentionally invalid; this test asserts we fail earlier due to missing signed header.
+          signature:
+            'keyId="https://example.com/users/test#main-key",' +
+            'headers="(request-target) host date",' +
+            'signature="abc"',
+          date: new Date().toUTCString(),
+          host: 'example.com',
+          [keyHeader]: sharedKey,
+        });
+
+        const result = await handleInbox(activity, headers, {
+          strictMode: true,
+          fetchActor: async () => null,
+          networkKey: sharedKey,
+        });
+
+        expect(result.accepted).toBe(false);
+        expect(result.error).toContain('signature missing required header');
+      });
+    });
+
     describe('Digest Verification', () => {
       const mockActor = {
         id: 'https://example.com/users/test',

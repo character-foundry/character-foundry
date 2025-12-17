@@ -185,7 +185,7 @@ export const CardNormalizer = {
 
     // Normalize character_book if present
     if (mergedData.character_book && typeof mergedData.character_book === 'object') {
-      mergedData.character_book = this.normalizeCharacterBook(
+      mergedData.character_book = CardNormalizer.normalizeCharacterBook(
         mergedData.character_book as Record<string, unknown>,
         spec
       );
@@ -219,7 +219,7 @@ export const CardNormalizer = {
     if (spec === 'v3') {
       result.spec = 'chara_card_v3';
       result.spec_version = '3.0';
-      result.data = this.fixTimestampsInner(mergedData);
+      result.data = CardNormalizer.fixTimestampsInner(mergedData);
     } else {
       result.spec = 'chara_card_v2';
       result.spec_version = '2.0';
@@ -259,7 +259,7 @@ export const CardNormalizer = {
     // Normalize entries
     const entries = Array.isArray(book.entries) ? book.entries : [];
     result.entries = entries.map((entry) =>
-      this.normalizeEntry(entry as Record<string, unknown>, spec)
+      CardNormalizer.normalizeEntry(entry as Record<string, unknown>, spec)
     );
 
     return result as unknown as CCv2CharacterBook | CCv3CharacterBook;
@@ -355,7 +355,7 @@ export const CardNormalizer = {
    */
   fixTimestamps(data: CCv3Data): CCv3Data {
     const result = deepClone(data);
-    result.data = this.fixTimestampsInner(
+    result.data = CardNormalizer.fixTimestampsInner(
       result.data as unknown as Record<string, unknown>
     ) as unknown as CCv3Data['data'];
     return result;
@@ -402,7 +402,7 @@ export const CardNormalizer = {
 
     // V1 cards get upgraded to V2
     const targetSpec = spec === 'v3' ? 'v3' : 'v2';
-    return this.normalize(data, targetSpec);
+    return CardNormalizer.normalize(data, targetSpec);
   },
 };
 

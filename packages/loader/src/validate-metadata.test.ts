@@ -7,6 +7,7 @@ import {
   validateClientMetadata,
   validateClientMetadataSync,
   computeContentHash,
+  computeContentHashV2,
   type ClientMetadata,
   type TokenCounts,
 } from './validate-metadata.js';
@@ -102,7 +103,7 @@ describe('validateClientMetadata', () => {
 
   describe('valid metadata', () => {
     it('should validate matching metadata', async () => {
-      const hash = await computeContentHash(card);
+      const hash = await computeContentHashV2(card);
 
       const clientMeta: ClientMetadata = {
         name: 'Test Character',
@@ -124,12 +125,13 @@ describe('validateClientMetadata', () => {
     });
 
     it('should return authoritative values', async () => {
-      const hash = await computeContentHash(card);
+      const hashV1 = await computeContentHash(card);
+      const hashV2 = await computeContentHashV2(card);
 
       const clientMeta: ClientMetadata = {
         name: 'Test Character',
         tokens: {},
-        contentHash: hash,
+        contentHash: hashV2,
         hasLorebook: true,
         lorebookEntriesCount: 2,
       };
@@ -140,9 +142,31 @@ describe('validateClientMetadata', () => {
 
       expect(result.authoritative.name).toBe('Test Character');
       expect(result.authoritative.tokens).toEqual(computedTokens);
-      expect(result.authoritative.contentHash).toBe(hash);
+      expect(result.authoritative.contentHash).toBe(hashV1);
+      expect(result.authoritative.contentHashV2).toBe(hashV2);
       expect(result.authoritative.hasLorebook).toBe(true);
       expect(result.authoritative.lorebookEntriesCount).toBe(2);
+    });
+
+    it('should accept legacy v1 client hash (with warning when v1 != v2)', async () => {
+      const hashV1 = await computeContentHash(card);
+
+      const clientMeta: ClientMetadata = {
+        name: 'Test Character',
+        tokens: computedTokens,
+        contentHash: hashV1,
+        hasLorebook: true,
+        lorebookEntriesCount: 2,
+      };
+
+      const result = await validateClientMetadata(clientMeta, parseResult, {
+        countTokens: mockCountTokens,
+      });
+
+      expect(result.isValid).toBe(true);
+      expect(result.discrepancies).toHaveLength(0);
+      expect(result.errors).toHaveLength(0);
+      expect(result.warnings).toContainEqual(expect.stringContaining('legacy v1'));
     });
   });
 
@@ -427,5 +451,35 @@ describe('computeContentHash', () => {
 
     const hash = await computeContentHash(card);
     expect(hash).toHaveLength(64);
+  });
+});
+
+describe('computeContentHashV2', () => {
+  it('should return consistent hash for same content', async () => {
+    const card = createMockCard();
+
+    const hash1 = await computeContentHashV2(card);
+    const hash2 = await computeContentHashV2(card);
+
+    expect(hash1).toBe(hash2);
+    expect(hash1).toHaveLength(64);
+  });
+
+  it('should change when lorebook entry content changes', async () => {
+    const card1 = createMockCard({
+      character_book: {
+        entries: [{ keys: ['test'], content: 'A', enabled: true }],
+      },
+    });
+    const card2 = createMockCard({
+      character_book: {
+        entries: [{ keys: ['test'], content: 'B', enabled: true }],
+      },
+    });
+
+    const hash1 = await computeContentHashV2(card1);
+    const hash2 = await computeContentHashV2(card2);
+
+    expect(hash1).not.toBe(hash2);
   });
 });

@@ -95,6 +95,13 @@ export interface AuthoritativeMetadata {
   tokens: TokenCounts;
   /** Content hash computed server-side */
   contentHash: string;
+  /**
+   * Content hash v2 computed server-side.
+   *
+   * @remarks
+   * v1 is preserved for backwards compatibility. Prefer v2 for new storage/deduplication.
+   */
+  contentHashV2?: string;
   /** Whether the card has a lorebook */
   hasLorebook: boolean;
   /** Number of lorebook entries */
@@ -201,7 +208,7 @@ function defaultTokenCounter(_card: CCv3Data): TokenCounts {
  * Compute canonical content hash from card data
  * Uses sorted JSON keys for consistent hashing
  */
-function getCanonicalContent(card: CCv3Data): string {
+function getCanonicalContentV1(card: CCv3Data): string {
   // Create a normalized version for hashing
   const normalized = {
     name: card.data.name,
@@ -226,6 +233,94 @@ function getCanonicalContent(card: CCv3Data): string {
   };
 
   return JSON.stringify(normalized, Object.keys(normalized).sort());
+}
+
+/**
+ * Stable JSON stringify with deterministic key ordering (recursive).
+ *
+ * @remarks
+ * This intentionally mirrors JSON.stringify semantics for unsupported values:
+ * - Object properties with `undefined` are omitted
+ * - Array elements with `undefined` become `null`
+ */
+function stableStringify(value: unknown): string {
+  if (value === null) return 'null';
+
+  switch (typeof value) {
+    case 'string':
+      return JSON.stringify(value);
+    case 'number':
+      return Number.isFinite(value) ? String(value) : 'null';
+    case 'boolean':
+      return value ? 'true' : 'false';
+    case 'bigint':
+      // JSON doesn't support bigint - encode as string for stability
+      return JSON.stringify(value.toString());
+    case 'undefined':
+    case 'function':
+    case 'symbol':
+      return 'null';
+    case 'object': {
+      if (Array.isArray(value)) {
+        const parts = value.map((item) => {
+          if (item === undefined || typeof item === 'function' || typeof item === 'symbol') {
+            return 'null';
+          }
+          return stableStringify(item);
+        });
+        return `[${parts.join(',')}]`;
+      }
+
+      const obj = value as Record<string, unknown>;
+      const keys = Object.keys(obj).sort();
+      const parts: string[] = [];
+
+      for (const key of keys) {
+        const v = obj[key];
+        if (v === undefined || typeof v === 'function' || typeof v === 'symbol') {
+          continue;
+        }
+        parts.push(`${JSON.stringify(key)}:${stableStringify(v)}`);
+      }
+
+      return `{${parts.join(',')}}`;
+    }
+    default:
+      return 'null';
+  }
+}
+
+/**
+ * Canonical content for hashing v2.
+ *
+ * @remarks
+ * v1 used JSON.stringify with a replacer array which unintentionally filtered nested keys.
+ * v2 uses a stable recursive stringify to preserve nested content deterministically.
+ */
+function getCanonicalContentV2(card: CCv3Data): string {
+  const normalized = {
+    name: card.data.name,
+    description: card.data.description || '',
+    personality: card.data.personality || '',
+    scenario: card.data.scenario || '',
+    first_mes: card.data.first_mes || '',
+    mes_example: card.data.mes_example || '',
+    system_prompt: card.data.system_prompt || '',
+    post_history_instructions: card.data.post_history_instructions || '',
+    alternate_greetings: card.data.alternate_greetings || [],
+    character_book: card.data.character_book
+      ? {
+          entries: (card.data.character_book.entries || []).map((e) => ({
+            keys: e.keys,
+            content: e.content,
+            enabled: e.enabled,
+          })),
+        }
+      : null,
+    creator_notes: card.data.creator_notes || '',
+  };
+
+  return stableStringify(normalized);
 }
 
 /**
@@ -295,8 +390,10 @@ export async function validateClientMetadata(
   const computedTokens = countTokens(card);
 
   // Compute authoritative content hash
-  const canonicalContent = getCanonicalContent(card);
-  const computedHash = await computeHash(canonicalContent);
+  const canonicalContentV1 = getCanonicalContentV1(card);
+  const canonicalContentV2 = getCanonicalContentV2(card);
+  const computedHashV1 = await computeHash(canonicalContentV1);
+  const computedHashV2 = await computeHash(canonicalContentV2);
 
   // Compute authoritative lorebook info
   const entries = card.data.character_book?.entries || [];
@@ -307,7 +404,8 @@ export async function validateClientMetadata(
   const authoritative: AuthoritativeMetadata = {
     name: card.data.name,
     tokens: computedTokens,
-    contentHash: computedHash,
+    contentHash: computedHashV1,
+    contentHashV2: computedHashV2,
     hasLorebook: computedHasLorebook,
     lorebookEntriesCount: computedLorebookCount,
   };
@@ -323,11 +421,14 @@ export async function validateClientMetadata(
   }
 
   // Validate content hash
-  if (clientMetadata.contentHash !== computedHash) {
+  const matchesV1 = clientMetadata.contentHash === computedHashV1;
+  const matchesV2 = clientMetadata.contentHash === computedHashV2;
+
+  if (!matchesV1 && !matchesV2) {
     const disc: MetadataDiscrepancy = {
       field: 'contentHash',
       clientValue: clientMetadata.contentHash,
-      computedValue: computedHash,
+      computedValue: computedHashV1,
       withinTolerance: false,
     };
     discrepancies.push(disc);
@@ -335,11 +436,16 @@ export async function validateClientMetadata(
     if (allowHashMismatch) {
       warnings.push(
         `Content hash mismatch: client=${clientMetadata.contentHash.substring(0, 8)}..., ` +
-          `server=${computedHash.substring(0, 8)}...`
+          `server(v1)=${computedHashV1.substring(0, 8)}..., ` +
+          `server(v2)=${computedHashV2.substring(0, 8)}...`
       );
     } else {
       errors.push('Content hash mismatch - possible tampering or encoding difference');
     }
+  } else if (matchesV1 && !matchesV2) {
+    warnings.push(
+      'Client contentHash matches legacy v1 canonicalization. Prefer authoritative.contentHashV2 for new storage.'
+    );
   }
 
   // Validate token counts
@@ -448,7 +554,18 @@ export async function validateClientMetadata(
  * @returns SHA-256 hash of canonical content
  */
 export async function computeContentHash(card: CCv3Data): Promise<string> {
-  const content = getCanonicalContent(card);
+  const content = getCanonicalContentV1(card);
+  return sha256Hash(content);
+}
+
+/**
+ * Compute content hash v2 for a card (standalone utility)
+ *
+ * @param card - CCv3 card data
+ * @returns SHA-256 hash of canonical content v2
+ */
+export async function computeContentHashV2(card: CCv3Data): Promise<string> {
+  const content = getCanonicalContentV2(card);
   return sha256Hash(content);
 }
 
@@ -485,8 +602,10 @@ export function validateClientMetadataSync(
   const errors: string[] = [];
 
   const computedTokens = countTokens(card);
-  const canonicalContent = getCanonicalContent(card);
-  const computedHash = computeHash(canonicalContent);
+  const canonicalContentV1 = getCanonicalContentV1(card);
+  const canonicalContentV2 = getCanonicalContentV2(card);
+  const computedHashV1 = computeHash(canonicalContentV1);
+  const computedHashV2 = computeHash(canonicalContentV2);
 
   const entries = card.data.character_book?.entries || [];
   const computedHasLorebook = entries.length > 0;
@@ -495,7 +614,8 @@ export function validateClientMetadataSync(
   const authoritative: AuthoritativeMetadata = {
     name: card.data.name,
     tokens: computedTokens,
-    contentHash: computedHash,
+    contentHash: computedHashV1,
+    contentHashV2: computedHashV2,
     hasLorebook: computedHasLorebook,
     lorebookEntriesCount: computedLorebookCount,
   };
@@ -511,11 +631,14 @@ export function validateClientMetadataSync(
   }
 
   // Hash validation
-  if (clientMetadata.contentHash !== computedHash) {
+  const matchesV1 = clientMetadata.contentHash === computedHashV1;
+  const matchesV2 = clientMetadata.contentHash === computedHashV2;
+
+  if (!matchesV1 && !matchesV2) {
     discrepancies.push({
       field: 'contentHash',
       clientValue: clientMetadata.contentHash,
-      computedValue: computedHash,
+      computedValue: computedHashV1,
       withinTolerance: false,
     });
 
@@ -524,6 +647,10 @@ export function validateClientMetadataSync(
     } else {
       errors.push('Content hash mismatch');
     }
+  } else if (matchesV1 && !matchesV2) {
+    warnings.push(
+      'Client contentHash matches legacy v1 canonicalization. Prefer authoritative.contentHashV2 for new storage.'
+    );
   }
 
   // Token validation
