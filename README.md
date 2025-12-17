@@ -24,7 +24,7 @@ import { parseCard } from '@character-foundry/character-foundry/loader';
 import { exportCard } from '@character-foundry/character-foundry/exporter';
 
 // Load any format
-const { card, assets, format } = parseCard(buffer);
+const { card, assets, containerFormat } = parseCard(buffer);
 console.log(card.data.name); // Character name
 
 // Export to different format
@@ -44,8 +44,8 @@ import { CCv3Data } from '@character-foundry/character-foundry/schemas';
 
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
-| **`@character-foundry/character-foundry`** | **0.1.7** | **Main library - all functionality bundled** | - |
-| **`@character-foundry/cli`** | **0.3.1** | **CLI tool** | [docs/cli.md](docs/cli.md) |
+| **`@character-foundry/character-foundry`** | **0.4.2** | **Main library - all functionality bundled** | - |
+| **`@character-foundry/cli`** | **0.4.2** | **CLI tool** | [docs/cli.md](docs/cli.md) |
 
 ### Internal Packages (bundled, not published separately)
 
@@ -87,7 +87,7 @@ npm install -g @character-foundry/cli
 ### Runtime Validation with Zod
 
 ```typescript
-import { CCv3DataSchema, parseV3Card, isV3Card, safeParse } from '@character-foundry/schemas';
+import { CCv3DataSchema, parseV3Card, isV3Card, safeParse } from '@character-foundry/character-foundry/schemas';
 
 // Type guard with runtime validation
 if (isV3Card(unknownData)) {
@@ -111,7 +111,7 @@ if (result.success) {
 ### Universal Loader
 
 ```typescript
-import { parseCard } from '@character-foundry/loader';
+import { parseCard } from '@character-foundry/character-foundry/loader';
 
 // Handles PNG, CharX, Voxta, JSON automatically
 const result = parseCard(buffer);
@@ -133,7 +133,7 @@ import {
   createLinkedLorebook,
   addLinkedLorebookToCard,
   serializeLorebook,
-} from '@character-foundry/lorebook';
+} from '@character-foundry/character-foundry/lorebook';
 
 // Parse standalone lorebook (auto-detects format)
 const { book, originalFormat } = parseLorebook(jsonBuffer);
@@ -158,7 +158,7 @@ const json = serializeLorebook(book, 'sillytavern');
 ### Voxta Multi-Character Support
 
 ```typescript
-import { readVoxta, getPackageManifest, mergeCharacterEdits } from '@character-foundry/voxta';
+import { readVoxta, getPackageManifest, mergeCharacterEdits, applyVoxtaDeltas } from '@character-foundry/character-foundry/voxta';
 
 // Read multi-character package
 const data = readVoxta(buffer);
@@ -167,16 +167,20 @@ const manifest = getPackageManifest(data);
 // manifest.books: [{ id, name, usedBy: [charIds] }, ...]
 
 // Edit and save with delta export (only changed files)
-const updated = mergeCharacterEdits(data.characters[0], edits);
+const charId = data.characters[0]!.id;
+const updated = mergeCharacterEdits(data.characters[0]!, {
+  name: 'New Name',
+  description: 'Updated description',
+});
 const newBuffer = applyVoxtaDeltas(buffer, {
-  characters: new Map([[updated.Id, updated]])
+  characters: new Map([[charId, updated]]),
 });
 ```
 
 ### Token Counting
 
 ```typescript
-import { countTokens, registry } from '@character-foundry/tokenizers';
+import { countTokens, registry } from '@character-foundry/character-foundry/tokenizers';
 
 // Quick count
 const tokens = countTokens('Hello, world!', 'gpt-4');
@@ -189,7 +193,7 @@ const count = tokenizer.count(card.data.description);
 ### Format Conversion with Loss Detection
 
 ```typescript
-import { exportCard, checkExportLoss } from '@character-foundry/exporter';
+import { exportCard, checkExportLoss } from '@character-foundry/character-foundry/exporter';
 
 const loss = checkExportLoss(card, 'png');
 if (loss.lostFields.length > 0) {
@@ -202,7 +206,7 @@ const buffer = exportCard(card, assets, { format: 'png' });
 ### Version Conversion
 
 ```typescript
-import { ccv2ToCCv3, ccv3ToCCv2Wrapped, checkV3ToV2Loss } from '@character-foundry/normalizer';
+import { ccv2ToCCv3, ccv3ToCCv2Wrapped, checkV3ToV2Loss } from '@character-foundry/character-foundry/normalizer';
 
 // V2 → V3 (lossless)
 const v3Card = ccv2ToCCv3(v2Card);
@@ -216,6 +220,8 @@ const v2Card = ccv3ToCCv2Wrapped(v3Card);
 
 Detailed documentation for each package:
 
+- **[Upgrade Guide](docs/upgrade-guide.md)** - Implementation notes for recent changes (hash v2, federation network key, etc.)
+- **[Release Notes](docs/release-notes.md)** - Changesets-based release notes workflow
 - **[Core](docs/core.md)** - Binary utilities, base64, ZIP, URI, errors
 - **[Schemas](docs/schemas.md)** - CCv2, CCv3, Risu types and detection
 - **[PNG](docs/png.md)** - PNG chunk parsing and building
@@ -311,6 +317,7 @@ We use [Changesets](https://github.com/changesets/changesets) for versioning. Ru
 
 - **Gated by default** - must call `enableFederation()` explicitly
 - **HTTP signature strict mode** - Enforces `(request-target)`, `host`, `date` headers (opt-in)
+- **Optional network key gate** - Require `X-Foundry-Network-Key` for internal-only federation
 - **Secure hashing** - SHA-256 change detection for cross-system sync (opt-in)
 - **SSRF protection** - Validates resource IDs to prevent path traversal and protocol injection
 - **Sync mutex** - Prevents concurrent sync operations from overlapping
