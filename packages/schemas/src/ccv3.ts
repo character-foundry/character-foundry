@@ -18,7 +18,7 @@ export const CCv3LorebookEntrySchema = z.object({
   keys: z.array(z.string()).optional(), // Some tools use 'key' instead
   content: z.string(),
   enabled: z.boolean().default(true), // Default to enabled if missing
-  insertion_order: z.number().int().nullable().default(0),
+  insertion_order: z.preprocess((v) => v ?? 0, z.number().int()),
   // Optional fields - be lenient with nulls since wild data has them
   case_sensitive: z.boolean().nullable().optional(),
   name: z.string().optional(),
