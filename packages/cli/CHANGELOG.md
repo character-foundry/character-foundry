@@ -1,5 +1,18 @@
 # @character-foundry/cli
 
+## 0.4.1
+
+### Patch Changes
+
+- [#35](https://github.com/character-foundry/character-foundry/pull/35) [`085ac4d`](https://github.com/character-foundry/character-foundry/commit/085ac4df641cbb6609a9383b3a29fb62c5256adf) Thanks [@axAilotl](https://github.com/axAilotl)! - Make more lorebook entry fields nullable (based on 960k entry analysis)
+
+  - `position`: accept empty string `""` (defaults to 'before_char')
+  - `id`: accept null (28k entries have null id)
+  - `priority`: accept null (27k entries)
+  - `insertion_order`: accept null (defaults to 0)
+  - `secondary_keys`: accept null (27k entries)
+  - `comment`: accept null (6 entries)
+
 ## 0.4.0
 
 ### Patch Changes
