@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/loader",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Universal character card loader - detects format and parses any card type",
   "type": "module",
   "main": "./dist/index.cjs",

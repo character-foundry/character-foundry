@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/charx",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "CharX format reader and writer",
   "type": "module",
   "exports": {

@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/federation",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Federation layer for syncing character cards across platforms via ActivityPub",
   "type": "module",
   "main": "./dist/index.cjs",

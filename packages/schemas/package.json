@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/schemas",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Type definitions and schemas for character card formats",
   "type": "module",
   "exports": {

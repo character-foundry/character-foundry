@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/png",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "PNG character card parser and builder",
   "type": "module",
   "exports": {
