@@ -367,15 +367,24 @@ export const CardNormalizer = {
   fixTimestampsInner(data: Record<string, unknown>): Record<string, unknown> {
     const result = { ...data };
 
-    if (typeof result.creation_date === 'number' && isMilliseconds(result.creation_date)) {
-      result.creation_date = Math.floor(result.creation_date / 1000);
+    if (typeof result.creation_date === 'number') {
+      if (isMilliseconds(result.creation_date)) {
+        result.creation_date = Math.floor(result.creation_date / 1000);
+      }
+      // Sanitize negative timestamps (.NET default dates like 0001-01-01)
+      if ((result.creation_date as number) < 0) {
+        delete result.creation_date;
+      }
     }
 
-    if (
-      typeof result.modification_date === 'number' &&
-      isMilliseconds(result.modification_date)
-    ) {
-      result.modification_date = Math.floor(result.modification_date / 1000);
+    if (typeof result.modification_date === 'number') {
+      if (isMilliseconds(result.modification_date)) {
+        result.modification_date = Math.floor(result.modification_date / 1000);
+      }
+      // Sanitize negative timestamps (.NET default dates like 0001-01-01)
+      if ((result.modification_date as number) < 0) {
+        delete result.modification_date;
+      }
     }
 
     return result;
