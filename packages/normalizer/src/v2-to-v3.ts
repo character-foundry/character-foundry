@@ -16,6 +16,19 @@ import type {
 import { getV2Data } from '@character-foundry/schemas';
 
 /**
+ * Normalize position field - accepts both string literals and SillyTavern numeric values.
+ * SillyTavern uses: 0 = before_char, 1 = after_char, other numbers passed through.
+ */
+function normalizePosition(
+  position: 'before_char' | 'after_char' | number | null | undefined
+): 'before_char' | 'after_char' | number {
+  if (position === undefined || position === null) return 'before_char';
+  if (typeof position === 'string') return position;
+  // SillyTavern numeric mapping - pass through as-is since schema now accepts numbers
+  return position;
+}
+
+/**
  * Convert CCv2 lorebook entry to CCv3 format
  */
 function convertLorebookEntry(
@@ -36,7 +49,7 @@ function convertLorebookEntry(
     selective: entry.selective ?? false,
     secondary_keys: entry.secondary_keys || [],
     constant: entry.constant ?? false,
-    position: entry.position || 'before_char',
+    position: normalizePosition(entry.position),
   };
 }
 

@@ -15,31 +15,31 @@ import { AssetDescriptorSchema } from './common.js';
  * Lorebook entry schema for v3 cards
  */
 export const CCv3LorebookEntrySchema = z.object({
-  keys: z.array(z.string()),
+  keys: z.array(z.string()).optional(), // Some tools use 'key' instead
   content: z.string(),
-  enabled: z.boolean(),
-  insertion_order: z.number().int(),
-  // Optional fields
-  case_sensitive: z.boolean().optional(),
+  enabled: z.boolean().default(true), // Default to enabled if missing
+  insertion_order: z.number().int().default(0),
+  // Optional fields - be lenient with nulls since wild data has them
+  case_sensitive: z.boolean().nullable().optional(),
   name: z.string().optional(),
   priority: z.number().int().optional(),
   id: z.number().int().optional(),
   comment: z.string().optional(),
-  selective: z.boolean().optional(),
+  selective: z.boolean().nullable().optional(),
   secondary_keys: z.array(z.string()).optional(),
-  constant: z.boolean().optional(),
-  position: z.enum(['before_char', 'after_char']).optional(),
+  constant: z.boolean().nullable().optional(),
+  position: z.union([z.enum(['before_char', 'after_char']), z.number().int()]).nullable().optional(),
   extensions: z.record(z.unknown()).optional(),
-  // v3 specific
+  // v3 specific - also lenient with types since SillyTavern uses numbers for enums
   automation_id: z.string().optional(),
-  role: z.enum(['system', 'user', 'assistant']).optional(),
+  role: z.union([z.enum(['system', 'user', 'assistant']), z.number().int()]).nullable().optional(),
   group: z.string().optional(),
   scan_frequency: z.number().int().nonnegative().optional(),
-  probability: z.number().min(0).max(1).optional(),
+  probability: z.number().min(0).max(100).optional(), // Some tools use 0-100 instead of 0-1
   use_regex: z.boolean().optional(),
   depth: z.number().int().nonnegative().optional(),
-  selective_logic: z.enum(['AND', 'NOT']).optional(),
-});
+  selective_logic: z.union([z.enum(['AND', 'NOT']), z.number().int()]).optional(),
+}).passthrough(); // Allow tool-specific extensions
 
 /**
  * Character book (lorebook) schema for v3 cards

@@ -58,12 +58,12 @@ function toSillyTavern(
 
     entries[String(uid)] = {
       uid,
-      key: entry.keys,
+      key: entry.keys || [],
       keysecondary: entry.secondary_keys,
       comment: entry.comment || entry.name,
       content: entry.content,
-      constant: entry.constant,
-      selective: entry.selective,
+      constant: entry.constant ?? undefined,
+      selective: entry.selective ?? undefined,
       selectiveLogic: stExt.selectiveLogic,
       order: entry.insertion_order,
       position: mapCCv3Position(entry.position),
@@ -119,7 +119,7 @@ function toAgnai(book: CCv3CharacterBook, _original?: AgnaiLorebook): AgnaiLoreb
     return {
       name: entry.name || `Entry ${i}`,
       entry: entry.content,
-      keywords: entry.keys,
+      keywords: entry.keys || [],
       priority: entry.priority ?? 10,
       weight: agnaiExt.weight ?? 1,
       enabled: entry.enabled !== false,
@@ -256,7 +256,7 @@ export function findEntriesByKeys(
   const normalizedSearch = searchKeys.map(normalizeKey);
 
   return book.entries.filter((entry: CCv3LorebookEntry) => {
-    const entryKeys = entry.keys.map(normalizeKey);
+    const entryKeys = (entry.keys || []).map(normalizeKey);
 
     if (matchAll) {
       // All search keys must be found
@@ -315,11 +315,11 @@ export function addEntry(
   entry: Omit<CCv3LorebookEntry, 'id' | 'insertion_order'>
 ): CCv3CharacterBook {
   const maxId = Math.max(0, ...book.entries.map((e: CCv3LorebookEntry) => e.id ?? 0));
-  const newEntry: CCv3LorebookEntry = {
+  const newEntry = {
     ...entry,
     id: maxId + 1,
     insertion_order: book.entries.length,
-  };
+  } as CCv3LorebookEntry;
 
   return {
     ...book,
