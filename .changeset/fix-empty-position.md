@@ -3,6 +3,11 @@
 "@character-foundry/cli": patch
 ---
 
-Accept empty string for lorebook entry position field
+Make more lorebook entry fields nullable (based on 960k entry analysis)
 
-Some tools set `position: ""` instead of omitting it. Now treated as default ('before_char').
+- `position`: accept empty string `""` (defaults to 'before_char')
+- `id`: accept null (28k entries have null id)
+- `priority`: accept null (27k entries)
+- `insertion_order`: accept null (defaults to 0)
+- `secondary_keys`: accept null (27k entries)
+- `comment`: accept null (6 entries)
