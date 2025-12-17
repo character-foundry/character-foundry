@@ -11,6 +11,25 @@ It is written for downstream apps integrating `@character-foundry/character-foun
 
 ---
 
+## 0) CLI: Quick Verification (Optional)
+
+If you want a fast sanity check before/after upgrading, use the CLI to validate and inspect cards.
+
+Use the pinned dev build:
+
+```bash
+npx @character-foundry/cli@0.4.2-dev.1765997746 detect ./card.charx
+npx @character-foundry/cli@0.4.2-dev.1765997746 validate ./card.charx --strict
+npx @character-foundry/cli@0.4.2-dev.1765997746 info ./card.charx
+```
+
+Or install globally:
+
+```bash
+npm install -g @character-foundry/cli@0.4.2-dev.1765997746
+cf validate ./card.charx --strict
+```
+
 ## 1) Loader: Content Hash v2 (max compatibility)
 
 ### What changed
@@ -153,4 +172,3 @@ const card = normalize(input, 'v3');
 ## 6) Release Notes
 
 This repo uses Changesets as release notes + versioning. See `docs/release-notes.md`.
-
