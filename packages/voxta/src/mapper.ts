@@ -97,12 +97,15 @@ export function voxtaToCCv3(character: VoxtaCharacter, books?: VoxtaBook[]): CCv
   }
 
   // Convert timestamps (ISO string -> Unix seconds)
-  const creationDate = character.DateCreated
+  // Sanitize .NET default dates (0001-01-01) which produce negative timestamps
+  const rawCreationDate = character.DateCreated
     ? Math.floor(new Date(character.DateCreated).getTime() / 1000)
     : undefined;
-  const modificationDate = character.DateModified
+  const rawModificationDate = character.DateModified
     ? Math.floor(new Date(character.DateModified).getTime() / 1000)
     : undefined;
+  const creationDate = rawCreationDate !== undefined && rawCreationDate >= 0 ? rawCreationDate : undefined;
+  const modificationDate = rawModificationDate !== undefined && rawModificationDate >= 0 ? rawModificationDate : undefined;
 
   // SPEC-COMPLIANT MAPPING (per CHARX_vs_VOXPKG_COMPARISON.md):
   // - Voxta Description (physical appearance) → CCv3 visual_description extension

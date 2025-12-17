@@ -1,7 +1,6 @@
 ---
-"@character-foundry/schemas": minor
-"@character-foundry/normalizer": patch
-"@character-foundry/lorebook": patch
+"@character-foundry/character-foundry": minor
+"@character-foundry/cli": patch
 ---
 
 Make lorebook entry schemas lenient for real-world compatibility
