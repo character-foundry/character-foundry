@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master, dev]
+    branches: [master]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -44,58 +44,3 @@ jobs:
 
       - name: Verify ESM/CJS builds
         run: pnpm verify-build
-
-  publish-dev:
-    needs: ci
-    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Generate dev version
-        id: version
-        run: |
-          TIMESTAMP=$(date +%s)
-          CF_VERSION=$(node -p "require('./packages/character-foundry/package.json').version")
-          CLI_VERSION=$(node -p "require('./packages/cli/package.json').version")
-          CF_DEV_VERSION="${CF_VERSION}-dev.${TIMESTAMP}"
-          CLI_DEV_VERSION="${CLI_VERSION}-dev.${TIMESTAMP}"
-          echo "cf_version=${CF_DEV_VERSION}" >> $GITHUB_OUTPUT
-          echo "cli_version=${CLI_DEV_VERSION}" >> $GITHUB_OUTPUT
-          echo "Publishing dev versions: character-foundry@${CF_DEV_VERSION}, cli@${CLI_DEV_VERSION}"
-
-      - name: Update package versions for dev release
-        run: |
-          node -e "const p=require('./packages/character-foundry/package.json'); p.version='${{ steps.version.outputs.cf_version }}'; require('fs').writeFileSync('./packages/character-foundry/package.json', JSON.stringify(p, null, 2)+'\n')"
-          node -e "const p=require('./packages/cli/package.json'); p.version='${{ steps.version.outputs.cli_version }}'; require('fs').writeFileSync('./packages/cli/package.json', JSON.stringify(p, null, 2)+'\n')"
-
-      - name: Publish character-foundry @dev
-        working-directory: packages/character-foundry
-        run: pnpm publish --no-git-checks --provenance --tag dev
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
-
-      - name: Publish cli @dev
-        working-directory: packages/cli
-        run: pnpm publish --no-git-checks --provenance --tag dev
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
