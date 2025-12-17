@@ -1,5 +1,13 @@
 # @character-foundry/cli
 
+## 0.4.2
+
+### Patch Changes
+
+- [#37](https://github.com/character-foundry/character-foundry/pull/37) [`3c33e00`](https://github.com/character-foundry/character-foundry/commit/3c33e00050fa85fca199532a195a1996229dadd8) Thanks [@axAilotl](https://github.com/axAilotl)! - Fix insertion_order null handling with z.preprocess
+
+  .default() only works for undefined, not null. Use z.preprocess() to convert null/undefined to 0.
+
 ## 0.4.1
 
 ### Patch Changes
