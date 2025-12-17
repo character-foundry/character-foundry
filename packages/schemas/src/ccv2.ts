@@ -28,7 +28,7 @@ export const CCv2LorebookEntrySchema = z.object({
   selective: z.boolean().nullable().optional(),
   secondary_keys: z.array(z.string()).optional(),
   constant: z.boolean().nullable().optional(),
-  position: z.union([z.enum(['before_char', 'after_char']), z.number().int()]).nullable().optional(),
+  position: z.union([z.enum(['before_char', 'after_char']), z.number().int(), z.literal('')]).nullable().optional(),
 }).passthrough(); // Allow SillyTavern extensions like depth, probability, etc.
 
 /**
