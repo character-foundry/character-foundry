@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/character-foundry",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Universal TypeScript library for AI character card formats",
   "type": "module",
   "exports": {
