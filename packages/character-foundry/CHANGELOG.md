@@ -1,5 +1,14 @@
 # @character-foundry/character-foundry
 
+## 0.4.4
+
+### Patch Changes
+
+- [#41](https://github.com/character-foundry/character-foundry/pull/41) [`2f5662c`](https://github.com/character-foundry/character-foundry/commit/2f5662c056a4ea492a5b738ff7e7f8d066662697) Thanks [@axAilotl](https://github.com/axAilotl)! - - Loader: add content hash v2 (`computeContentHashV2()`), expose `authoritative.contentHashV2`, and accept v1 or v2 hashes in `validateClientMetadata()`.
+  - Federation: add optional internal network key gate (`X-Foundry-Network-Key`), fail verification when claimed signed headers are missing, and add configurable logging (default `warn`).
+  - CharX/Voxta: preserve arbitrary asset extensions and reject unsafe extensions to prevent ZIP path traversal.
+  - Schemas: make `CardNormalizer` methods safe to destructure (no `this` binding required).
+
 ## 0.4.3
 
 ### Patch Changes
