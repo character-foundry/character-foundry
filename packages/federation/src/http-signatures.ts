@@ -9,6 +9,7 @@
  */
 
 import type { FederatedActivity, FederatedActor } from './types.js';
+import { getLogger } from './logger.js';
 
 /**
  * Parsed HTTP signature header
@@ -106,7 +107,11 @@ export function parseSignatureHeader(header: string): ParsedSignature | null {
   return {
     keyId: params.keyId,
     algorithm: params.algorithm || 'rsa-sha256',
-    headers: (params.headers || '(request-target) host date').split(' '),
+    headers: (params.headers || '(request-target) host date')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((h) => h.toLowerCase()),
     signature: params.signature,
   };
 }
@@ -150,24 +155,8 @@ export function buildSigningString(
 ): string {
   const result = buildSigningStringStrict(method, path, headers, headerNames);
   if (!result.success) {
-    // For backwards compatibility, log warning but return partial string
-    // Callers using verifyHttpSignature will get signature mismatch
-    console.warn(`[federation] Signature verification may fail: ${result.error}`);
-    // Build partial string for backwards compat
-    const lines: string[] = [];
-    for (const name of headerNames) {
-      if (name === '(request-target)') {
-        lines.push(`(request-target): ${method.toLowerCase()} ${path}`);
-      } else if (name === '(created)' || name === '(expires)') {
-        // Synthetic headers - skip if not implemented
-      } else {
-        const value = headers.get(name);
-        if (value !== null) {
-          lines.push(`${name.toLowerCase()}: ${value}`);
-        }
-      }
-    }
-    return lines.join('\n');
+    // Missing claimed headers is always a verification failure.
+    throw new Error(result.error);
   }
   return result.signingString;
 }
@@ -191,19 +180,21 @@ export function buildSigningStringStrict(
   const syntheticHeaders = new Set(['(request-target)', '(created)', '(expires)']);
 
   for (const name of headerNames) {
-    if (name === '(request-target)') {
+    const normalizedName = name.toLowerCase();
+
+    if (normalizedName === '(request-target)') {
       lines.push(`(request-target): ${method.toLowerCase()} ${path}`);
-    } else if (name === '(created)') {
+    } else if (normalizedName === '(created)') {
       // Skip for now - optional synthetic header
-    } else if (name === '(expires)') {
+    } else if (normalizedName === '(expires)') {
       // Skip for now - optional synthetic header
     } else {
-      const value = headers.get(name);
+      const value = headers.get(normalizedName);
       if (value !== null) {
-        lines.push(`${name.toLowerCase()}: ${value}`);
-      } else if (!syntheticHeaders.has(name)) {
+        lines.push(`${normalizedName}: ${value}`);
+      } else if (!syntheticHeaders.has(normalizedName)) {
         // Header is listed as signed but not present - this is an error
-        missingHeaders.push(name);
+        missingHeaders.push(normalizedName);
       }
     }
   }
@@ -255,7 +246,7 @@ export async function verifyHttpSignature(
     if (options.strictHeaders) {
       const strictResult = buildSigningStringStrict(method, path, headers, parsed.headers);
       if (!strictResult.success) {
-        console.warn(`[federation] Strict header verification failed: ${strictResult.error}`);
+        getLogger().warn(`[federation] Strict header verification failed: ${strictResult.error}`);
         return false;
       }
     }
@@ -285,7 +276,7 @@ export async function verifyHttpSignature(
       data
     );
   } catch (error) {
-    console.error('Signature verification failed:', error);
+    getLogger().error('[federation] Signature verification failed:', error);
     return false;
   }
 }
@@ -519,7 +510,7 @@ async function importPublicKey(pem: string): Promise<CryptoKey | null> {
       ['verify']
     );
   } catch (error) {
-    console.error('Failed to import public key:', error);
+    getLogger().error('[federation] Failed to import public key:', error);
     return null;
   }
 }
@@ -547,7 +538,7 @@ async function importPrivateKey(pem: string): Promise<CryptoKey | null> {
       ['sign']
     );
   } catch (error) {
-    console.error('Failed to import private key:', error);
+    getLogger().error('[federation] Failed to import private key:', error);
     return null;
   }
 }

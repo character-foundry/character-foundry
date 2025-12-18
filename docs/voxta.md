@@ -1,7 +1,7 @@
 # Voxta Package Documentation
 
 **Package:** `@character-foundry/voxta`
-**Version:** 0.1.8
+**Version:** 0.1.13
 **Environment:** Node.js and Browser
 
 The `@character-foundry/voxta` package handles reading, writing, and editing Voxta package files (`.voxpkg`) - a multi-character container format with support for memory books, scenarios, collections, and rich assets.
@@ -200,15 +200,30 @@ switch (data.exportType) {
 ### Types
 
 ```typescript
+interface VoxtaWriteAsset {
+  type: string;             // 'icon' | 'emotion' | 'sound' | ...
+  name: string;             // Asset name (without extension)
+  ext: string;              // File extension (validated, arbitrary types allowed)
+  data: BinaryData;
+  tags?: string[];
+  isMain?: boolean;
+}
+
 interface VoxtaWriteOptions {
   compressionLevel?: CompressionLevel;
-  preserveUnknownFiles?: boolean;
+  includePackageJson?: boolean;
+  characterId?: string;
+  packageId?: string;
+  scenario?: VoxtaScenario;
+  scenarioThumbnail?: BinaryData;
 }
 
 interface VoxtaBuildResult {
-  buffer: Uint8Array;
-  size: number;
-  fileCount: number;
+  buffer: BinaryData;
+  assetCount: number;
+  totalSize: number;
+  characterId: string;
+  scenarioId?: string;
 }
 ```
 
@@ -218,15 +233,18 @@ interface VoxtaBuildResult {
 import { writeVoxta, writeVoxtaAsync } from '@character-foundry/voxta';
 
 // Synchronous write
-const result = writeVoxta(voxtaData, {
+const result = writeVoxta(ccv3Card, assets, {
   compressionLevel: 6,
+  includePackageJson: false,
 });
 
 // Async write
-const result = await writeVoxtaAsync(voxtaData, {
+const result = await writeVoxtaAsync(ccv3Card, assets, {
   compressionLevel: 6,
 });
 ```
+
+`writeVoxta()` preserves arbitrary file extensions for assets, but rejects unsafe extensions that could result in path traversal inside the ZIP (e.g. values containing `/` or `\\`).
 
 ---
 
@@ -657,40 +675,11 @@ function editCharacterDescription(
 ### Convert CCv3 to Voxta Package
 
 ```typescript
-import { ccv3ToVoxta, ccv3LorebookToVoxtaBook, writeVoxta } from '@character-foundry/voxta';
+import { writeVoxta, type VoxtaWriteAsset } from '@character-foundry/voxta';
 
-function ccv3ToVoxtaPackage(card: CCv3Data, assets: ExtractedAsset[]): Uint8Array {
-  // Convert character
-  const voxtaChar = ccv3ToVoxta(card);
-
-  // Convert lorebook if present
-  const books: ExtractedVoxtaBook[] = [];
-  if (card.data.character_book) {
-    const book = ccv3LorebookToVoxtaBook(card.data.character_book);
-    books.push({ id: book.Id, data: book });
-
-    // Link book to character
-    voxtaChar.MemoryBooks = [book.Id];
-  }
-
-  // Convert assets
-  const voxtaAssets = assets.map(a => ({
-    id: a.name,
-    path: `Characters/${voxtaChar.Id}/Assets/${a.name}`,
-    data: a.data,
-    type: a.type,
-    mime: getMimeType(a.ext),
-  }));
-
-  // Build package
-  const voxtaData: VoxtaData = {
-    characters: [{ id: voxtaChar.Id, data: voxtaChar, assets: voxtaAssets }],
-    books,
-    scenarios: [],
-  };
-
-  const { buffer } = writeVoxta(voxtaData);
-  return buffer;
+function ccv3ToVoxtaPackage(card: CCv3Data, assets: VoxtaWriteAsset[]): Uint8Array {
+  const { buffer } = writeVoxta(card, assets, { includePackageJson: true });
+  return buffer as Uint8Array;
 }
 ```
 

@@ -13,6 +13,7 @@ import type {
   PolicyEvaluationResult,
   ModerationStore,
 } from './types.js';
+import { getLogger } from '../logger.js';
 
 /**
  * Default fields to check for keyword/regex rules
@@ -242,7 +243,7 @@ export class PolicyEngine {
       // Check pattern safety
       const safetyWarning = checkRegexSafety(rule.pattern);
       if (safetyWarning) {
-        console.warn(`[moderation] Rule "${rule.name}": ${safetyWarning}`);
+        getLogger().warn(`[moderation] Rule "${rule.name}": ${safetyWarning}`);
       }
 
       try {

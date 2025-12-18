@@ -31,22 +31,19 @@ pnpm test
 
 ### Step 3: Bump Version
 
-Only bump the published packages:
+This repo uses **Changesets** to generate version bumps and release notes for the published packages:
 
 ```bash
-# If you changed library code:
-# Edit packages/character-foundry/package.json version
+# Create a changeset (select @character-foundry/character-foundry and/or @character-foundry/cli)
+pnpm changeset
 
-# If you changed CLI code:
-# Edit packages/cli/package.json version
-
-# If you changed both:
-# Bump both
+# Apply changesets (updates package versions + CHANGELOGs)
+pnpm version
 ```
 
 ### Step 4: Update Docs
 
-Update the version table in `CLAUDE.md`.
+Keep `docs/` in sync with any API changes. Use changeset summaries as release notes (see `docs/release-notes.md`).
 
 ### Step 5: Commit & Push
 

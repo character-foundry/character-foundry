@@ -34,6 +34,19 @@ function extractHostFromActorId(actorId: string): string | null {
   }
 }
 
+function timingSafeEqualString(a: string, b: string): boolean {
+  let mismatch = a.length === b.length ? 0 : 1;
+  const maxLen = Math.max(a.length, b.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    const aCode = a.charCodeAt(i) || 0;
+    const bCode = b.charCodeAt(i) || 0;
+    mismatch |= aCode ^ bCode;
+  }
+
+  return mismatch === 0;
+}
+
 /**
  * Handle incoming ActivityPub activities
  *
@@ -111,6 +124,22 @@ export async function handleInbox(
   assertFederationEnabled('handleInbox');
 
   try {
+    const normalizedHeaders = headers instanceof Headers ? headers : new Headers(headers);
+
+    // Optional shared network key gate (internal-only federation)
+    const networkKey = typeof options.networkKey === 'string' ? options.networkKey : undefined;
+    const networkKeyHeader = options.networkKeyHeader ?? 'X-Foundry-Network-Key';
+
+    if (networkKey && networkKey.length > 0) {
+      const provided = normalizedHeaders.get(networkKeyHeader);
+      if (!provided || !timingSafeEqualString(provided, networkKey)) {
+        return {
+          accepted: false,
+          error: 'Unauthorized: invalid or missing network key',
+        };
+      }
+    }
+
     // Early instance block check - BEFORE signature verification (saves CPU for blocked instances)
     // We extract actor from the raw body to avoid full parsing costs
     if (options.moderationStore) {
@@ -143,9 +172,7 @@ export async function handleInbox(
     // Verify HTTP signature in strict mode
     if (options.strictMode) {
       // Get signature header
-      const signatureHeader = headers instanceof Headers
-        ? headers.get('signature')
-        : headers['signature'] || headers['Signature'];
+      const signatureHeader = normalizedHeaders.get('signature');
 
       if (!signatureHeader) {
         return {
@@ -163,6 +190,17 @@ export async function handleInbox(
         };
       }
 
+      // If a network key is configured, require it to be in the signed header list.
+      if (networkKey && networkKey.length > 0) {
+        const requiredSigned = networkKeyHeader.toLowerCase();
+        if (!parsedSig.headers.includes(requiredSigned)) {
+          return {
+            accepted: false,
+            error: `Strict mode: signature missing required header: ${requiredSigned}`,
+          };
+        }
+      }
+
       // STRICT MODE: Enforce required headers in signature
       // This matches validateActivitySignature behavior for consistency
       const missingSignedHeaders = REQUIRED_SIGNED_HEADERS.filter(
@@ -176,9 +214,7 @@ export async function handleInbox(
       }
 
       // STRICT MODE: Require Date header to be present (not just signed)
-      const dateHeader = headers instanceof Headers
-        ? headers.get('date')
-        : headers['date'] || headers['Date'];
+      const dateHeader = normalizedHeaders.get('date');
       if (!dateHeader) {
         return {
           accepted: false,
@@ -187,9 +223,7 @@ export async function handleInbox(
       }
 
       // STRICT MODE: Require host header to be present
-      const hostHeader = headers instanceof Headers
-        ? headers.get('host')
-        : headers['host'] || headers['Host'];
+      const hostHeader = normalizedHeaders.get('host');
       if (!hostHeader) {
         return {
           accepted: false,
@@ -252,9 +286,7 @@ export async function handleInbox(
       // Verify Digest header BEFORE signature verification
       // @security This prevents body tampering even if signature is valid (signatures only cover headers)
       // Order: Digest (body integrity, cheap hash) → Signature (header integrity, crypto)
-      const digestHeader = headers instanceof Headers
-        ? headers.get('digest')
-        : headers['digest'] || headers['Digest'];
+      const digestHeader = normalizedHeaders.get('digest');
 
       if (digestHeader) {
         // Digest header present - MUST verify
@@ -297,17 +329,13 @@ export async function handleInbox(
       const method = options.method || 'POST';
       const path = options.path || '/inbox';
 
-      // Normalize headers to Headers object for signature verification
-      const normalizedHeaders = headers instanceof Headers
-        ? headers
-        : new Headers(headers);
-
       const isValid = await verifyHttpSignature(
         parsedSig,
         actor.publicKey.publicKeyPem,
         method,
         path,
-        normalizedHeaders
+        normalizedHeaders,
+        { strictHeaders: true }
       );
 
       if (!isValid) {

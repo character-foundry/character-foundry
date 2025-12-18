@@ -7,6 +7,7 @@
 import type { CCv3Data } from '@character-foundry/schemas';
 import type { PlatformId } from '../types.js';
 import { BasePlatformAdapter, type AdapterCard, type AdapterAsset } from './base.js';
+import { getLogger } from '../logger.js';
 
 /**
  * HTTP fetch function type
@@ -252,7 +253,7 @@ export class HttpPlatformAdapter extends BasePlatformAdapter {
         ? this.config.transformers.get(data)
         : data as CCv3Data;
     } catch (err) {
-      console.error(`Failed to get card ${localId}:`, err);
+      getLogger().error(`[federation] Failed to get card ${localId}:`, err);
       return null;
     }
   }

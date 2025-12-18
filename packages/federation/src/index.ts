@@ -15,6 +15,9 @@
  * Both steps are required as a dual opt-in safety mechanism (except in environments without process.env).
  */
 
+import type { Logger, LogLevel } from './logger.js';
+import { configureLogger, getLogger } from './logger.js';
+
 let explicitlyEnabled = false;
 let envCheckSkipped = false;
 
@@ -39,13 +42,21 @@ function getEnvVar(name: string): string | undefined {
  * Note: In Node.js, both this call AND FEDERATION_ENABLED=true are required (dual opt-in).
  * In browser/Workers, use skipEnvCheck: true since env vars aren't available.
  */
-export function enableFederation(options?: { skipEnvCheck?: boolean }): void {
+export function enableFederation(options?: {
+  skipEnvCheck?: boolean;
+  /** Optional logger override */
+  logger?: Logger;
+  /** Optional log level (used when logger is not provided). Default: warn */
+  logLevel?: LogLevel;
+}): void {
+  configureLogger(options);
+
   explicitlyEnabled = true;
   envCheckSkipped = options?.skipEnvCheck ?? false;
 
   const nodeEnv = getEnvVar('NODE_ENV');
   if (nodeEnv === 'development' || nodeEnv === 'test') {
-    console.warn(
+    getLogger().warn(
       '[character-foundry/federation] Federation enabled. ' +
       'WARNING: Verify HTTP signatures in production. ' +
       'Do NOT use in production with untrusted inputs without signature validation.'
@@ -107,6 +118,15 @@ export function assertFederationEnabled(feature: string): void {
     );
   }
 }
+
+// Logging
+export type { Logger, LogLevel } from './logger.js';
+export {
+  createConsoleLogger,
+  getLogger as getFederationLogger,
+  setLogger as setFederationLogger,
+  setLogLevel as setFederationLogLevel,
+} from './logger.js';
 
 // Core types
 export type {

@@ -20,9 +20,10 @@ npm install @character-foundry/voxta
 ```typescript
 import {
   readVoxta,
-  writeVoxta,
   getPackageManifest,
   mergeCharacterEdits,
+  applyVoxtaDeltas,
+  writeVoxta,
 } from '@character-foundry/voxta';
 
 // Read package
@@ -33,12 +34,18 @@ const manifest = getPackageManifest(data);
 
 // Edit character
 const updated = mergeCharacterEdits(data.characters[0], {
-  Name: 'New Name',
-  Description: 'Updated description',
+  name: 'New Name',
+  description: 'Updated description',
 });
 
-// Write back
-const newBuffer = writeVoxta(data, { includePackageJson: true });
+// Write back (preserves unchanged files bit-for-bit)
+const newBuffer = applyVoxtaDeltas(buffer, {
+  characters: new Map([[data.characters[0]!.id, updated]]),
+});
+
+// Or export a CCv3 card to a new .voxpkg (character-only export)
+// (ccv3Card: CCv3Data, voxtaAssets: VoxtaWriteAsset[])
+const exported = writeVoxta(ccv3Card, voxtaAssets, { includePackageJson: false });
 ```
 
 ## Documentation

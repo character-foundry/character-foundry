@@ -1,7 +1,7 @@
 # Loader Package Documentation
 
 **Package:** `@character-foundry/loader`
-**Version:** 0.1.8
+**Version:** 0.1.10
 **Environment:** Node.js and Browser
 
 The `@character-foundry/loader` package provides universal character card and lorebook loading with automatic format detection. It handles PNG, CharX, Voxta, raw JSON character cards, and standalone lorebook files.
@@ -12,7 +12,7 @@ The `@character-foundry/loader` package provides universal character card and lo
 - Automatic format detection (PNG, CharX, Voxta, JSON, Lorebook)
 - Normalization to CCv3 format
 - **Discriminated union result** - `parse()` returns `CardParseResult | LorebookParseResult`
-- **Server-side metadata validation** - `validateClientMetadata()`, `computeContentHash()`
+- **Server-side metadata validation** - `validateClientMetadata()`, `computeContentHash()`, `computeContentHashV2()`
 - Optimistic UI support with authoritative server validation
 
 ## Table of Contents
@@ -504,6 +504,7 @@ interface AuthoritativeMetadata {
   name: string;
   tokens: TokenCounts;
   contentHash: string;
+  contentHashV2?: string;        // Canonical hash v2 (preferred for new storage)
   hasLorebook: boolean;
   lorebookEntriesCount: number;
 }
@@ -541,6 +542,7 @@ await db.insert({
   ...clientMeta,
   tokens: result.authoritative.tokens,
   contentHash: result.authoritative.contentHash,
+  contentHashV2: result.authoritative.contentHashV2,
 });
 ```
 
@@ -587,14 +589,16 @@ const result = validateClientMetadataSync(clientMeta, parseResult, options);
 
 ### Compute Content Hash
 
-Standalone utility to compute the canonical content hash:
+Standalone utilities to compute canonical content hashes:
 
 ```typescript
-import { computeContentHash } from '@character-foundry/loader';
+import { computeContentHash, computeContentHashV2 } from '@character-foundry/loader';
 
-const hash = await computeContentHash(card);
-// SHA-256 hash of canonical JSON representation
+const hashV1 = await computeContentHash(card);     // Legacy v1 (backwards compatibility)
+const hashV2 = await computeContentHashV2(card);   // v2 (recommended for new storage)
 ```
+
+`validateClientMetadata()` accepts either v1 or v2 client `contentHash` values. The server returns `authoritative.contentHash` (v1) for backwards compatibility and `authoritative.contentHashV2` (v2) for new storage/deduplication.
 
 ### Discrepancy Handling
 
@@ -652,6 +656,7 @@ export default {
       name: validation.authoritative.name,
       tokens: validation.authoritative.tokens,
       contentHash: validation.authoritative.contentHash,
+      contentHashV2: validation.authoritative.contentHashV2,
     };
 
     // Store in database...

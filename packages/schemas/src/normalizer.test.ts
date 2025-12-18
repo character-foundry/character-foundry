@@ -149,6 +149,24 @@ describe('CardNormalizer', () => {
 
       expect(input.data.tags).toEqual(['original']);
     });
+
+    it('should work when methods are destructured (no this-binding footgun)', () => {
+      const { normalize } = CardNormalizer;
+
+      const input = {
+        spec: 'chara_card_v3',
+        data: {
+          name: 'Test',
+          character_book: {
+            entries: [{ keys: ['k'], content: 'c', position: 0 }],
+          },
+        },
+      };
+
+      const result = normalize(input, 'v3') as CCv3Data;
+
+      expect(result.data.character_book?.entries[0]?.position).toBe('before_char');
+    });
   });
 
   describe('normalizeCharacterBook', () => {

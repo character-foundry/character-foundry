@@ -437,4 +437,15 @@ export interface InboxHandlerOptions {
   strictMode?: boolean;
   /** Maximum age for signatures in seconds (default 300) */
   maxAge?: number;
+  /**
+   * Optional shared network key for internal-only federation.
+   *
+   * When set, incoming requests must include a matching network key header.
+   * In strictMode, the header must also be included in the signed header list.
+   */
+  networkKey?: string;
+  /**
+   * Header name for the shared network key (default: X-Foundry-Network-Key)
+   */
+  networkKeyHeader?: string;
 }

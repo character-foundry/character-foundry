@@ -23,18 +23,6 @@ const SAFE_ASSET_TYPES = new Set([
   'custom', 'x-risu-asset', 'data', 'unknown',
 ]);
 
-/** Safe file extensions (whitelist) */
-const SAFE_EXTENSIONS = new Set([
-  // Images
-  'png', 'jpg', 'jpeg', 'webp', 'gif', 'avif', 'svg', 'bmp', 'ico',
-  // Audio
-  'mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus',
-  // Video
-  'mp4', 'webm', 'avi', 'mov', 'mkv',
-  // Data
-  'json', 'txt', 'bin',
-]);
-
 /**
  * Get CharX category from MIME type
  */
@@ -65,19 +53,34 @@ function sanitizeAssetType(type: string): string {
 
 /**
  * Sanitize a file extension for safe use in file paths.
- * Only allows whitelisted extensions to prevent traversal.
+ *
+ * @remarks
+ * CharX assets may be arbitrary file types (including scripts/text). We validate
+ * for path-safety and normalize minimally, rather than coercing unknown
+ * extensions to `.bin`.
  */
 function sanitizeExtension(ext: string): string {
-  // Remove leading dot if present, normalize to lowercase
-  const normalized = ext.replace(/^\./, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normalized = ext.trim().replace(/^\./, '').toLowerCase();
 
-  // Use whitelist - if not in whitelist, default to 'bin'
-  if (SAFE_EXTENSIONS.has(normalized)) {
-    return normalized;
+  if (!normalized) {
+    throw new Error('Invalid asset extension: empty extension');
   }
 
-  // Unknown extension - use 'bin' as safe fallback
-  return 'bin';
+  if (normalized.length > 64) {
+    throw new Error(`Invalid asset extension: too long (${normalized.length} chars)`);
+  }
+
+  // Prevent zip path traversal / separators
+  if (normalized.includes('/') || normalized.includes('\\') || normalized.includes('\0')) {
+    throw new Error('Invalid asset extension: path separators are not allowed');
+  }
+
+  // Conservative filename safety while still allowing common multi-part extensions (e.g. tar.gz)
+  if (!/^[a-z0-9][a-z0-9._-]*$/.test(normalized)) {
+    throw new Error(`Invalid asset extension: "${ext}"`);
+  }
+
+  return normalized;
 }
 
 /**

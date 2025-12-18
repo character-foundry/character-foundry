@@ -27,6 +27,18 @@ describe('HTTP Signatures', () => {
       expect(parsed?.signature).toBe('base64signature==');
     });
 
+    it('should normalize signed header names to lowercase', () => {
+      const header =
+        'keyId="https://example.com/users/test#main-key",' +
+        'algorithm="rsa-sha256",' +
+        'headers="(request-target) Host Date",' +
+        'signature="base64signature=="';
+
+      const parsed = parseSignatureHeader(header);
+
+      expect(parsed?.headers).toEqual(['(request-target)', 'host', 'date']);
+    });
+
     it('should parse signature with hs2019 algorithm', () => {
       const header =
         'keyId="https://example.com/actor#main-key",' +
@@ -119,6 +131,17 @@ describe('HTTP Signatures', () => {
       );
 
       expect(result).toContain('digest: SHA-256=abc123');
+    });
+
+    it('should throw when a claimed signed header is missing', () => {
+      const headers = new Headers({
+        'Host': 'example.com',
+        // Date is missing
+      });
+
+      expect(() =>
+        buildSigningString('POST', '/inbox', headers, ['(request-target)', 'host', 'date'])
+      ).toThrow(/missing/i);
     });
   });
 

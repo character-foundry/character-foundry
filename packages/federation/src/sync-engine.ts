@@ -25,6 +25,7 @@ import type {
 } from './types.js';
 import { generateCardId, parseForkActivity, parseInstallActivity } from './activitypub.js';
 import { assertFederationEnabled } from './index.js';
+import { getLogger } from './logger.js';
 
 /**
  * Generate a simple hash of card content for change detection (32-bit djb2-style).
@@ -187,7 +188,7 @@ export class SyncEngine {
         try {
           listener(event);
         } catch (err) {
-          console.error(`Event listener error:`, err);
+          getLogger().error('[federation] Event listener error:', err);
         }
       }
     }
