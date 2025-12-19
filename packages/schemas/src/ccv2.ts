@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { preprocessNumeric } from './common.js';
 
 // ============================================================================
 // Zod Schemas
@@ -32,13 +33,14 @@ export const CCv2LorebookEntrySchema = z.object({
 }).passthrough(); // Allow SillyTavern extensions like depth, probability, etc.
 
 /**
- * Character book (lorebook) schema for v2 cards
+ * Character book (lorebook) schema for v2 cards.
+ * Uses preprocessing for numeric fields that often come as strings in wild data.
  */
 export const CCv2CharacterBookSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
-  scan_depth: z.number().int().nonnegative().optional(),
-  token_budget: z.number().int().nonnegative().optional(),
+  scan_depth: z.preprocess(preprocessNumeric, z.number().int().nonnegative().optional()),
+  token_budget: z.preprocess(preprocessNumeric, z.number().int().nonnegative().optional()),
   recursive_scanning: z.boolean().optional(),
   extensions: z.record(z.unknown()).optional(),
   entries: z.array(CCv2LorebookEntrySchema),

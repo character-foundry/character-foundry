@@ -22,6 +22,10 @@ export {
   AssetTypeSchema,
   AssetDescriptorSchema,
   ExtractedAssetSchema,
+  // Preprocessing utilities (for advanced use)
+  preprocessTimestamp,
+  preprocessNumeric,
+  preprocessAssetType,
 } from './common.js';
 
 // CCv2 types and schemas
