@@ -1,8 +1,12 @@
-name: Publish Packages (Manual)
+name: Publish
 
-# Manual fallback for publishing. Prefer using changesets via release.yml
-# This workflow is for emergency manual releases only
 on:
+  push:
+    branches: [dev, master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/*.md'
   workflow_dispatch:
     inputs:
       confirm:
@@ -10,15 +14,130 @@ on:
         required: true
         type: string
 
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
   id-token: write
 
 jobs:
-  publish:
+  ci:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Verify ESM/CJS builds
+        run: pnpm verify-build
+
+  # Dev releases: push to dev branch
+  publish-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: ci
     runs-on: ubuntu-latest
     environment: production
-    if: github.event.inputs.confirm == 'PUBLISH'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Generate dev version
+        id: version
+        run: |
+          TIMESTAMP=$(date +%s)
+          CF_VERSION=$(node -p "require('./packages/character-foundry/package.json').version")
+          CLI_VERSION=$(node -p "require('./packages/cli/package.json').version")
+          CF_DEV_VERSION="${CF_VERSION}-dev.${TIMESTAMP}"
+          CLI_DEV_VERSION="${CLI_VERSION}-dev.${TIMESTAMP}"
+          echo "cf_version=${CF_DEV_VERSION}" >> $GITHUB_OUTPUT
+          echo "cli_version=${CLI_DEV_VERSION}" >> $GITHUB_OUTPUT
+          echo "Publishing dev versions: character-foundry@${CF_DEV_VERSION}, cli@${CLI_DEV_VERSION}"
+
+      - name: Update package versions for dev release
+        run: |
+          node -e "const p=require('./packages/character-foundry/package.json'); p.version='${{ steps.version.outputs.cf_version }}'; require('fs').writeFileSync('./packages/character-foundry/package.json', JSON.stringify(p, null, 2)+'\n')"
+          node -e "const p=require('./packages/cli/package.json'); p.version='${{ steps.version.outputs.cli_version }}'; require('fs').writeFileSync('./packages/cli/package.json', JSON.stringify(p, null, 2)+'\n')"
+
+      - name: Publish character-foundry @dev
+        working-directory: packages/character-foundry
+        run: pnpm publish --no-git-checks --provenance --access public --tag dev
+
+      - name: Publish cli @dev
+        working-directory: packages/cli
+        run: pnpm publish --no-git-checks --provenance --access public --tag dev
+
+  # Production releases: push to master via changesets
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: pnpm run release
+          title: 'chore: release packages'
+          commit: 'chore: release packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Manual fallback release
+  manual-publish:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'PUBLISH'
+    runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -36,10 +155,10 @@ jobs:
       - name: Build All
         run: pnpm build
 
-      - name: Publish character-foundry (trusted publisher)
+      - name: Publish character-foundry
         working-directory: packages/character-foundry
         run: pnpm publish --no-git-checks --provenance --access public
 
-      - name: Publish cli (trusted publisher)
+      - name: Publish cli
         working-directory: packages/cli
         run: pnpm publish --no-git-checks --provenance --access public
