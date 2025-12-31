@@ -42,6 +42,7 @@ jobs:
   publish-dev:
     needs: ci
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
       id-token: write
