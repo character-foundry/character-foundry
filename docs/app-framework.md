@@ -83,6 +83,12 @@ interface AutoFormProps<T extends z.ZodObject<any>> {
   /** Called on form submit with validated data */
   onSubmit?: (values: z.infer<T>) => void | Promise<void>;
 
+  /** Called when validation fails during onChange */
+  onValidationError?: (error: z.ZodError) => void;
+
+  /** Called on every value change, regardless of validation status */
+  onRawChange?: (values: unknown) => void;
+
   /** UI hints for customizing field rendering */
   uiHints?: UIHints<z.infer<T>>;
 
@@ -922,9 +928,13 @@ export {
 
 ## Version
 
-0.2.1
+0.2.2
 
 ### Changelog
+
+**0.2.2**
+- Add: `onValidationError` callback - fires when Zod validation fails during onChange
+- Add: `onRawChange` callback - fires on every value change regardless of validation status
 
 **0.2.1**
 - Fix: Hidden/conditional fields now properly unregister (no stale data leaks)

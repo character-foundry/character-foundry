@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { AssetDescriptorSchema } from './common.js';
+import { AssetDescriptorSchema, preprocessTimestamp, preprocessNumeric } from './common.js';
 
 // ============================================================================
 // Zod Schemas
@@ -42,13 +42,14 @@ export const CCv3LorebookEntrySchema = z.object({
 }).passthrough(); // Allow tool-specific extensions
 
 /**
- * Character book (lorebook) schema for v3 cards
+ * Character book (lorebook) schema for v3 cards.
+ * Uses preprocessing for numeric fields that often come as strings in wild data.
  */
 export const CCv3CharacterBookSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
-  scan_depth: z.number().int().nonnegative().optional(),
-  token_budget: z.number().int().nonnegative().optional(),
+  scan_depth: z.preprocess(preprocessNumeric, z.number().int().nonnegative().optional()),
+  token_budget: z.preprocess(preprocessNumeric, z.number().int().nonnegative().optional()),
   recursive_scanning: z.boolean().optional(),
   extensions: z.record(z.unknown()).optional(),
   entries: z.array(CCv3LorebookEntrySchema),
@@ -86,8 +87,9 @@ export const CCv3DataInnerSchema = z.object({
   nickname: z.string().optional(),
   creator_notes_multilingual: z.record(z.string()).optional(),
   source: z.array(z.string()).optional(),
-  creation_date: z.number().int().nonnegative().optional(),     // Unix timestamp in seconds
-  modification_date: z.number().int().nonnegative().optional(), // Unix timestamp in seconds
+  // Unix timestamps - preprocess to handle ISO strings, numeric strings, milliseconds
+  creation_date: z.preprocess(preprocessTimestamp, z.number().int().nonnegative().optional()),
+  modification_date: z.preprocess(preprocessTimestamp, z.number().int().nonnegative().optional()),
 });
 
 /**
