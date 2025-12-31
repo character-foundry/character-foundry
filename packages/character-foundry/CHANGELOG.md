@@ -1,5 +1,24 @@
 # @character-foundry/character-foundry
 
+## 0.5.0
+
+### Minor Changes
+
+- [#44](https://github.com/character-foundry/character-foundry/pull/44) [`43c3b7a`](https://github.com/character-foundry/character-foundry/commit/43c3b7a02da96cbddd3bc50501f4ba7e3d8fdab6) Thanks [@axAilotl](https://github.com/axAilotl)! - Add `onValidationError` and `onRawChange` callbacks to AutoForm
+
+  - `onValidationError`: Called when Zod validation fails during onChange, providing the ZodError
+  - `onRawChange`: Called on every value change regardless of validation status, useful for tracking raw user input
+
+### Patch Changes
+
+- [#44](https://github.com/character-foundry/character-foundry/pull/44) [`78075b3`](https://github.com/character-foundry/character-foundry/commit/78075b3feb4cd0756c624915090453c1cf97b03b) Thanks [@axAilotl](https://github.com/axAilotl)! - Schemas: Add lenient preprocessing for common real-world card variants (fixes #43)
+
+  - **Timestamps**: Accept ISO strings, numeric strings, and milliseconds in `creation_date`/`modification_date` fields. Automatically converts to Unix seconds. Drops negative timestamps (.NET default dates).
+  - **Lorebook fields**: Accept string values for `scan_depth` and `token_budget` (e.g., `"40"` instead of `40`).
+  - **Asset types**: Unknown asset type values (e.g., `"link"`) are coerced to `"custom"` instead of failing validation.
+
+  This fixes cards that were incorrectly rejected as "unknown format" due to strict schema validation on optional fields with common non-spec-but-valid values.
+
 ## 0.4.4
 
 ### Patch Changes
