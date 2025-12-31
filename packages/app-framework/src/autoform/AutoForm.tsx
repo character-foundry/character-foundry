@@ -36,6 +36,16 @@ export interface AutoFormProps<T extends z.ZodObject<z.ZodRawShape>> {
   /** Called on form submit with validated data */
   onSubmit?: (values: z.infer<T>) => void | Promise<void>;
 
+  /** Called when validation fails during onChange */
+  onValidationError?: (error: z.ZodError) => void;
+
+  /**
+   * Called on every value change, regardless of validation status.
+   * Useful when you need to track raw user input before validation.
+   * The values may not conform to the schema type.
+   */
+  onRawChange?: (values: unknown) => void;
+
   /** UI hints for customizing field rendering */
   uiHints?: UIHints<z.infer<T>>;
 
@@ -120,6 +130,8 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
   defaultValues,
   onChange,
   onSubmit,
+  onValidationError,
+  onRawChange,
   uiHints = {} as UIHints<z.infer<T>>,
   fieldOrder,
   disabled = false,
@@ -253,21 +265,30 @@ export function AutoForm<T extends z.ZodObject<z.ZodRawShape>>({
   // This avoids re-rendering the entire form on every change
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onValidationErrorRef = useRef(onValidationError);
+  onValidationErrorRef.current = onValidationError;
+  const onRawChangeRef = useRef(onRawChange);
+  onRawChangeRef.current = onRawChange;
   const schemaRef = useRef(schema);
   schemaRef.current = schema;
 
   useEffect(() => {
-    if (!onChangeRef.current) return;
+    if (!onChangeRef.current && !onValidationErrorRef.current && !onRawChangeRef.current) return;
 
     // Subscribe to form value changes (doesn't cause re-renders)
     const subscription = watch((formValues, { type }) => {
-      // Only fire onChange for actual value changes, not focus/blur
+      // Only fire callbacks for actual value changes, not focus/blur
       if (type !== 'change') return;
 
-      // Validate with schema and call onChange if valid
+      // Always fire onRawChange first (before validation)
+      onRawChangeRef.current?.(formValues);
+
+      // Validate with schema and call appropriate callback
       const result = schemaRef.current.safeParse(formValues);
-      if (result.success && onChangeRef.current) {
-        onChangeRef.current(result.data);
+      if (result.success) {
+        onChangeRef.current?.(result.data);
+      } else {
+        onValidationErrorRef.current?.(result.error);
       }
     });
 
