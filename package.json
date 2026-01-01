@@ -28,7 +28,7 @@
     "changeset": "changeset",
     "version": "changeset version",
     "release": "pnpm build && pnpm run publish:packages",
-    "publish:packages": "cd packages/character-foundry && npm publish --provenance --access public && cd ../cli && npm publish --provenance --access public"
+    "publish:packages": "cd packages/character-foundry && npm publish --provenance --access public || true && cd ../cli && npm publish --provenance --access public || true"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.0",
