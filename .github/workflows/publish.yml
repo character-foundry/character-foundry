@@ -67,7 +67,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -95,11 +94,11 @@ jobs:
 
       - name: Publish character-foundry @dev
         working-directory: packages/character-foundry
-        run: pnpm publish --no-git-checks --provenance --access public --tag dev
+        run: npm publish --provenance --access public --tag dev
 
       - name: Publish cli @dev
         working-directory: packages/cli
-        run: pnpm publish --no-git-checks --provenance --access public --tag dev
+        run: npm publish --provenance --access public --tag dev
 
   # Production releases: push to master via changesets
   release:
@@ -114,7 +113,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -146,7 +144,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
       - name: Install Dependencies
@@ -157,8 +154,8 @@ jobs:
 
       - name: Publish character-foundry
         working-directory: packages/character-foundry
-        run: pnpm publish --no-git-checks --provenance --access public
+        run: npm publish --provenance --access public
 
       - name: Publish cli
         working-directory: packages/cli
-        run: pnpm publish --no-git-checks --provenance --access public
+        run: npm publish --provenance --access public
