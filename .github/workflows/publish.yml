@@ -32,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -69,15 +69,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'pnpm'
 
-      - name: Configure npm for OIDC publishing
+      - name: Verify npm version
         run: |
-          echo "registry=https://registry.npmjs.org" > ~/.npmrc
           echo "npm version: $(npm --version)"
-          echo ".npmrc contents:"
-          cat ~/.npmrc
+          echo "node version: $(node --version)"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -126,11 +124,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'pnpm'
-
-      - name: Configure npm for OIDC publishing
-        run: echo "registry=https://registry.npmjs.org" > ~/.npmrc
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -163,11 +158,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'pnpm'
-
-      - name: Configure npm for OIDC publishing
-        run: echo "registry=https://registry.npmjs.org" > ~/.npmrc
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
