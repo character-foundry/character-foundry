@@ -67,11 +67,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
-      - name: Clear auth token for OIDC
-        run: npm config delete //registry.npmjs.org/:_authToken || true
+      - name: Configure npm for OIDC publishing
+        run: |
+          echo "registry=https://registry.npmjs.org" > ~/.npmrc
+          echo "npm version: $(npm --version)"
+          echo ".npmrc contents:"
+          cat ~/.npmrc
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -117,11 +120,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
-      - name: Clear auth token for OIDC
-        run: npm config delete //registry.npmjs.org/:_authToken || true
+      - name: Configure npm for OIDC publishing
+        run: echo "registry=https://registry.npmjs.org" > ~/.npmrc
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -152,11 +154,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
-      - name: Clear auth token for OIDC
-        run: npm config delete //registry.npmjs.org/:_authToken || true
+      - name: Configure npm for OIDC publishing
+        run: echo "registry=https://registry.npmjs.org" > ~/.npmrc
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
