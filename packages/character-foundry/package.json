@@ -168,12 +168,12 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "fflate": "^0.8.2",
+    "fflate": "0.8.3",
     "zod": "^3.22.4",
     "gpt-tokenizer": "^3.4.0"
   },
   "optionalDependencies": {
-    "sharp": "^0.33.0"
+    "sharp": "0.35.4"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",

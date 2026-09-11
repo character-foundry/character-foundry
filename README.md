@@ -44,8 +44,8 @@ import { CCv3Data } from '@character-foundry/character-foundry/schemas';
 
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
-| **`@character-foundry/character-foundry`** | **0.4.2** | **Main library - all functionality bundled** | - |
-| **`@character-foundry/cli`** | **0.4.2** | **CLI tool** | [docs/cli.md](docs/cli.md) |
+| **`@character-foundry/character-foundry`** | **0.4.3** | **Main library - all functionality bundled** | - |
+| **`@character-foundry/cli`** | **0.4.3** | **CLI tool** | [docs/cli.md](docs/cli.md) |
 
 ### Internal Packages (bundled, not published separately)
 

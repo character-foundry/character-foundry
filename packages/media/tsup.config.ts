@@ -7,4 +7,7 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   splitting: false,
+  // sharp is optional and has Node-only native bindings; leave it for the
+  // consuming runtime rather than bundling it into browser-compatible output.
+  external: ['sharp'],
 });
