@@ -80,7 +80,7 @@ describe('fromDataURL', () => {
 
     expect(mimeType).toBe('application/octet-stream');
     expect(buffer.length).toBe(original.length);
-    expect(buffer).toEqual(original);
+    expect(Buffer.compare(Buffer.from(buffer), Buffer.from(original))).toBe(0);
   });
 });
 

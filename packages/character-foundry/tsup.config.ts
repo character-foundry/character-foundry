@@ -4,6 +4,8 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     core: 'src/core.ts',
+    zip: 'src/zip.ts',
+    integrations: 'src/integrations.ts',
     schemas: 'src/schemas.ts',
     png: 'src/png.ts',
     charx: 'src/charx.ts',

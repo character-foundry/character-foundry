@@ -11,6 +11,8 @@ const distDir = resolve(rootDir, 'dist');
 const entries = [
   'index',
   'core',
+  'zip',
+  'integrations',
   'schemas',
   'png',
   'charx',
