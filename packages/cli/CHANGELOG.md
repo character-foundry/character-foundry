@@ -1,8 +1,9 @@
-# 0.6.0
+# @character-foundry/cli
+
+## 0.6.0
 
 - Include the September archive detection and dependency updates.
 
-# @character-foundry/cli
 
 ## 0.4.3
 

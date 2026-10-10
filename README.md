@@ -327,3 +327,9 @@ See [docs/federation.md](docs/federation.md) for security configuration details.
 ## License
 
 MIT
+
+### Direct application connections
+
+Version 0.6.0 exports ZIP utilities from `@character-foundry/character-foundry/zip`, so consumers no longer need the unpublished core package for ZIP operations.
+
+`@character-foundry/character-foundry/integrations` provides `instanceApiUrl()` for instance roots, `/api` URLs and reverse proxy prefixes, plus `connectionHeaders()` for session tokens and cookies. It also exports `FavoriteState`, `isFavoriteState()` and `compareFavoriteStates()` for explicit star/unstar reconciliation. These helpers do not require federation. Applications own storage, authentication, retries and card links.

@@ -1,10 +1,11 @@
-# 0.6.0
+# @character-foundry/character-foundry
+
+## 0.6.0
 
 - Release the September ZIP detection and dependency updates.
 - Export bundled ZIP primitives from `/zip`.
 - Add direct connection URL/auth helpers and deterministic favorite reconciliation primitives in `/integrations`.
 
-# @character-foundry/character-foundry
 
 ## 0.5.0
 
