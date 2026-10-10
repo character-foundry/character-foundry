@@ -47,3 +47,8 @@ fixtures/basic/**/*.charx
 fixtures/basic/**/*.voxpkg
 fixtures/extended/
 fixtures/large/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

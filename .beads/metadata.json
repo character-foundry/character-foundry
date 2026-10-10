@@ -1,0 +1,8 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "character_foundry",
+  "project_id": "c4d8f05a-df0d-4473-999d-6d703ea223da",
+  "global_dolt_database": "beads_global"
+}
