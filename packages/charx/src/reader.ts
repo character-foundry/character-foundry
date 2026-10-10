@@ -16,7 +16,7 @@ import {
 import {
   type Unzipped,
   isJpegCharX,
-  getZipOffset,
+  preflightZipSizes,
   streamingUnzipSync,
   ZipPreflightError,
 } from '@character-foundry/core/zip';
@@ -41,34 +41,27 @@ const DEFAULT_OPTIONS: Required<Omit<CharxReadOptions, 'assetFetcher'>> = {
 /**
  * Check if data is a CharX file (ZIP with card.json)
  *
- * Scans the END of the file (ZIP central directory) since JPEG+ZIP hybrids
- * can have large JPEG data at the front. The central directory listing
- * all filenames is always at the tail of the ZIP.
+ * Reads the ZIP central directory since JPEG+ZIP hybrids can have large JPEG
+ * data at the front and large archives can have central directories larger
+ * than the old fixed-size scan window.
  */
 export function isCharX(data: BinaryData): boolean {
-  const zipOffset = getZipOffset(data);
-  if (zipOffset < 0) return false;
+  try {
+    const { entries } = preflightZipSizes(data, {
+      // Detection should not reject a valid archive based on extraction
+      // limits; read the directory metadata only.
+      maxFileSize: Number.MAX_SAFE_INTEGER,
+      maxTotalSize: Number.MAX_SAFE_INTEGER,
+      maxFiles: Number.MAX_SAFE_INTEGER,
+    });
 
-  const zipData = data.subarray(zipOffset);
-  const cardJsonMarker = new TextEncoder().encode('card.json');
-
-  // Scan the last 64KB where the central directory lives
-  // (covers ZIP with up to ~1000 files in the directory)
-  const scanSize = Math.min(zipData.length, 65536);
-  const startOffset = zipData.length - scanSize;
-
-  for (let i = startOffset; i < zipData.length - cardJsonMarker.length; i++) {
-    let found = true;
-    for (let j = 0; j < cardJsonMarker.length; j++) {
-      if (zipData[i + j] !== cardJsonMarker[j]) {
-        found = false;
-        break;
-      }
-    }
-    if (found) return true;
+    return entries.some((entry) => entry.fileName === 'card.json');
+  } catch (error) {
+    // Detection is a predicate. Malformed ZIP metadata is not a CharX file,
+    // but unexpected failures must remain visible to callers.
+    if (error instanceof ZipPreflightError) return false;
+    throw error;
   }
-
-  return false;
 }
 
 /**

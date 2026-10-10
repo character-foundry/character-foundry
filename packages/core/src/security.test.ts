@@ -23,6 +23,39 @@ import {
   encodeChunked as base64EncodeChunked,
 } from './base64.js';
 
+function forceZip64Archive(zipData: Uint8Array, totalEntries = 1): Uint8Array {
+  const eocdOffset = zipData.length - 22;
+  const inputView = new DataView(zipData.buffer, zipData.byteOffset, zipData.byteLength);
+  const centralDirectorySize = inputView.getUint32(eocdOffset + 12, true);
+  const centralDirectoryOffset = inputView.getUint32(eocdOffset + 16, true);
+  const result = new Uint8Array(zipData.length + 76);
+  result.set(zipData.subarray(0, eocdOffset), 0);
+
+  const resultView = new DataView(result.buffer);
+  resultView.setUint32(eocdOffset, 0x06064b50, true);
+  resultView.setBigUint64(eocdOffset + 4, 44n, true);
+  resultView.setUint16(eocdOffset + 12, 45, true);
+  resultView.setUint16(eocdOffset + 14, 45, true);
+  resultView.setBigUint64(eocdOffset + 24, BigInt(totalEntries), true);
+  resultView.setBigUint64(eocdOffset + 32, BigInt(totalEntries), true);
+  resultView.setBigUint64(eocdOffset + 40, BigInt(centralDirectorySize), true);
+  resultView.setBigUint64(eocdOffset + 48, BigInt(centralDirectoryOffset), true);
+
+  const locatorOffset = eocdOffset + 56;
+  resultView.setUint32(locatorOffset, 0x07064b50, true);
+  resultView.setBigUint64(locatorOffset + 8, BigInt(eocdOffset), true);
+  resultView.setUint32(locatorOffset + 16, 1, true);
+
+  const classicEocdOffset = locatorOffset + 20;
+  result.set(zipData.subarray(eocdOffset), classicEocdOffset);
+  resultView.setUint16(classicEocdOffset + 8, 0xffff, true);
+  resultView.setUint16(classicEocdOffset + 10, 0xffff, true);
+  resultView.setUint32(classicEocdOffset + 12, 0xffffffff, true);
+  resultView.setUint32(classicEocdOffset + 16, 0xffffffff, true);
+
+  return result;
+}
+
 describe('ZIP bomb mitigation', () => {
   it('should pass preflight for normal ZIP files', () => {
     const files = {
@@ -34,6 +67,20 @@ describe('ZIP bomb mitigation', () => {
     const result = preflightZipSizes(zipData);
     expect(result.totalUncompressedSize).toBeGreaterThan(0);
     expect(result.fileCount).toBe(2);
+  });
+
+  it('should read ZIP64 central directory metadata', () => {
+    const zipData = forceZip64Archive(zipSync({
+      'card.json': new TextEncoder().encode('{}'),
+    }));
+
+    const result = preflightZipSizes(zipData, {
+      maxFileSize: Number.MAX_SAFE_INTEGER,
+      maxTotalSize: Number.MAX_SAFE_INTEGER,
+      maxFiles: 0xffff,
+    });
+
+    expect(result.entries.map((entry) => entry.fileName)).toEqual(['card.json']);
   });
 
   it('should reject ZIP with oversized total uncompressed size', () => {

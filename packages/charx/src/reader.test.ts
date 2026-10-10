@@ -7,6 +7,77 @@ import { zipSync } from 'fflate';
 import { fromString } from '@character-foundry/core';
 import { isCharX, isJpegCharX, readCharX } from './reader.js';
 
+function forceZip64Archive(zipData: Uint8Array, totalEntries = 1): Uint8Array {
+  const eocdOffset = zipData.length - 22;
+  const inputView = new DataView(zipData.buffer, zipData.byteOffset, zipData.byteLength);
+  const centralDirectorySize = inputView.getUint32(eocdOffset + 12, true);
+  const centralDirectoryOffset = inputView.getUint32(eocdOffset + 16, true);
+  const result = new Uint8Array(zipData.length + 76);
+  result.set(zipData.subarray(0, eocdOffset), 0);
+
+  const resultView = new DataView(result.buffer);
+  resultView.setUint32(eocdOffset, 0x06064b50, true);
+  resultView.setBigUint64(eocdOffset + 4, 44n, true);
+  resultView.setUint16(eocdOffset + 12, 45, true);
+  resultView.setUint16(eocdOffset + 14, 45, true);
+  resultView.setBigUint64(eocdOffset + 24, BigInt(totalEntries), true);
+  resultView.setBigUint64(eocdOffset + 32, BigInt(totalEntries), true);
+  resultView.setBigUint64(eocdOffset + 40, BigInt(centralDirectorySize), true);
+  resultView.setBigUint64(eocdOffset + 48, BigInt(centralDirectoryOffset), true);
+
+  const locatorOffset = eocdOffset + 56;
+  resultView.setUint32(locatorOffset, 0x07064b50, true);
+  resultView.setBigUint64(locatorOffset + 8, BigInt(eocdOffset), true);
+  resultView.setUint32(locatorOffset + 16, 1, true);
+
+  const classicEocdOffset = locatorOffset + 20;
+  result.set(zipData.subarray(eocdOffset), classicEocdOffset);
+  resultView.setUint16(classicEocdOffset + 8, 0xffff, true);
+  resultView.setUint16(classicEocdOffset + 10, 0xffff, true);
+  resultView.setUint32(classicEocdOffset + 12, 0xffffffff, true);
+  resultView.setUint32(classicEocdOffset + 16, 0xffffffff, true);
+
+  return result;
+}
+
+function prefixWithAbsoluteOffsets(zipData: Uint8Array, prefix: Uint8Array): Uint8Array {
+  const eocdOffset = zipData.length - 22;
+  const inputView = new DataView(zipData.buffer, zipData.byteOffset, zipData.byteLength);
+  const zip64LocatorOffset = eocdOffset - 20;
+  const hasZip64Locator = inputView.getUint32(zip64LocatorOffset, true) === 0x07064b50;
+  const centralDirectoryOffset = hasZip64Locator
+    ? Number(inputView.getBigUint64(Number(inputView.getBigUint64(zip64LocatorOffset + 8, true)) + 48, true))
+    : inputView.getUint32(eocdOffset + 16, true);
+  const result = new Uint8Array(prefix.length + zipData.length);
+  result.set(prefix, 0);
+  result.set(zipData, prefix.length);
+
+  const resultView = new DataView(result.buffer);
+  const shiftedEocdOffset = prefix.length + eocdOffset;
+  if (hasZip64Locator) {
+    const zip64LocatorOffset = shiftedEocdOffset - 20;
+    const zip64RecordOffset = Number(inputView.getBigUint64(eocdOffset - 12, true));
+    resultView.setBigUint64(zip64LocatorOffset + 8, BigInt(zip64RecordOffset + prefix.length), true);
+    resultView.setBigUint64(
+      prefix.length + zip64RecordOffset + 48,
+      BigInt(centralDirectoryOffset + prefix.length),
+      true
+    );
+  } else {
+    resultView.setUint32(shiftedEocdOffset + 16, centralDirectoryOffset + prefix.length, true);
+  }
+
+  const centralDirectoryEntryOffset = prefix.length + centralDirectoryOffset;
+  const localHeaderOffset = resultView.getUint32(centralDirectoryEntryOffset + 42, true);
+  resultView.setUint32(
+    centralDirectoryEntryOffset + 42,
+    localHeaderOffset + prefix.length,
+    true
+  );
+
+  return result;
+}
+
 describe('isCharX', () => {
   it('should detect valid CharX ZIP', () => {
     const card = {
@@ -25,12 +96,106 @@ describe('isCharX', () => {
     expect(isCharX(zipData)).toBe(true);
   });
 
+  it('should detect prefixed CharX ZIPs with absolute archive offsets', () => {
+    const zipData = zipSync({
+      'card.json': fromString(JSON.stringify({
+        spec: 'chara_card_v3',
+        spec_version: '3.0',
+        data: { name: 'Test' },
+      })),
+    });
+    const prefixedZip = prefixWithAbsoluteOffsets(zipData, new Uint8Array([0xaa, 0xbb, 0xcc]));
+
+    expect(isCharX(prefixedZip)).toBe(true);
+    expect(readCharX(prefixedZip).card.data.name).toBe('Test');
+  });
+
+  it('should detect prefixed ZIP64 CharX archives with absolute archive offsets', () => {
+    const zipData = forceZip64Archive(zipSync({
+      'card.json': fromString(JSON.stringify({
+        spec: 'chara_card_v3',
+        spec_version: '3.0',
+        data: { name: 'Test' },
+      })),
+    }));
+    const prefixedZip = prefixWithAbsoluteOffsets(zipData, new Uint8Array([0xaa, 0xbb, 0xcc]));
+
+    expect(isCharX(prefixedZip)).toBe(true);
+    expect(readCharX(prefixedZip).card.data.name).toBe('Test');
+  });
+
+  it('should detect CharX ZIP64 archives', () => {
+    const zipData = zipSync({
+      'card.json': fromString(JSON.stringify({
+        spec: 'chara_card_v3',
+        spec_version: '3.0',
+        data: { name: 'Test' },
+      })),
+    });
+
+    expect(isCharX(forceZip64Archive(zipData))).toBe(true);
+  });
+
+  it('should detect classic ZIPs at the 65,535-entry boundary', () => {
+    const files: Record<string, Uint8Array> = {
+      'card.json': fromString(JSON.stringify({
+        spec: 'chara_card_v3',
+        spec_version: '3.0',
+        data: { name: 'Test' },
+      })),
+    };
+
+    for (let i = 0; i < 65_534; i++) {
+      files[`assets/${i}.bin`] = new Uint8Array([0]);
+    }
+
+    const zipData = zipSync(files);
+    expect(isCharX(zipData)).toBe(true);
+  }, 15_000);
+
+  it('should detect ZIP64 archives beyond the 65,535-entry boundary', () => {
+    const files: Record<string, Uint8Array> = {
+      'card.json': fromString(JSON.stringify({
+        spec: 'chara_card_v3',
+        spec_version: '3.0',
+        data: { name: 'Test' },
+      })),
+    };
+
+    for (let i = 0; i < 65_535; i++) {
+      files[`assets/${i}.bin`] = new Uint8Array([0]);
+    }
+
+    const zipData = zipSync(files);
+    expect(isCharX(forceZip64Archive(zipData, 65_536))).toBe(true);
+  }, 15_000);
+
   it('should reject ZIP without card.json', () => {
     const zipData = zipSync({
       'other.json': fromString('{}'),
     });
 
     expect(isCharX(zipData)).toBe(false);
+  });
+
+  it('should detect card.json in a large central directory', () => {
+    const card = {
+      spec: 'chara_card_v3',
+      spec_version: '3.0',
+      data: { name: 'Test' },
+    };
+    const files: Record<string, Uint8Array> = {
+      'card.json': fromString(JSON.stringify(card)),
+    };
+
+    for (let i = 0; i < 2_000; i++) {
+      files[`assets/emotion-${i}.png`] = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    }
+
+    const zipData = zipSync(files);
+
+    expect(zipData.length).toBeGreaterThan(64 * 1024);
+    expect(isCharX(zipData)).toBe(true);
   });
 
   it('should reject non-ZIP data', () => {

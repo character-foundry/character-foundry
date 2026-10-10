@@ -84,7 +84,7 @@ async function createThumbnailNode(
   needsResize: boolean
 ): Promise<Uint8Array> {
   // Dynamically import sharp
-  let sharp: typeof import('sharp');
+  let sharp: typeof import('sharp').default;
   try {
     sharp = (await import('sharp')).default;
   } catch {

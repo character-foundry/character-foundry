@@ -1,6 +1,6 @@
 {
   "name": "@character-foundry/character-foundry",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Universal TypeScript library for AI character card formats",
   "type": "module",
   "exports": {
@@ -153,6 +153,26 @@
         "types": "./dist/app-framework.d.cts",
         "default": "./dist/app-framework.cjs"
       }
+    },
+    "./zip": {
+      "import": {
+        "types": "./dist/zip.d.ts",
+        "default": "./dist/zip.js"
+      },
+      "require": {
+        "types": "./dist/zip.d.cts",
+        "default": "./dist/zip.cjs"
+      }
+    },
+    "./integrations": {
+      "import": {
+        "types": "./dist/integrations.d.ts",
+        "default": "./dist/integrations.js"
+      },
+      "require": {
+        "types": "./dist/integrations.d.cts",
+        "default": "./dist/integrations.cjs"
+      }
     }
   },
   "main": "./dist/index.cjs",
@@ -165,15 +185,16 @@
     "build": "tsup && node scripts/bundle-types.js",
     "build:js": "tsup",
     "build:types": "node scripts/bundle-types.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest run"
   },
   "dependencies": {
-    "fflate": "^0.8.2",
+    "fflate": "0.8.3",
     "zod": "^3.22.4",
     "gpt-tokenizer": "^3.4.0"
   },
   "optionalDependencies": {
-    "sharp": "^0.33.0"
+    "sharp": "0.35.4"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
