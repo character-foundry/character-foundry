@@ -223,6 +223,8 @@ export function preflightZipSizes(
   limits: ZipSizeLimits = DEFAULT_ZIP_LIMITS
 ): ZipPreflightResult {
   // Find ZIP start (handles SFX/hybrid archives)
+  const zipStartOffset = getZipOffset(data);
+  const prefixLength = zipStartOffset > 0 ? zipStartOffset : 0;
   const zipData = findZipStart(data);
 
   // Find End of Central Directory (EOCD) signature: PK\x05\x06
@@ -259,13 +261,84 @@ export function preflightZipSizes(
     throw new ZipPreflightError('Invalid ZIP: End of Central Directory not found');
   }
 
-  // Parse EOCD
-  // Offset 8: Total number of central directory records
-  // Offset 12: Size of central directory
-  // Offset 16: Offset of start of central directory
-  const totalEntries = zipData[eocdOffset + 8]! | (zipData[eocdOffset + 9]! << 8);
-  const _cdSize = readUInt32LEFromBytes(zipData, eocdOffset + 12);
-  const cdOffset = readUInt32LEFromBytes(zipData, eocdOffset + 16);
+  // Parse EOCD. ZIP64 archives replace these fields with sentinel values and
+  // store their actual values in the ZIP64 EOCD record immediately before the
+  // locator and classic EOCD records.
+  let totalEntries = zipData[eocdOffset + 8]! | (zipData[eocdOffset + 9]! << 8);
+  let cdSize = readUInt32LEFromBytes(zipData, eocdOffset + 12);
+  let cdOffset = readUInt32LEFromBytes(zipData, eocdOffset + 16);
+  let centralDirectoryEnd = eocdOffset;
+
+  if (cdSize === 0xffffffff || cdOffset === 0xffffffff) {
+    const locatorOffset = eocdOffset - 20;
+    if (!hasSignature(zipData, locatorOffset, [0x50, 0x4b, 0x06, 0x07])) {
+      throw new ZipPreflightError('Invalid ZIP: ZIP64 EOCD locator not found');
+    }
+
+    const zip64EocdOffset = resolveZip64Offset(
+      readUInt64LEFromBytes(zipData, locatorOffset + 8),
+      zipData,
+      prefixLength
+    );
+    if (!hasSignature(zipData, zip64EocdOffset, [0x50, 0x4b, 0x06, 0x06])) {
+      throw new ZipPreflightError('Invalid ZIP: ZIP64 EOCD record not found');
+    }
+    centralDirectoryEnd = zip64EocdOffset;
+
+    const zip64RecordSize = readUInt64LEFromBytes(zipData, zip64EocdOffset + 4);
+    if (
+      zip64RecordSize < 44 ||
+      zip64EocdOffset + 12 + zip64RecordSize > zipData.length
+    ) {
+      throw new ZipPreflightError('Invalid ZIP: ZIP64 EOCD record is truncated');
+    }
+
+    totalEntries = readUInt64LEFromBytes(zipData, zip64EocdOffset + 32);
+    cdSize = readUInt64LEFromBytes(zipData, zip64EocdOffset + 40);
+    cdOffset = readUInt64LEFromBytes(zipData, zip64EocdOffset + 48);
+  } else if (totalEntries === 0xffff) {
+    // 0xffff is a valid classic-ZIP entry count. ZIP64 is required only
+    // when the archive exceeds that boundary, so do not reject a classic
+    // archive merely because its count occupies the maximum 16-bit value.
+    const locatorOffset = eocdOffset - 20;
+    if (hasSignature(zipData, locatorOffset, [0x50, 0x4b, 0x06, 0x07])) {
+      const zip64EocdOffset = resolveZip64Offset(
+        readUInt64LEFromBytes(zipData, locatorOffset + 8),
+        zipData,
+        prefixLength
+      );
+      if (!hasSignature(zipData, zip64EocdOffset, [0x50, 0x4b, 0x06, 0x06])) {
+        throw new ZipPreflightError('Invalid ZIP: ZIP64 EOCD record not found');
+      }
+      centralDirectoryEnd = zip64EocdOffset;
+
+      const zip64RecordSize = readUInt64LEFromBytes(zipData, zip64EocdOffset + 4);
+      if (
+        zip64RecordSize < 44 ||
+        zip64EocdOffset + 12 + zip64RecordSize > zipData.length
+      ) {
+        throw new ZipPreflightError('Invalid ZIP: ZIP64 EOCD record is truncated');
+      }
+
+      totalEntries = readUInt64LEFromBytes(zipData, zip64EocdOffset + 32);
+      cdSize = readUInt64LEFromBytes(zipData, zip64EocdOffset + 40);
+      cdOffset = readUInt64LEFromBytes(zipData, zip64EocdOffset + 48);
+    }
+  }
+
+  cdOffset = normalizeCentralDirectoryOffset(
+    cdOffset,
+    cdSize,
+    centralDirectoryEnd,
+    prefixLength,
+    zipData,
+    totalEntries
+  );
+
+  const cdEnd = cdOffset + cdSize;
+  if (!Number.isSafeInteger(cdEnd) || cdOffset < 0 || cdSize < 0 || cdEnd > eocdOffset) {
+    throw new ZipPreflightError('Invalid ZIP: Central Directory range is invalid');
+  }
 
   // Check file count limit
   if (totalEntries > limits.maxFiles) {
@@ -283,8 +356,9 @@ export function preflightZipSizes(
   const entries: ZipCentralDirEntry[] = [];
   let totalUncompressedSize = 0;
   let offset = cdOffset;
+  let parsedEntries = 0;
 
-  for (let i = 0; i < totalEntries && offset < eocdOffset; i++) {
+  for (let i = 0; i < totalEntries && offset < cdEnd; i++) {
     // Central Directory File Header signature: PK\x01\x02
     if (
       zipData[offset] !== 0x50 ||
@@ -294,6 +368,7 @@ export function preflightZipSizes(
     ) {
       throw new ZipPreflightError('Invalid ZIP: Central Directory header corrupted');
     }
+    parsedEntries++;
 
     // Offset 20: Compressed size (4 bytes)
     const compressedSize = readUInt32LEFromBytes(zipData, offset + 20);
@@ -347,6 +422,10 @@ export function preflightZipSizes(
     offset += 46 + fileNameLength + extraLength + commentLength;
   }
 
+  if (parsedEntries !== totalEntries || offset !== cdEnd) {
+    throw new ZipPreflightError('Invalid ZIP: Central Directory is truncated');
+  }
+
   return {
     entries,
     totalUncompressedSize,
@@ -364,6 +443,85 @@ function readUInt32LEFromBytes(data: BinaryData, offset: number): number {
     (data[offset + 2]! << 16) |
     (data[offset + 3]! << 24)
   ) >>> 0; // Convert to unsigned
+}
+
+/**
+ * Read a safe 64-bit little-endian unsigned integer from bytes.
+ */
+function readUInt64LEFromBytes(data: BinaryData, offset: number): number {
+  if (offset < 0 || offset + 8 > data.length) {
+    throw new ZipPreflightError('Invalid ZIP: ZIP64 value is truncated');
+  }
+
+  const low = readUInt32LEFromBytes(data, offset);
+  const high = readUInt32LEFromBytes(data, offset + 4);
+  const value = high * 0x100000000 + low;
+
+  if (!Number.isSafeInteger(value)) {
+    throw new ZipPreflightError('Invalid ZIP: ZIP64 value exceeds safe integer range');
+  }
+
+  return value;
+}
+
+function hasSignature(data: BinaryData, offset: number, signature: number[]): boolean {
+  if (offset < 0 || offset + signature.length > data.length) return false;
+  return signature.every((byte, index) => data[offset + index] === byte);
+}
+
+function resolveZip64Offset(
+  offset: number,
+  data: BinaryData,
+  prefixLength: number
+): number {
+  if (hasSignature(data, offset, [0x50, 0x4b, 0x06, 0x06])) return offset;
+
+  const relativeOffset = offset - prefixLength;
+  if (hasSignature(data, relativeOffset, [0x50, 0x4b, 0x06, 0x06])) {
+    return relativeOffset;
+  }
+
+  return offset;
+}
+
+function normalizeCentralDirectoryOffset(
+  offset: number,
+  size: number,
+  centralDirectoryEnd: number,
+  prefixLength: number,
+  data: BinaryData,
+  totalEntries: number
+): number {
+  const candidates = [offset];
+  if (prefixLength > 0) candidates.push(offset - prefixLength);
+
+  const validCandidates = candidates.filter((candidate, index, all) => {
+    if (index !== all.indexOf(candidate)) return false;
+    const end = candidate + size;
+    if (
+      candidate < 0 ||
+      !Number.isSafeInteger(end) ||
+      end > centralDirectoryEnd
+    ) {
+      return false;
+    }
+
+    // For non-empty directories, the candidate must point at a central
+    // directory header. This distinguishes relative and absolute offsets
+    // when a short prefix still leaves both ranges in bounds.
+    return totalEntries === 0 || hasSignature(data, candidate, [0x50, 0x4b, 0x01, 0x02]);
+  });
+
+  const exactCandidate = validCandidates.find(
+    (candidate) => candidate + size === centralDirectoryEnd
+  );
+  if (exactCandidate !== undefined) return exactCandidate;
+
+  if (validCandidates.length > 0) {
+    return validCandidates[0]!;
+  }
+
+  return offset;
 }
 
 /**
@@ -521,7 +679,9 @@ export function streamingUnzipSync(
 
       if (final && !error) {
         // Concatenate all chunks for this file
-        result[file.name] = concat(...chunks);
+        // Wrap the result so it has an ArrayBuffer-backed view, matching
+        // fflate's Unzipped type in recent releases.
+        result[file.name] = new Uint8Array(concat(...chunks));
       }
     };
 

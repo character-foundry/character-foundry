@@ -44,8 +44,8 @@ import { CCv3Data } from '@character-foundry/character-foundry/schemas';
 
 | Package | Version | Description | Docs |
 |---------|---------|-------------|------|
-| **`@character-foundry/character-foundry`** | **0.4.2** | **Main library - all functionality bundled** | - |
-| **`@character-foundry/cli`** | **0.4.2** | **CLI tool** | [docs/cli.md](docs/cli.md) |
+| **`@character-foundry/character-foundry`** | **0.4.3** | **Main library - all functionality bundled** | - |
+| **`@character-foundry/cli`** | **0.4.3** | **CLI tool** | [docs/cli.md](docs/cli.md) |
 
 ### Internal Packages (bundled, not published separately)
 
@@ -327,3 +327,9 @@ See [docs/federation.md](docs/federation.md) for security configuration details.
 ## License
 
 MIT
+
+### Direct application connections
+
+Version 0.6.0 exports ZIP utilities from `@character-foundry/character-foundry/zip`, so consumers no longer need the unpublished core package for ZIP operations.
+
+`@character-foundry/character-foundry/integrations` provides `instanceApiUrl()` for instance roots, `/api` URLs and reverse proxy prefixes, plus `connectionHeaders()` for session tokens and cookies. It also exports `FavoriteState`, `isFavoriteState()` and `compareFavoriteStates()` for explicit star/unstar reconciliation. These helpers do not require federation. Applications own storage, authentication, retries and card links.
