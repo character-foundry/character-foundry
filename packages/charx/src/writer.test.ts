@@ -95,6 +95,29 @@ describe('writeCharX', () => {
     expect(hasXMeta).toBe(true);
   });
 
+  it.each([
+    ['main', 'main', 'main', 'main'],
+    ['happy.face', 'happy_face', 'happy-face', 'happy-face-2'],
+    ['Happy', 'happy', 'HAPPY', 'happy-2'],
+  ])('preserves each colliding image in the archive and its descriptor: %s', (...names) => {
+    const assets = names.map((name, index) => ({
+      name, type: 'icon', ext: 'png', data: new Uint8Array([index + 1]),
+    }));
+    const original = structuredClone(assets);
+    const result = writeCharX(testCard, assets, { spec: 'risu' });
+    const files = unzipSync(result.buffer);
+    const parsed = readCharX(result.buffer);
+    const descriptors = parsed.card.data.assets!;
+
+    expect(Object.keys(files).filter(path => path.startsWith('assets/'))).toHaveLength(assets.length);
+    expect(new Set(descriptors.map(asset => asset.uri.toLowerCase())).size).toBe(assets.length);
+    expect(new Set(descriptors.map(asset => asset.name.toLowerCase())).size).toBe(assets.length);
+    expect(parsed.assets.map(asset => asset.buffer)).toEqual(assets.map(asset => asset.data));
+    expect(parsed.metadata?.size).toBe(assets.length);
+    expect(result.assetCount).toBe(assets.length);
+    expect(assets).toEqual(original);
+  });
+
   it('should respect compression level', () => {
     const assets = [
       { name: 'large', type: 'icon' as const, ext: 'png', data: new Uint8Array(10000).fill(0) },
