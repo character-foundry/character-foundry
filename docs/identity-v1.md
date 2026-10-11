@@ -135,3 +135,43 @@ Hosts must reject such loss, preserve it through an improved exporter, or explic
 create a transformed derivative with a new identity. Do not silently retain the
 old identity after changing the payload. Actual SillyTavern interoperability and
 full editor integration remain separate acceptance gates.
+
+## Explicit SillyTavern transport profile
+
+`prepareSillyTavernTransport` and `restoreSillyTavernTransport` are additive
+helpers. They do **not** change `foundry-card-v1-sha256`, the lineage schema, or
+existing hash APIs. An ordinary SillyTavern export with added envelope fields
+still fails ordinary lineage verification.
+
+The prepare helper first applies publication sanitization, verifies any existing
+lineage and computes the existing content identity using the caller's verified
+asset bindings. It writes a bounded `foundry-sillytavern-json-v1` marker at
+`data.extensions.foundry.local.sillyTavernTransport`. This machine-local marker
+contains the original content identity, existing revision hash (or null), and
+which documented transport fields were absent. It contains no private original
+metadata, saved prompt snapshot, asset bytes, or executable transformation.
+
+Restoration is opt-in by the marker. It can remove only absent-at-export fields:
+top-level `name`, `description`, `personality`, `scenario`, `first_mes`,
+`mes_example`, `tags`, `talkativeness`, `fav`, `create_date`, and
+`data.extensions.fav`. A returned mirror must exactly equal its current inner
+data field; an added favorite flag must be false; an added date must be a canonical
+ISO timestamp. Preexisting equal mirrors and false flags remain content. Other
+fields are untouched. After removing additions and local metadata, the helper
+requires the original content digest, exact revision hash and valid lineage.
+It returns null for unmarked cards and rejects malformed markers or changed
+content. It never creates, repairs or rewrites lineage. Markers/digests are
+integrity metadata, not authenticated signatures.
+
+Export rejects preexisting `chat`, `json_data`, or `create_date`, independent
+outer mirror values and non-false favorite fields, since the observed application
+would overwrite them. It does not normalize unknown timestamps or discard unknown
+fields generally. Lost markers, meaningful edits, name sanitization, lost assets
+and image recompression are not recovered. The caller must still verify actual
+asset bytes and supported containers. A transport marker is not permission to
+ignore asset identity or accept an external edit as its prior revision.
+
+The observed field behavior comes from an actual JSON import/export against
+SillyTavern `ad29cbda62e92f145e44d7a10398a38af22ca986`; future application changes
+must pass the same final identity checks or fail explicitly. External application
+and Unity flow evidence is tracked separately from the SDK's synthetic cases.
