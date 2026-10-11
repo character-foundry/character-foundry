@@ -4,6 +4,10 @@
   "description": "Universal TypeScript library for AI character card formats",
   "type": "module",
   "exports": {
+    "./identity": {
+      "import": { "types": "./dist/identity.d.ts", "default": "./dist/identity.js" },
+      "require": { "types": "./dist/identity.d.cts", "default": "./dist/identity.cjs" }
+    },
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
@@ -217,6 +221,7 @@
     }
   },
   "devDependencies": {
+    "@character-foundry/identity": "workspace:^",
     "@character-foundry/core": "workspace:^",
     "@character-foundry/schemas": "workspace:^",
     "@character-foundry/png": "workspace:^",
