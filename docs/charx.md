@@ -155,6 +155,7 @@ interface CharxWriteAsset {
 }
 
 interface CharxWriteOptions {
+  preserveDescriptors?: boolean; // Retain authored descriptors; change only URIs
   spec?: 'v3' | 'risu';
   compressionLevel?: CompressionLevel;
   emitXMeta?: boolean;     // Default: false (auto-enabled for risu)
@@ -189,6 +190,15 @@ const result = await writeCharXAsync(card, assets, {
 ```
 
 `writeCharX()` preserves arbitrary file extensions for assets (useful for scripts/text), but rejects unsafe extensions that could result in path traversal inside the ZIP (e.g. values containing `/` or `\\`).
+
+Set `preserveDescriptors: true` to retain all existing descriptor properties,
+including unknown metadata, authored display names and extension spelling. Supply
+one byte asset per descriptor in the same order with exact `type`, `name` and `ext`
+matches. Missing/extra/reordered/relabeled inputs are rejected. Only URIs relocate
+to independently allocated, safe, collision-free ZIP paths. The default remains
+generated descriptors for existing callers. `exportToCharx` also accepts this flag;
+identity-aware callers should verify the complete generated output and asset bytes.
+
 
 ---
 

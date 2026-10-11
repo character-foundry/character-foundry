@@ -8,6 +8,7 @@ import { zipSync, type Zippable } from 'fflate';
 import {
   fromString,
   getMimeTypeFromExt,
+  ValidationError,
 } from '@character-foundry/core';
 import type { CCv3Data, AssetDescriptor } from '@character-foundry/schemas';
 import type {
@@ -120,11 +121,12 @@ export function writeCharX(
     emitXMeta = spec === 'risu',
     emitReadme = false,
     moduleRisum,
+    preserveDescriptors = false,
   } = options;
 
   // Transform card to use embeded:// URIs
   const descriptors = createAssetDescriptors(assets);
-  const transformedCard = transformAssetUris(card, descriptors);
+  const transformedCard = transformAssetUris(card, descriptors, assets, preserveDescriptors);
 
   // Create ZIP entries
   const zipEntries: Zippable = {};
@@ -217,14 +219,33 @@ function createAssetDescriptors(assets: CharxWriteAsset[]): AssetDescriptor[] {
 /**
  * Transform asset URIs in card to use embeded:// format
  */
-function transformAssetUris(card: CCv3Data, descriptors: AssetDescriptor[]): CCv3Data {
+function transformAssetUris(card: CCv3Data, descriptors: AssetDescriptor[], assets: CharxWriteAsset[], preserve: boolean): CCv3Data {
   // Clone the card to avoid mutations
   // Note: Using structuredClone where available for better performance and preserving undefined
   const transformed: CCv3Data = typeof structuredClone === 'function'
     ? structuredClone(card)
     : JSON.parse(JSON.stringify(card));
 
-  transformed.data.assets = descriptors;
+  if (!preserve) {
+    transformed.data.assets = descriptors;
+    return transformed;
+  }
+  const original = transformed.data.assets;
+  if (original === undefined && assets.length === 0) return transformed;
+  if (!Array.isArray(original) || original.length !== assets.length) {
+    throw new ValidationError('Preserving CharX export requires one asset per original descriptor in the same order', 'assets');
+  }
+  for (let index = 0; index < original.length; index++) {
+    const descriptor = original[index];
+    const asset = assets[index]!;
+    if (!descriptor || typeof descriptor !== 'object' || Array.isArray(descriptor) || typeof descriptor.uri !== 'string'
+      || descriptor.type !== asset.type || descriptor.name !== asset.name || descriptor.ext !== asset.ext) {
+      throw new ValidationError('Preserving CharX export requires exact descriptor type/name/ext matches', `assets[${index}]`);
+    }
+    // Keep authored display names, extension spelling and opaque metadata. Only
+    // the independently allocated, path-safe container location changes.
+    descriptor.uri = descriptors[index]!.uri;
+  }
 
   return transformed;
 }

@@ -36,7 +36,7 @@ describe('public identity format integration', () => {
     expect(await hashBytes(charx.buffer)).not.toBe(originalHash);
   });
 
-  it('detects existing CharX descriptor loss instead of accepting stale lineage', async () => {
+  it('preserves opaque descriptors on request and detects loss from legacy descriptor generation', async () => {
     const data = card();
     Object.assign(data.data.assets?.[0] ?? {}, { unknown_asset_metadata: 'must survive' });
     const options = { assets: [{ pointer: '/assets/0/uri', hash: await hashBytes(png) }] };
@@ -44,5 +44,8 @@ describe('public identity format integration', () => {
       createdAt: '2026-10-11T00:00:00.000Z', nonce: 'integration-nonce-0002' });
     const exported = writeCharX(saved.card as unknown as CCv3Data, [{ type: 'icon', name: 'main', ext: 'png', data: png }]);
     expect(await verifyCardLineage(readCharX(exported.buffer).card, options)).toBe(false);
+    const preserved = writeCharX(saved.card as unknown as CCv3Data, [{ type: 'icon', name: 'main', ext: 'png', data: png }], { preserveDescriptors: true });
+    expect(await verifyCardLineage(readCharX(preserved.buffer).card, options)).toBe(true);
+    expect(readCharX(preserved.buffer).card.data.assets?.[0]).toHaveProperty('unknown_asset_metadata', 'must survive');
   });
 });

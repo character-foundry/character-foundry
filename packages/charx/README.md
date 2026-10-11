@@ -43,3 +43,19 @@ See [docs/charx.md](../../docs/charx.md) for full API documentation.
 ## License
 
 MIT
+
+## Preserving authored descriptors
+
+Use `writeCharX(card, assets, { preserveDescriptors: true })` when identity depends
+on the existing `card.data.assets` metadata. Supply exactly one byte asset per
+original descriptor in the same order, with identical `type`, `name` and `ext`.
+The writer changes only descriptor URIs, retains opaque fields and display names,
+and allocates distinct safe ZIP paths even when names collide after sanitization.
+It rejects missing, extra, reordered or relabeled bindings instead of guessing.
+A missing descriptor list stays missing when no assets are supplied.
+
+Without this option the writer retains its existing generated-descriptor behavior.
+The high-level `exportToCharx` API accepts the same option. Neither API computes
+lineage or proves identity by itself; verify actual output content and asset bytes
+before claiming a preserving export. Inputs are JSON card data, and callers remain
+responsible for existing asset correspondence and implicit portrait semantics.

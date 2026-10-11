@@ -116,6 +116,14 @@ describe('exportCard', () => {
       expect(result.buffer[1]).toBe(0x4b);
     });
 
+    it('passes descriptor preservation through the public export options', () => {
+      const input = structuredClone(testCard);
+      input.data.assets = [{ type: testAsset.type, name: testAsset.name, ext: testAsset.ext, uri: 'ccdefault:', vendor: { keep: true } }] as unknown as CCv3Data['data']['assets'];
+      const result = exportCard(input, [testAsset], { format: 'charx', charx: { preserveDescriptors: true } });
+      const output = JSON.parse(new TextDecoder().decode(unzipSync(result.buffer)['card.json']));
+      expect(output.data.assets[0]).toEqual({ ...input.data.assets![0], uri: output.data.assets[0].uri });
+    });
+
     it('should include asset count', () => {
       const result = exportCard(testCard, [testAsset], { format: 'charx' });
 

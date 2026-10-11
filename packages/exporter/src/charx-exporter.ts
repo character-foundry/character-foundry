@@ -49,6 +49,7 @@ export function exportToCharx(
     emitXMeta,
     moduleRisum,
     checkLoss = true,
+    preserveDescriptors = false,
   } = options;
 
   // Convert assets to CharX format
@@ -57,6 +58,7 @@ export function exportToCharx(
   // Build CharX
   const result = writeCharX(card, charxAssets, {
     spec,
+    preserveDescriptors,
     compressionLevel,
     emitReadme: includeReadme,
     emitXMeta: emitXMeta ?? (spec === 'risu'),

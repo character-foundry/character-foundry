@@ -73,6 +73,8 @@ export interface PngExportOptions extends ExportOptionsBase {
  * CharX export options
  */
 export interface CharxExportOptions extends ExportOptionsBase {
+  /** Retain existing descriptors; input assets must match their order and exact type/name/ext. */
+  preserveDescriptors?: boolean;
   /** Target spec: 'v3' = standard, 'risu' = include x_meta */
   spec?: 'v3' | 'risu';
   /** Include readme.txt (default: false) */

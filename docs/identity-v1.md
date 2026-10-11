@@ -129,8 +129,10 @@ Wrapped JSON, PNG and CharX can carry the namespace. The SDK integration tests
 exercise those actual container primitives with opaque extension/lorebook fields
 and an asset. Voxta and unlisted formats fail the lineage export guard. This is
 not a blanket assertion that every exporter preserves every content field:
-existing CharX descriptor rebuilding, for example, discards unknown descriptor
-metadata, and the new verifier detects the stale lineage after that round trip.
+the default CharX descriptor generation discards unknown descriptor metadata,
+and verification detects the stale lineage after that round trip. Use the additive
+`preserveDescriptors: true` writer/exporter option to retain authored metadata
+while relocating URI bindings; input assets must match descriptors positionally.
 Hosts must reject such loss, preserve it through an improved exporter, or explicitly
 create a transformed derivative with a new identity. Do not silently retain the
 old identity after changing the payload. Actual SillyTavern interoperability and
