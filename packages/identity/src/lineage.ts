@@ -33,7 +33,7 @@ function parseLineage(value: unknown): CardLineageV1 {
   try {
     const data = object(jsonCopy(value), 'INVALID_LINEAGE');
     if (Object.keys(data).sort().join(',') !== 'author,content,createdAt,nonce,operation,originalHash,parents,revisionHash,version'
-      || data.version !== 1 || !['edit', 'fork'].includes(String(data.operation))) invalid();
+      || data.version !== 1 || typeof data.operation !== 'string' || !['edit', 'fork'].includes(data.operation)) invalid();
     if (typeof data.author !== 'string' || data.author.length > 2048 || !/^(https?:\/\/|urn:)/.test(data.author)
       || [...data.author].some((c) => c.charCodeAt(0) <= 32 || c.charCodeAt(0) === 127)) invalid();
     const url = new URL(data.author);
@@ -55,6 +55,15 @@ function parseLineage(value: unknown): CardLineageV1 {
 async function revisionHash(lineage: CardLineageV1): Promise<string> {
   const { revisionHash: _hash, ...body } = lineage;
   return hashBytes(new TextEncoder().encode(canonicalJson({ algorithm: 'foundry-revision-v1-sha256', lineage: body })));
+}
+
+/** Owned structural record; its digest and ancestry are not checked by parsing. */
+export function parseCardLineageRecord(input: unknown): CardLineageV1 { return parseLineage(input); }
+
+/** Checks a record's revision digest, not its historical content bytes or author authenticity. */
+export async function verifyCardLineageRecord(input: unknown): Promise<boolean> {
+  const lineage = parseLineage(input);
+  return lineage.revisionHash === await revisionHash(lineage);
 }
 
 /** Structural read only. Use verifyCardLineage to check its content and revision digest. */

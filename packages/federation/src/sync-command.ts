@@ -1,23 +1,24 @@
+import { SyncCommandError } from './sync-command-error.js';
+import type { SyncCommandErrorCode } from './sync-command-error.js';
+import { decodeSyncForkSubmission, SYNC_FORK_MAX_BYTES, SYNC_FORK_MAX_METADATA_BYTES, SYNC_FORK_MAX_ANCESTORS } from './sync-fork.js';
 import { canonicalJson } from '@character-foundry/identity';
 import { signSyncHttp, SYNC_HTTP_PROFILE } from './sync-http.js';
 
 export const SYNC_COMMAND_VERSION = 'foundry.sync.command.v1' as const;
 export const SYNC_COMMAND_MAX_BYTES = 64 * 1024;
 export const SYNC_COMMAND_MAX_REVISIONS = 20;
-export type SyncCommandErrorCode = 'INVALID_REQUEST' | 'INVALID_RESPONSE' | 'UNAUTHENTICATED' | 'FORBIDDEN' | 'NOT_FOUND' | 'OPERATION_CONFLICT' | 'CHANGED' | 'TOO_LARGE' | 'RATE_LIMITED' | 'UNAVAILABLE';
-export class SyncCommandError extends Error {
-  constructor(public readonly code: SyncCommandErrorCode, message: string, public readonly status?: number) { super(message); this.name = 'SyncCommandError'; }
-}
+export { SyncCommandError } from './sync-command-error.js';
+export type { SyncCommandErrorCode } from './sync-command-error.js';
 export interface SyncPublishSelection { revisionIds: string[]; policy: { visibility: 'private' | 'members' | 'public'; allowFork: boolean } }
 export type SyncCommand = { version: typeof SYNC_COMMAND_VERSION } & (
   { operation: 'publications.publish' } & SyncPublishSelection | { operation: 'publications.fork'; publicationId: string });
 export type SyncCommandReceipt = { version: typeof SYNC_COMMAND_VERSION; requestId: string } & (
   { operation: 'publications.publish'; publications: { id: string; policyVersion: 1 }[] }
-  | { operation: 'publications.fork'; cardId: string; revisionId: string });
+  | { operation: 'publications.fork' | 'forks.submit'; cardId: string; revisionId: string });
 export function syncCommandCapabilities() {
   return { version: SYNC_COMMAND_VERSION, transport: SYNC_HTTP_PROFILE,
-    operations: ['publications.publish', 'publications.fork'] as const,
-    limits: { commandBytes: SYNC_COMMAND_MAX_BYTES, revisions: SYNC_COMMAND_MAX_REVISIONS } };
+    operations: ['publications.publish', 'publications.fork', 'forks.submit'] as const,
+    limits: { commandBytes: SYNC_COMMAND_MAX_BYTES, revisions: SYNC_COMMAND_MAX_REVISIONS, forkBytes: SYNC_FORK_MAX_BYTES, forkMetadataBytes: SYNC_FORK_MAX_METADATA_BYTES, forkAncestors: SYNC_FORK_MAX_ANCESTORS } };
 }
 function invalid(message: string): never { throw new SyncCommandError('INVALID_REQUEST', message); }
 function object(input: unknown, keys: readonly string[]) {
@@ -62,7 +63,7 @@ export function parseSyncCommandReceipt(input: unknown): SyncCommandReceipt {
     const value = object(input, operation === 'publications.publish' ? ['version', 'operation', 'requestId', 'publications'] : ['version', 'operation', 'requestId', 'cardId', 'revisionId']);
     if (value.version !== SYNC_COMMAND_VERSION) invalid('Unsupported receipt version');
     const requestId = token(value.requestId);
-    if (operation === 'publications.fork') return { version: SYNC_COMMAND_VERSION, operation, requestId, cardId: id(value.cardId), revisionId: id(value.revisionId) };
+    if (operation === 'publications.fork' || operation === 'forks.submit') return { version: SYNC_COMMAND_VERSION, operation, requestId, cardId: id(value.cardId), revisionId: id(value.revisionId) };
     if (operation !== 'publications.publish' || !Array.isArray(value.publications) || !value.publications.length || value.publications.length > SYNC_COMMAND_MAX_REVISIONS) invalid('Invalid publication receipt');
     const publications = Array.from(value.publications, (input) => {
       const item = object(input, ['id', 'policyVersion']); if (item.policyVersion !== 1) invalid('Receipt must retain initial policy version');
@@ -80,11 +81,12 @@ export function createSyncCommandClient(options: { baseUrl: string; actor: strin
   if (base.href !== baseUrl || base.protocol !== 'https:' || base.username || base.password || base.search || base.hash || baseUrl.endsWith('/')
     || !Number.isSafeInteger(timeout) || timeout < 1 || timeout > 120_000) invalid('Expected an exact HTTPS base and bounded timeout');
   const fetcher = options.fetch ?? globalThis.fetch;
-  async function send(input: SyncCommand, requestId: string, signal?: AbortSignal) {
-    requestId = token(requestId); const command = parseSyncCommand(input); const body = encodeSyncCommand(command);
-    const url = `${baseUrl}/commands/${command.operation === 'publications.publish' ? 'publish' : 'fork'}`;
+  async function sendWire(operation: SyncCommandReceipt['operation'], path: string, body: Uint8Array,
+    contentType: 'application/json' | 'application/octet-stream', requestId: string, signal?: AbortSignal, expectedCount?: number) {
+    requestId = token(requestId);
+    const url = `${baseUrl}/commands/${path}`;
     if (signal?.aborted) throw new SyncCommandError('UNAVAILABLE', 'Command cancelled');
-    const signed = await signSyncHttp({ method: 'POST', url, body, contentType: 'application/json', actor, keyId, privateKey, requestId });
+    const signed = await signSyncHttp({ method: 'POST', url, body, contentType, actor, keyId, privateKey, requestId });
     const controller = new AbortController(), abort = () => controller.abort();
     signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) controller.abort();
     const timer = setTimeout(abort, timeout);
@@ -123,15 +125,27 @@ export function createSyncCommandClient(options: { baseUrl: string; actor: strin
       let value: unknown; try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
       catch { throw new SyncCommandError('INVALID_RESPONSE', 'Expected UTF-8 JSON receipt'); }
       const receipt = parseSyncCommandReceipt(value);
-      if (receipt.requestId !== requestId || receipt.operation !== command.operation
-        || (receipt.operation === 'publications.publish' && command.operation === 'publications.publish' && receipt.publications.length !== command.revisionIds.length)) {
+      if (receipt.requestId !== requestId || receipt.operation !== operation
+        || (receipt.operation === 'publications.publish' && receipt.publications.length !== expectedCount)) {
         throw new SyncCommandError('INVALID_RESPONSE', 'Receipt does not match the requested operation');
       }
       return receipt;
     } catch (error) { if (error instanceof SyncCommandError) throw error; throw new SyncCommandError('UNAVAILABLE', 'Command outcome unavailable; retry only with the same operation ID and command'); }
     finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); controller.signal.removeEventListener('abort', cancel); await reader?.cancel().catch(() => undefined); reader?.releaseLock(); }
   }
+  async function send(input: SyncCommand, requestId: string, signal?: AbortSignal) {
+    const command = parseSyncCommand(input);
+    return sendWire(command.operation, command.operation === 'publications.publish' ? 'publish' : 'fork', encodeSyncCommand(command),
+      'application/json', requestId, signal, command.operation === 'publications.publish' ? command.revisionIds.length : undefined);
+  }
   return {
+    async submitFork(input: Uint8Array, requestId: string, signal?: AbortSignal) {
+      token(requestId);
+      if (!(input instanceof Uint8Array) || input.length > SYNC_FORK_MAX_BYTES) throw new SyncCommandError('TOO_LARGE', 'Invalid fork bundle length');
+      const body = new Uint8Array(input);
+      const submission = await decodeSyncForkSubmission(body);
+      return sendWire('forks.submit', `submit-fork/${submission.manifest.publicationId}`, body, 'application/octet-stream', requestId, signal);
+    },
     publish(selection: SyncPublishSelection, requestId: string, signal?: AbortSignal) {
       return send({ ...selection, version: SYNC_COMMAND_VERSION, operation: 'publications.publish' }, requestId, signal);
     },

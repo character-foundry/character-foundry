@@ -177,3 +177,10 @@ The observed field behavior comes from an actual JSON import/export against
 SillyTavern `ad29cbda62e92f145e44d7a10398a38af22ca986`; future application changes
 must pass the same final identity checks or fail explicitly. External application
 and Unity flow evidence is tracked separately from the SDK's synthetic cases.
+
+## Detached lineage records
+
+`parseCardLineageRecord` returns an owned structural record.
+`verifyCardLineageRecord` checks its revision digest. Neither validates historical
+content/assets, ancestry or author authenticity; those require an enclosing
+protocol such as [remote fork submission](sync-fork-v1.md).

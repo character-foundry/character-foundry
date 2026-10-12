@@ -79,6 +79,8 @@ shape/cardinality, and omits browser credentials. It does not independently prov
 remote persistence; that is a host transaction guarantee. Downloaded publication
 identity and assets should subsequently be verified with the read client.
 
-Remote asset staging, enriched-card submission, remote draft editing and a complete
-two-instance publish/pull/enriched-return flow are not specified by this profile.
-These commands are a necessary host operation boundary, not the entire sync system.
+The [fork submission extension](sync-fork-v1.md) adds a bounded binary upload
+through `forks.submit` and `createSyncCommandClient().submitFork`. Its receipts use
+the same command version and fork-reference shape. Remote pull/edit UI, public
+actor provisioning, resumable staging and a complete independent-instance workflow
+remain application work.
