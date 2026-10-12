@@ -39,7 +39,8 @@
   },
   "dependencies": {
     "@character-foundry/core": "workspace:^",
-    "@character-foundry/schemas": "workspace:^"
+    "@character-foundry/schemas": "workspace:^",
+    "@character-foundry/identity": "workspace:^"
   },
   "devDependencies": {
     "tsup": "^8.5.1",

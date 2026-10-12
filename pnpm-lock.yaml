@@ -298,6 +298,9 @@ importers:
       '@character-foundry/core':
         specifier: workspace:^
         version: link:../core
+      '@character-foundry/identity':
+        specifier: workspace:^
+        version: link:../identity
       '@character-foundry/schemas':
         specifier: workspace:^
         version: link:../schemas

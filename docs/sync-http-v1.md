@@ -124,3 +124,7 @@ receipts, peer provisioning/scopes, full capability/operation schemas, endpoint
 integration, publish/pull/fork listing and two-instance interoperability remain
 application/protocol work. This primitive is not a claim of working federation
 or a released stable public wire contract.
+
+The additive [publication read draft](sync-read-v1.md) now defines bounded signed
+reads, capability negotiation and a portable client in the same `/sync` export.
+It does not define mutation endpoints or enriched-card return semantics.
