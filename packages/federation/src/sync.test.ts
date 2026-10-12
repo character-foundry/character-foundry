@@ -99,6 +99,23 @@ describe('signed HTTP sync v1 profile', () => {
     }
     for (const now of [vector.created - 30, vector.expires + 30]) await expect(verifySyncHttp(message, { ...verifier(), now })).resolves.toMatchObject({ retainUntil: vector.expires + 30 });
     await expect(signSyncHttp({ ...input(), lifetime: 301 })).rejects.toMatchObject({ code: 'MALFORMED' });
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(vector.created * 1000);
+    try {
+      for (const slowStage of ['key', 'nonce']) {
+        clock.mockReturnValue(vector.created * 1000);
+        const options = verifier();
+        const { now: _fixedClock, ...liveClock } = options;
+        if (slowStage === 'key') options.resolveKey.mockImplementationOnce(async () => {
+          clock.mockReturnValue((vector.expires + 31) * 1000);
+          return { actor: vector.actor, keyId: vector.keyId, publicKey };
+        });
+        else options.consumeNonce.mockImplementationOnce(async () => {
+          clock.mockReturnValue((vector.expires + 31) * 1000); return true;
+        });
+        await expect(verifySyncHttp(message, liveClock)).rejects.toMatchObject({ code: 'EXPIRED' });
+        if (slowStage === 'key') expect(options.consumeNonce).not.toHaveBeenCalled();
+      }
+    } finally { clock.mockRestore(); }
   });
 
   it('requires replay admission, rejects a repeated nonce and preserves logical operation identity across fresh signatures', async () => {
@@ -111,6 +128,7 @@ describe('signed HTTP sync v1 profile', () => {
     const changed = await verifySyncHttp(await signSyncHttp({ ...input(), body: bytes('different operation') }), verifier());
     expect(changed.requestHash).not.toBe(vector.requestHash);
     await expect(verifySyncHttp(message, { ...verifier(), consumeNonce: undefined } as never)).rejects.toMatchObject({ code: 'MALFORMED' });
+    await expect(verifySyncHttp(message, { ...verifier(), consumeNonce: async () => 'false' } as never)).rejects.toMatchObject({ code: 'REPLAY' });
     await expect(verifySyncHttp(message, { ...verifier(), consumeNonce: async () => { throw new Error('durable storage unavailable'); } })).rejects.toThrow('durable storage unavailable');
   });
 

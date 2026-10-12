@@ -122,7 +122,9 @@ export async function verifySyncHttp(input: SyncHttpMessage, options: {
   /** Atomically insert (actor, nonce) if absent; false means replay. Never use check-then-set. */
   consumeNonce(claim: Readonly<SyncNonceClaim>): Promise<boolean>;
 }): Promise<VerifiedSyncHttp> {
-  const message = snapshot(input), now = seconds(options.now ?? Math.floor(Date.now() / 1000));
+  const message = snapshot(input), fixedNow = options.now;
+  const currentTime = () => seconds(fixedNow ?? Math.floor(Date.now() / 1000));
+  const now = currentTime();
   const resolveKey = options.resolveKey, consumeNonce = options.consumeNonce;
   if (typeof resolveKey !== 'function' || typeof consumeNonce !== 'function') fail('MALFORMED', 'Trusted key resolution and atomic replay admission are required');
   const actor = message.headers.get('foundry-sync-actor') ?? '';
@@ -155,6 +157,8 @@ export async function verifySyncHttp(input: SyncHttpMessage, options: {
     SYNC_HTTP_PROFILE, actor, message.method, message.url, message.contentType, digest,
   ]))), (byte) => byte.toString(16).padStart(2, '0')).join('');
   const claim = Object.freeze({ actor, keyId, nonce, requestId, requestHash, retainUntil: expires + SYNC_HTTP_CLOCK_SKEW });
-  if (!await consumeNonce(claim)) fail('REPLAY', 'Request nonce was already consumed');
+  if (currentTime() > claim.retainUntil) fail('EXPIRED', 'Signature expired during verification');
+  if (await consumeNonce(claim) !== true) fail('REPLAY', 'Request nonce was not admitted');
+  if (currentTime() > claim.retainUntil) fail('EXPIRED', 'Signature expired during replay admission');
   return { ...claim, method: message.method, url: message.url, contentType: message.contentType, body: message.body };
 }

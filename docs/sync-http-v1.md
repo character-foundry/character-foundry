@@ -37,7 +37,10 @@ the signature-parameters component. There is no trailing newline in the signatur
 base. The committed fixture contains every exact byte, header and signature.
 
 Times are integer Unix seconds. Signatures last 1–300 seconds. Verification allows
-at most 30 seconds of clock skew at either boundary. Missing, duplicated, extra,
+at most 30 seconds of clock skew at either boundary. With its default live clock,
+it rechecks expiration after cryptographic verification and replay admission; a
+slow key or storage callback cannot extend acceptance. The optional fixed `now`
+value is for deterministic testing or explicitly host-managed time. Missing, duplicated, extra,
 reordered or alternate signature parameters/components are rejected by this
 profile, as are malformed or noncanonical base64 values. Duplicate field values
 combined by a standard Headers implementation do not become valid signatures.
@@ -71,7 +74,7 @@ the application. A transport signature authenticates the sending actor; it does
 not prove ownership of every author name or lineage claim inside a card.
 
 `consumeNonce(claim)` must atomically insert a unique `(actor, nonce)` claim and
-return false when it already exists. Check-then-insert, per-process maps and
+return false when it already exists. Only boolean true admits a request. Check-then-insert, per-process maps and
 short-lived caches do not provide durable multi-worker replay defense. The key ID
 is recorded but must not partition nonce uniqueness: rotation must not permit
 nonce reuse. Keep the claim **through** `retainUntil` (signature expiration plus
