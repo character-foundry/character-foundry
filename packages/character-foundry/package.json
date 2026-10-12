@@ -177,6 +177,16 @@
         "types": "./dist/integrations.d.cts",
         "default": "./dist/integrations.cjs"
       }
+    },
+    "./sync": {
+      "import": {
+        "types": "./dist/sync.d.ts",
+        "default": "./dist/sync.js"
+      },
+      "require": {
+        "types": "./dist/sync.d.cts",
+        "default": "./dist/sync.cjs"
+      }
     }
   },
   "main": "./dist/index.cjs",

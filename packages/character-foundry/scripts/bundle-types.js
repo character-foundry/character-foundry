@@ -26,6 +26,7 @@ const entries = [
   'media',
   'image-utils',
   'federation',
+  'sync',
   'app-framework',
 ];
 

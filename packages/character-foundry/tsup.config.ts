@@ -19,6 +19,7 @@ export default defineConfig({
     media: 'src/media.ts',
     'image-utils': 'src/image-utils.ts',
     federation: 'src/federation.ts',
+    sync: 'src/sync.ts',
     'app-framework': 'src/app-framework.ts',
   },
   format: ['esm', 'cjs'],
