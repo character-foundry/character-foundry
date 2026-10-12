@@ -44,7 +44,7 @@ describe('publication read protocol v1', () => {
   it('rejects unknown wire fields, duplicate bindings, invalid policies, counts, dates and non-JSON documents', async () => {
     const value = await publication();
     for (const changed of [
-      { extra: true }, { policy: { ...value.policy, visibility: 'anyone' } }, { policy: { ...value.policy, version: 0 } },
+      { extra: true }, { policy: { ...value.policy, visibility: ['public'] } }, { policy: { ...value.policy, visibility: 'anyone' } }, { policy: { ...value.policy, version: 0 } },
       { assets: [...value.assets, ...value.assets] }, { assets: [value.assets[0], { ...value.assets[0], path: 'different' }] },
       { assets: [{ ...value.assets[0], path: '../secret' }] }, { publishedAt: '2026-02-31T00:00:00.000Z' },
       { document: { bad: undefined } }, { document: { sparse: Array(2) } }, { document: { value: Infinity } },

@@ -85,7 +85,7 @@ export function parseSyncReadPublication(input: unknown): SyncReadPublication {
   const value = object(input, ['id', 'document', 'identity', 'originalHash', 'parentId', 'publishedAt', 'policy', 'assets']);
   const identity = object(value.identity, ['algorithm', 'hash']);
   const policy = object(value.policy, ['visibility', 'allowFork', 'version']);
-  if (!['private', 'members', 'public'].includes(String(policy.visibility))) invalid('Invalid publication visibility');
+  if (typeof policy.visibility !== 'string' || !['private', 'members', 'public'].includes(policy.visibility)) invalid('Invalid publication visibility');
   const publishedAt = text(value.publishedAt, 32);
   if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(publishedAt) || !Number.isFinite(Date.parse(publishedAt)) || new Date(publishedAt).toISOString() !== publishedAt) invalid('Expected a canonical publication date');
   if (!Array.isArray(value.assets) || value.assets.length > 64) invalid('Invalid asset manifest');
