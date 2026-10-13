@@ -2,6 +2,8 @@ import { canonicalJson, digestString, hashBytes, IdentityError, jsonCopy, object
 import type { JsonObject, JsonValue } from './json.js';
 
 export const CARD_CONTENT_ALGORITHM = 'foundry-card-v1-sha256' as const;
+/** Declared assets plus portrait a card identity can bind. */
+export const MAX_ASSET_BINDINGS = 8192;
 export interface CardContentIdentity { algorithm: typeof CARD_CONTENT_ALGORITHM; hash: string }
 /** RFC 6901 pointer relative to data; the target must be an asset URI string. */
 export interface AssetDigestBinding { pointer: string; hash: string }
@@ -83,7 +85,8 @@ export function canonicalCardContent(input: unknown, options: CardIdentityOption
     if (!Object.hasOwn(card.data, key)) card.data[key] = [];
   }
   const bindings = options.assets ?? [];
-  if (bindings.length > 256) throw new IdentityError('LIMIT', 'Too many asset bindings');
+  // Large RisuAI CharX packages declare a thousand or more assets; Foundry's loader and CharX handle them, so identity does too.
+  if (bindings.length > MAX_ASSET_BINDINGS) throw new IdentityError('LIMIT', 'Too many asset bindings');
   const seen = new Set<string>();
   const resources: JsonObject = {};
   for (const binding of bindings) {

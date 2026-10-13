@@ -7,8 +7,12 @@ export class IdentityError extends Error {
   }
 }
 
+/** Bounds for canonical JSON: big RisuAI cards carry megabytes of lorebook, scripts and asset descriptors. */
+const MAX_CANONICAL_LENGTH = 32 * 1024 * 1024;
+const MAX_CANONICAL_NODES = 2_000_000;
+
 function checkString(value: string): void {
-  if (value.length > 4 * 1024 * 1024) throw new IdentityError('LIMIT', 'JSON string exceeds the serialization limit');
+  if (value.length > MAX_CANONICAL_LENGTH) throw new IdentityError('LIMIT', 'JSON string exceeds the serialization limit');
   for (let i = 0; i < value.length; i++) {
     const unit = value.charCodeAt(i);
     if (unit >= 0xd800 && unit <= 0xdbff) {
@@ -25,11 +29,11 @@ export function canonicalJson(value: unknown): string {
   let length = 0;
   function emit(text: string): string {
     length += text.length;
-    if (length > 4 * 1024 * 1024) throw new IdentityError('LIMIT', 'Canonical JSON exceeds 4 Mi UTF-16 code units');
+    if (length > MAX_CANONICAL_LENGTH) throw new IdentityError('LIMIT', 'Canonical JSON exceeds 32 Mi UTF-16 code units');
     return text;
   }
   function visit(item: unknown, depth: number): string {
-    if (++nodes > 100_000 || depth > 64) throw new IdentityError('LIMIT', 'Canonical JSON exceeds structural limits');
+    if (++nodes > MAX_CANONICAL_NODES || depth > 64) throw new IdentityError('LIMIT', 'Canonical JSON exceeds structural limits');
     if (item === null) return emit('null');
     if (typeof item === 'string') { checkString(item); return emit(JSON.stringify(item)); }
     if (typeof item === 'boolean') return emit(String(item));

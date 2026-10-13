@@ -51,6 +51,16 @@ describe('canonical card content v1', () => {
     expect(() => canonicalCardContent({ ...v2, spec_version: '2.1' })).toThrow();
   });
 
+  it('binds RisuAI-sized asset lists (a thousand or more declared assets)', async () => {
+    const count = 1500;
+    const assets = Array.from({ length: count }, (_, index) => ({ type: 'x-risu-asset', name: `a${index}`, ext: 'png', uri: `embeded://assets/other/a${index}.png` }));
+    const bindings = assets.map((_, index) => ({ pointer: `/assets/${index}/uri`, hash: createHash('sha256').update(String(index)).digest('hex') }));
+    const identity = await computeCardContentIdentity(card({ assets }), { assets: bindings });
+    expect(identity.hash).toMatch(/^[a-f0-9]{64}$/);
+    await expect(computeCardContentIdentity(card({ assets: [...assets, ...assets, ...assets, ...assets, ...assets, ...assets] }),
+      { assets: [...Array(9000).keys()].map((index) => ({ pointer: `/assets/${index}/uri`, hash: 'a'.repeat(64) })) })).rejects.toMatchObject({ code: 'LIMIT' });
+  });
+
   it('includes digests for declared assets and portrait bytes without depending on a container URI', async () => {
     const data = { assets: [{ type: 'icon', name: 'main', ext: 'png', uri: 'pngchunk:0' }] };
     const input = card(data);
