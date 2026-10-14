@@ -22,8 +22,9 @@ import { parseCard } from '@character-foundry/character-foundry/loader';
 import { exportCard } from '@character-foundry/character-foundry/exporter';
 
 // Load any format (PNG, CharX, Voxta, JSON)
-const { card, assets, format } = parseCard(buffer);
+const { card, assets, containerFormat } = parseCard(buffer);
 console.log(card.data.name);
+console.log(containerFormat);
 
 // Export to different format
 const pngBuffer = exportCard(card, assets, { format: 'png' });
@@ -80,6 +81,23 @@ import { parseLorebook, serializeLorebook } from '@character-foundry/character-f
 | `/image-utils` | Image URL extraction, SSRF protection |
 | `/federation` | ActivityPub federation (experimental) |
 | `/app-framework` | Schema-driven UI with AutoForm |
+| `/zip` | ZIP utilities without installing the internal core package |
+| `/integrations` | Direct application connection and favorite-state helpers |
+
+### Unreleased development subpaths
+
+The [`feat/unity-identity` branch](https://github.com/character-foundry/character-foundry/tree/feat/unity-identity)
+also exports `/identity` (portable card identity, asset binding and explicit
+revision lineage) and `/sync` (draft signed transport, publication reads and
+commands, and verified remote-fork bundles). These APIs are not being advertised
+as published in npm `@latest` or `@dev`; build the development source to use them.
+Existing loader/normalizer hashes and legacy ActivityPub APIs are unchanged.
+
+See the [identity contract](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/identity-v1.md)
+and [integration guide](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/upgrade-guide.md).
+The current identity bounds support large RisuAI cards: 8,192 asset bindings,
+2,000,000 JSON nodes and 32 Mi UTF-16 code units of canonical output. Network
+publication contracts have their own lower limits.
 
 ## Runtime Validation
 
@@ -112,7 +130,11 @@ cf export card.png --to charx
 ## Documentation
 
 - [GitHub Repository](https://github.com/character-foundry/character-foundry)
-- [Changelog](https://github.com/character-foundry/character-foundry/blob/master/CHANGELOG.md)
+- [Package Changelog](https://github.com/character-foundry/character-foundry/blob/master/packages/character-foundry/CHANGELOG.md)
+- [Signed HTTP transport draft](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/sync-http-v1.md)
+- [Publication read draft](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/sync-read-v1.md)
+- [Remote-fork draft](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/sync-fork-v1.md)
+- [Publication-command draft](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/sync-command-v1.md)
 
 ## License
 

@@ -1,5 +1,15 @@
 # Upgrade Implementation Guide
 
+## Unreleased Unity integration work
+
+The [`feat/unity-identity` integration guide](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/upgrade-guide.md)
+covers the new card-identity/lineage, descriptor-preserving CharX and signed-sync
+contracts. They are available on the development branch, not a claim of an npm
+release or inclusion in `master`. The RisuAI-sized-card bounds update changes
+resource limits without changing the content algorithm or lineage format.
+
+## Earlier release guidance
+
 This guide covers the release that introduces:
 - Loader content hash v2 (`computeContentHashV2()` + `authoritative.contentHashV2`)
 - Federation internal network key gate (`X-Foundry-Network-Key`)
