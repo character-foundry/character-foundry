@@ -28,9 +28,16 @@ Arrays retain order. Numbers use ECMAScript JSON serialization (`-0` becomes `0`
 non-finite numbers, undefined, sparse/decorated arrays, accessors, hidden/symbol
 properties, class instances, cycles and lone surrogates are rejected. Unicode
 normalization is not applied. The implementation follows the serialization rules
-of [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785.html), with depth 64, 100,000
-nodes and 4 Mi UTF-16 code units of serialized output as resource limits. It does
-not accept JSON source text or claim duplicate-key detection after parsing.
+of [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785.html), with depth 64,
+2,000,000 visited JSON values and 32 Mi UTF-16 code units (33,554,432 units) of
+serialized output as resource limits. Individual arrays may contain at most
+100,000 entries. The serialized-output limit is not a file-size or UTF-8 byte
+limit. The implementation does not accept JSON source text or claim duplicate-key
+detection after parsing.
+
+These are the development branch's resource bounds, expanded for large RisuAI
+cards. The canonical payload, algorithm identifiers and hash format are unchanged;
+inputs accepted under the earlier bounds retain the same digests.
 
 ## Portable card payload
 
@@ -73,8 +80,9 @@ relative to `data`, may additionally target URI strings under `extensions`, and
 cannot target excluded metadata or prompt fields. The URI is replaced in the
 canonical copy by `urn:sha256:<digest>`. The pointer/digest map is also included,
 so declaring a binding cannot collide with an ordinary authored URI. Duplicate,
-missing and non-string targets fail. There are at most 256 bindings. External
-declared assets also require a digest; a URL alone is not immutable content.
+missing and non-string targets fail. There are at most 8,192 pointer/digest
+bindings; the optional `portraitHash` is separate. External declared assets also
+require a digest; a URL alone is not immutable content.
 
 An implicit primary PNG image may additionally use `portraitHash`. It must be a
 digest of the host's extracted portrait bytes, not the whole character PNG (which

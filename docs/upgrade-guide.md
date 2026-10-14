@@ -1,5 +1,84 @@
 # Upgrade Implementation Guide
 
+## Unreleased: identity and sync development contracts
+
+This section describes the **unreleased `feat/unity-identity` development
+branch**, including the resource-bound changes at `7699064`. It does not describe
+an npm release, a merge to `master`, or a documentation-site deployment. Use a
+pinned source checkout when evaluating these contracts; the historical CLI
+version below does not establish that they are available in that package.
+
+### Identity is additive, not loader hash v3
+
+The public `@character-foundry/character-foundry/identity` subpath exports
+`computeCardContentIdentity`, `createCardRevision`, `readCardLineage`,
+`verifyCardLineage` and `sanitizeCardForPublish`, among the primitives documented
+in [Card content and lineage v1](identity-v1.md).
+
+Existing `computeContentHash` and `computeContentHashV2` loader APIs keep their
+existing meanings. They are not interchangeable with the new
+`{ algorithm: "foundry-card-v1-sha256", hash }` content identity or
+`foundry-revision-v1-sha256` lineage digest. Retain the algorithm identifier
+alongside a stored identity; equal-looking hash strings from different contracts
+are not evidence of equality. This section does not prescribe a database
+migration, corpus re-hash, or replacement of existing hash columns.
+
+The canonical serializer now allows depth 64, 2,000,000 visited JSON values and
+32 Mi UTF-16 code units of serialized output, with at most 100,000 entries per
+array. Card identity accepts up to 8,192 pointer/digest asset bindings, plus an
+optional separate portrait digest. These are bounded serialization/binding
+limits, not a promise to accept arbitrary files of that byte size. Increasing
+these bounds does not change the canonical payload, algorithm identifiers or
+digests of previously accepted inputs.
+
+### Host responsibilities
+
+- Preserve exact accepted original bytes and source provenance separately from
+  portable content identity. Reads and untouched exports must not manufacture
+  lineage; call `createCardRevision` only for an explicit edit/fork.
+- Preserve unknown envelope, extension, lorebook and asset-descriptor fields.
+  Supply bindings derived from verified asset bytes, including external assets;
+  an asset URL is not a content digest. Extract an implicit portrait consistently
+  and hash its image bytes, not the containing character PNG.
+- Verify content and lineage after a container round trip. Supported lineage
+  export formats are not a guarantee that every writer option preserves every
+  field. CharX's `preserveDescriptors: true` option retains authored descriptors
+  when matching assets are supplied positionally. Reject loss or explicitly
+  create a transformed derivative; never retain a stale identity silently.
+- `readCardLineage` is structural parsing; `verifyCardLineage` additionally checks
+  current content and revision digests. Neither authenticates an author or
+  recursively proves ancestry. Hosts own account/peer authentication, trusted-key
+  resolution, access policy and durable replay/idempotency storage.
+- `sanitizeCardForPublish` removes only the documented local fields and reports
+  them. Unknown fields remain; it is not a general secret detector or permission
+  to publish a card. The explicit SillyTavern transport helpers described in the
+  identity contract do not repair arbitrary edits or relax asset verification.
+
+### Sync profiles
+
+These separate opt-in development contracts build on identity and keep host
+authorization and persistence explicit:
+
+- [Signed HTTP profile v1](sync-http-v1.md): signed requests, key resolution and
+  replay admission.
+- [Publication reads v1](sync-read-v1.md): bounded publication/asset reads and
+  verification.
+- [Remote fork submission v1](sync-fork-v1.md): selected fork content, ancestry
+  records and verified asset bytes.
+- [Publish/fork commands v1](sync-command-v1.md): explicit write commands and
+  receipts, separate from read support.
+
+Adopting an identity helper does not enable federation, deploy a host, configure
+peer trust or make local Archive files remotely accessible.
+
+---
+
+## Historical release: loader hash v2 and federation hardening
+
+The sections below retain the earlier release's integration guidance and pinned
+CLI examples. Their rollout recommendations refer to the older loader hashes,
+not the unreleased identity/sync contracts above.
+
 This guide covers the release that introduces:
 - Loader content hash v2 (`computeContentHashV2()` + `authoritative.contentHashV2`)
 - Federation internal network key gate (`X-Foundry-Network-Key`)

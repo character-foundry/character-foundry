@@ -42,10 +42,14 @@ import { CCv3Data } from '@character-foundry/character-foundry/schemas';
 
 ## Packages
 
-| Package | Version | Description | Docs |
-|---------|---------|-------------|------|
-| **`@character-foundry/character-foundry`** | **0.4.3** | **Main library - all functionality bundled** | - |
-| **`@character-foundry/cli`** | **0.4.3** | **CLI tool** | [docs/cli.md](docs/cli.md) |
+| Package | Description | Docs |
+|---------|-------------|------|
+| **`@character-foundry/character-foundry`** | **Main library - functionality bundled into subpath exports** | - |
+| **`@character-foundry/cli`** | **CLI tool** | [docs/cli.md](docs/cli.md) |
+
+Workspace packages are not separate npm installs. Check the npm package's version
+and dist-tag when choosing a release; a checkout's manifest version does not mean
+every branch feature has been published.
 
 ### Internal Packages (bundled, not published separately)
 
@@ -65,6 +69,23 @@ import { CCv3Data } from '@character-foundry/character-foundry/schemas';
 | `image-utils` | Image URL extraction, SSRF protection, safety checks | - |
 | `federation` | ActivityPub federation + HTTP signatures + D1 store (gated, opt-in) | [docs/federation.md](docs/federation.md) |
 | `app-framework` | Schema-driven UI: Extension, Registry, AutoForm (React peer dep) | [docs/app-framework.md](docs/app-framework.md) |
+
+### Unreleased Unity integration contracts
+
+The [`feat/unity-identity` development branch](https://github.com/character-foundry/character-foundry/tree/feat/unity-identity)
+adds `/identity` and `/sync` exports and descriptor-preserving CharX export.
+These additions are available as source, not a claim of availability in npm
+`@latest` or `@dev`. A branch push does not publish packages or merge them into
+`master`.
+
+- [Card identity and lineage](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/identity-v1.md): distinct original-byte, portable-content and revision identities; verified asset bindings; explicit save/fork lineage.
+- [Signed HTTP transport](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/sync-http-v1.md), [publication reads](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/sync-read-v1.md), [verified remote forks](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/sync-fork-v1.md) and [publication commands](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/sync-command-v1.md): bounded draft contracts and clients, separate from legacy ActivityPub.
+- [Integration guide](https://github.com/character-foundry/character-foundry/blob/feat/unity-identity/docs/upgrade-guide.md): preservation rules and host responsibilities. Applications still own authorization, durable replay/idempotency storage and deployment.
+
+The RisuAI-sized-card update permits 8,192 identity asset bindings, 2,000,000
+canonical JSON nodes and 32 Mi UTF-16 code units of canonical output. It changes
+resource bounds, not the hash algorithm or lineage format. Identity limits do not
+raise the separate publication-protocol limits.
 
 ## Installation
 
@@ -246,7 +267,7 @@ pnpm install
 # Build all packages
 pnpm build
 
-# Run tests (~630 tests)
+# Run tests
 pnpm test
 
 # Typecheck
