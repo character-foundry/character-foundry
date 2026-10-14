@@ -1,0 +1,18 @@
+{
+  "description": "Synthetic public test key only. Generated using Node crypto, without the implementation under test.",
+  "actor": "https://peer.example/actors/test",
+  "keyId": "https://peer.example/actors/test#test-key",
+  "url": "https://hub.example/api/sync/v1/publish?scope=selected",
+  "body": "{\"revision\":\"fixture-only\",\"title\":\"Aster\"}\n",
+  "nonce": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+  "requestId": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+  "created": 1791763200,
+  "expires": 1791763500,
+  "privateKeyPkcs8": "MC4CAQAwBQYDK2VwBCIEIBWZurwv0hwQ3FMnWVaosFIU8RcGuC3y1FUTmqz36BD9",
+  "publicKeySpki": "MCowBQYDK2VwAyEAehs+Euk1X01pR6EoDc9Sp+i5KXDFzd7tYBEzTsbzhRE=",
+  "contentDigest": "sha-256=:NViYMDBppNYJB1EfZILh63fPyCIsw7R5U5ldzQr+AiQ=:",
+  "signatureInput": "foundry=(\"@method\" \"@target-uri\" \"content-digest\" \"content-type\" \"foundry-sync-actor\" \"idempotency-key\");created=1791763200;expires=1791763500;nonce=\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\";keyid=\"https://peer.example/actors/test#test-key\";alg=\"ed25519\";tag=\"foundry-sync-v1\"",
+  "signature": "foundry=:QoGlTj8ri2z1aVMbKjyhpdVwmEMTH2QdFIVC+QIK0OfYnJwaFBp1ea3BoD4SR46pffJg2Nu9xZ/rlPUqd54VBA==:",
+  "signatureBase": "\"@method\": POST\n\"@target-uri\": https://hub.example/api/sync/v1/publish?scope=selected\n\"content-digest\": sha-256=:NViYMDBppNYJB1EfZILh63fPyCIsw7R5U5ldzQr+AiQ=:\n\"content-type\": application/json\n\"foundry-sync-actor\": https://peer.example/actors/test\n\"idempotency-key\": AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\n\"@signature-params\": (\"@method\" \"@target-uri\" \"content-digest\" \"content-type\" \"foundry-sync-actor\" \"idempotency-key\");created=1791763200;expires=1791763500;nonce=\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\";keyid=\"https://peer.example/actors/test#test-key\";alg=\"ed25519\";tag=\"foundry-sync-v1\"",
+  "requestHash": "57d404e3d4c19ee16ae2951a56ae2e857cb70da46210e2a82f15efeca099683e"
+}

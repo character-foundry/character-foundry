@@ -84,6 +84,11 @@ export interface CharxWriteAsset {
  * Options for building CharX
  */
 export interface CharxWriteOptions {
+  /**
+   * Preserve card.data.assets descriptors, changing only their URIs (default false).
+   * Assets must match descriptors positionally, including exact type/name/ext.
+   */
+  preserveDescriptors?: boolean;
   /** Target spec: 'v3' = standard, 'risu' = include x_meta */
   spec?: 'v3' | 'risu';
   /** Compression level (0-9, default: 6) */

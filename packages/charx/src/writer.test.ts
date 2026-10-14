@@ -95,6 +95,29 @@ describe('writeCharX', () => {
     expect(hasXMeta).toBe(true);
   });
 
+  it.each([
+    ['main', 'main', 'main', 'main'],
+    ['happy.face', 'happy_face', 'happy-face', 'happy-face-2'],
+    ['Happy', 'happy', 'HAPPY', 'happy-2'],
+  ])('preserves each colliding image in the archive and its descriptor: %s', (...names) => {
+    const assets = names.map((name, index) => ({
+      name, type: 'icon', ext: 'png', data: new Uint8Array([index + 1]),
+    }));
+    const original = structuredClone(assets);
+    const result = writeCharX(testCard, assets, { spec: 'risu' });
+    const files = unzipSync(result.buffer);
+    const parsed = readCharX(result.buffer);
+    const descriptors = parsed.card.data.assets!;
+
+    expect(Object.keys(files).filter(path => path.startsWith('assets/'))).toHaveLength(assets.length);
+    expect(new Set(descriptors.map(asset => asset.uri.toLowerCase())).size).toBe(assets.length);
+    expect(new Set(descriptors.map(asset => asset.name.toLowerCase())).size).toBe(assets.length);
+    expect(parsed.assets.map(asset => asset.buffer)).toEqual(assets.map(asset => asset.data));
+    expect(parsed.metadata?.size).toBe(assets.length);
+    expect(result.assetCount).toBe(assets.length);
+    expect(assets).toEqual(original);
+  });
+
   it('should respect compression level', () => {
     const assets = [
       { name: 'large', type: 'icon' as const, ext: 'png', data: new Uint8Array(10000).fill(0) },
@@ -125,5 +148,47 @@ describe('writeCharX', () => {
     ];
 
     expect(() => writeCharX(testCard, assets)).toThrow(/extension/i);
+  });
+});
+
+describe('preserveDescriptors', () => {
+  const bytes = [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5, 6]), new Uint8Array([7, 8, 9])];
+  const names = ['Same.Name', 'same_name', 'same-name'];
+  const assets = names.map((name, index) => ({ name, ext: 'PNG', type: 'icon', data: bytes[index]! }));
+  function card() {
+    return { spec: 'chara_card_v3', spec_version: '3.0', opaque_envelope: { keep: true }, data: {
+      name: 'Preserved', extensions: { vendor: { keep: [null, true] } },
+      assets: names.map((name, index) => ({ name, ext: 'PNG', type: 'icon', uri: `https://example.test/${index}.png`,
+        vendor: { position: index, license: ['keep', null] }, tags: ['portrait'], geometry: { width: 7 } })),
+    } } as unknown as CCv3Data;
+  }
+  it('retains opaque descriptor fields and authored names while allocating distinct safe ZIP paths', () => {
+    const input = card(); const before = structuredClone(input);
+    const output = writeCharX(input, assets, { preserveDescriptors: true });
+    const read = readCharX(output.buffer);
+    expect(output.assetCount).toBe(3); expect(read.assets).toHaveLength(3);
+    expect(new Set(read.assets.map((asset) => asset.path.toLowerCase())).size).toBe(3);
+    for (let index = 0; index < assets.length; index++) {
+      expect(read.assets[index]!.buffer).toEqual(bytes[index]);
+      expect(read.card.data.assets![index]).toEqual({ ...before.data.assets![index], uri: read.card.data.assets![index]!.uri });
+      expect(read.card.data.assets![index]!.uri).toMatch(/^embeded:\/\/assets\/icon\/images\/[A-Za-z0-9-]+\.png$/);
+    }
+    expect(read.card).toEqual({ ...before, data: { ...before.data, assets: read.card.data.assets } });
+    expect(input).toEqual(before);
+  });
+  it('rejects missing, extra, reordered and relabeled bindings instead of guessing correspondence', () => {
+    for (const value of [assets.slice(1), [...assets, assets[0]!], [...assets].reverse(), assets.map((asset) => ({ ...asset, ext: 'png' }))]) {
+      expect(() => writeCharX(card(), value, { preserveDescriptors: true })).toThrow(/Preserving CharX export/);
+    }
+    const input = card(); input.data.assets![0]!.uri = undefined as unknown as string;
+    expect(() => writeCharX(input, assets, { preserveDescriptors: true })).toThrow(/exact descriptor/);
+  });
+  it('preserves missing versus empty descriptors while keeping legacy generation available', () => {
+    const input = card(); delete input.data.assets;
+    expect(readCharX(writeCharX(input, [], { preserveDescriptors: true }).buffer).card.data).not.toHaveProperty('assets');
+    input.data.assets = [];
+    expect(readCharX(writeCharX(input, [], { preserveDescriptors: true }).buffer).card.data.assets).toEqual([]);
+    const generated = readCharX(writeCharX(card(), assets).buffer).card.data.assets!;
+    expect(generated[0]!.name).toBe('Same-Name'); expect(generated[0]).not.toHaveProperty('vendor');
   });
 });

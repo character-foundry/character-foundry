@@ -15,6 +15,16 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./sync": {
+      "import": {
+        "types": "./dist/sync.d.ts",
+        "default": "./dist/sync.js"
+      },
+      "require": {
+        "types": "./dist/sync.d.cts",
+        "default": "./dist/sync.cjs"
+      }
     }
   },
   "files": [
@@ -29,7 +39,8 @@
   },
   "dependencies": {
     "@character-foundry/core": "workspace:^",
-    "@character-foundry/schemas": "workspace:^"
+    "@character-foundry/schemas": "workspace:^",
+    "@character-foundry/identity": "workspace:^"
   },
   "devDependencies": {
     "tsup": "^8.5.1",

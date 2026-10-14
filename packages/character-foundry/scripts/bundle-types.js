@@ -21,10 +21,12 @@ const entries = [
   'loader',
   'exporter',
   'normalizer',
+  'identity',
   'tokenizers',
   'media',
   'image-utils',
   'federation',
+  'sync',
   'app-framework',
 ];
 
@@ -64,6 +66,7 @@ for (const entry of entries) {
           '@character-foundry/loader',
           '@character-foundry/exporter',
           '@character-foundry/normalizer',
+          '@character-foundry/identity',
           '@character-foundry/tokenizers',
           '@character-foundry/media',
           '@character-foundry/image-utils',
